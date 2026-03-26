@@ -163,7 +163,7 @@ export const PersonalDashboard: React.FC<{ isOfficeView?: boolean }> = ({ isOffi
   const quoteText = isQuoteLoading ? 'CARICAMENTO...' : quote ? `${quote.quote.toUpperCase()} — ${quote.author.toUpperCase()}` : '';
 
   return (
-    <div className="flex flex-col gap-8 p-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-8 pt-6 pb-6 max-w-7xl mx-auto w-full">
       {/* Header */}
       <div className="flex flex-col gap-6">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>

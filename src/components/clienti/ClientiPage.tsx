@@ -63,7 +63,7 @@ export const ClientiPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full max-w-[1600px] mx-auto w-full rounded-t-2xl">
       {/* Header Section */}
-      <div className="flex flex-col gap-6 p-6 pb-0">
+      <div className="flex flex-col gap-6 pt-6 pb-0">
         <div className="flex flex-col gap-1">
           <span className="font-outfit text-[11px] uppercase tracking-wider text-[var(--text-muted)]">
             Leadomancy / Buyers
@@ -170,7 +170,7 @@ export const ClientiPage: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden p-6 gap-6">
+      <div className="flex flex-1 overflow-hidden pt-6 pb-6 gap-6">
         {/* Filter Sidebar (Collapsible) */}
         <AnimatePresence>
           {isFilterSidebarOpen && (

@@ -340,7 +340,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-8 p-6 max-w-3xl mx-auto w-full">
+    <div className="flex flex-col gap-8 pt-6 pb-6 max-w-3xl mx-auto w-full">
       {/* Header */}
       <div className="flex flex-col gap-1">
         <span className="font-outfit text-[11px] uppercase tracking-wider text-[var(--text-muted)]">
@@ -450,7 +450,7 @@ export const SettingsPage: React.FC = () => {
         <div className="flex flex-col items-center gap-2 py-6">
           <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center mb-2">
           <svg viewBox="0 0 24 24" fill="white" style={{ width: 16, height: 16 }}>
-            <path d="M12 0 L13.5 4.5 L18 4.5 L14.5 7 L16 11.5 L12 8.5 L8 11.5 L9.5 7 L6 4.5 L10.5 4.5 Z" />
+            <path d="M12 1 L13.5 8.5 L20.5 6 L16 12 L22 14.5 L15 15.5 L17 22.5 L12 18 L7 22.5 L9 15.5 L2 14.5 L8 12 L3.5 6 L10.5 8.5 Z" />
           </svg>
           </div>
           <span className="font-outfit font-bold text-[14px] uppercase tracking-widest">LEADOMANCY</span>

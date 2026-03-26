@@ -14,7 +14,7 @@ export const ReportPage: React.FC = () => {
   const { myData, isLoading } = useDailyData();
 
   return (
-    <div className="flex flex-col gap-8 p-6 max-w-4xl mx-auto w-full">
+    <div className="flex flex-col gap-8 pt-6 pb-6 max-w-4xl mx-auto w-full">
       {/* Header */}
       <div className="flex flex-col gap-1">
         <span className="font-outfit text-[11px] uppercase tracking-wider text-[var(--text-muted)]">

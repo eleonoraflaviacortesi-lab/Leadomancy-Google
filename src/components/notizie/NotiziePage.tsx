@@ -67,7 +67,7 @@ export const NotiziePage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-[1600px] mx-auto w-full rounded-t-2xl">
+    <div className="flex flex-col gap-6 pt-6 pb-6 max-w-[1600px] mx-auto w-full rounded-t-2xl">
       {/* Breadcrumb & Title */}
       <div className="flex flex-col gap-1">
         <span className="font-outfit text-[11px] uppercase tracking-wider text-[var(--text-muted)]">

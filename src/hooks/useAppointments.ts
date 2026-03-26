@@ -138,17 +138,30 @@ export function useAppointments() {
     },
   });
 
-  const toggleComplete = useMutation({
-    mutationFn: async ({ id, completed }: { id: string, completed: boolean }) => {
+  const toggleCompleteMutation = useMutation({
+    mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
       const rowIndex = await findRowIndex(SHEETS.appointments, id);
-      if (!rowIndex) {
-        console.warn(`[useAppointments] Appointment ${id} not found in sheet, skipping toggle.`);
-        return;
-      }
-      await updateRow(SHEETS.appointments, rowIndex, { completed });
+      if (!rowIndex) throw new Error('Appointment not found');
+      await updateRow(SHEETS.appointments, rowIndex, { 
+        completed, 
+        updated_at: new Date().toISOString() 
+      });
+      return { id, completed };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
+    onMutate: async ({ id, completed }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData<Appointment[]>(queryKey, old =>
+        old?.map(a => a.id === id ? { ...a, completed } : a)
+      );
+      return { previous };
+    },
+    onError: (_, __, context) => {
+      queryClient.setQueryData(queryKey, context?.previous);
+      toast.error('Errore nel salvataggio');
+    },
+    onSettled: () => {
+      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 2000);
     }
   });
 
@@ -159,6 +172,6 @@ export function useAppointments() {
     addAppointment: addAppointmentMutation.mutate,
     updateAppointment: updateAppointmentMutation.mutate,
     deleteAppointment: deleteAppointmentMutation.mutate,
-    toggleComplete: toggleComplete.mutate,
+    toggleComplete: toggleCompleteMutation.mutate,
   };
 }

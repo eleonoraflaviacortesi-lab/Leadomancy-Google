@@ -103,20 +103,28 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
     notizie.find(n => n.id === formData.notizia_id),
   [notizie, formData.notizia_id]);
 
+  const isTask = formData.type === 'task';
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.date) return;
 
     // Combine date and time for start_time and end_time
-    const start = new Date(`${formData.date}T${startTime}:00`);
-    const end = new Date(`${formData.date}T${endTime}:00`);
+    let start, end;
+    if (isTask) {
+      start = new Date(`${formData.date}T00:00:00.000Z`);
+      end = new Date(`${formData.date}T00:00:00.000Z`);
+    } else {
+      start = new Date(`${formData.date}T${startTime}:00`);
+      end = new Date(`${formData.date}T${endTime}:00`);
+    }
 
     addAppointment({
       ...formData,
       start_time: start.toISOString(),
       end_time: end.toISOString(),
-      time: startTime, // Legacy field
-      calendar_id: selectedCalendarId
+      time: isTask ? '00:00' : startTime, // Legacy field
+      calendar_id: isTask ? 'task' : selectedCalendarId
     });
 
     onClose();
@@ -154,7 +162,7 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-[var(--border-light)]">
               <h2 className="font-outfit font-bold text-[16px] uppercase tracking-[0.1em] text-[var(--text-primary)]">
-                Nuovo Appuntamento
+                {isTask ? "Nuova Task" : "Nuovo Appuntamento"}
               </h2>
               <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors">
                 <X size={20} />
@@ -163,6 +171,30 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5 overflow-y-auto max-h-[70vh]">
+              {/* Type Selector */}
+              <div className="flex gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, type: 'visit' })}
+                  className={cn(
+                    "h-8 px-4 rounded-full font-outfit text-[13px] font-medium transition-all",
+                    !isTask ? "bg-[#1A1A18] text-white" : "bg-[var(--bg-subtle)] text-[var(--text-secondary)]"
+                  )}
+                >
+                  📅 Appuntamento
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, type: 'task' })}
+                  className={cn(
+                    "h-8 px-4 rounded-full font-outfit text-[13px] font-medium transition-all",
+                    isTask ? "bg-[#1A1A18] text-white" : "bg-[var(--bg-subtle)] text-[var(--text-secondary)]"
+                  )}
+                >
+                  ✓ Task / Promemoria
+                </button>
+              </div>
+
               <AppointmentInput
                 label="Titolo"
                 required
@@ -170,25 +202,6 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                 value={formData.title}
                 onChange={(e: any) => setFormData({ ...formData, title: e.target.value })}
               />
-
-              {calendars.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
-                    <CalendarIcon size={12} />
-                    Calendario
-                  </label>
-                  <select
-                    value={selectedCalendarId}
-                    onChange={(e) => setSelectedCalendarId(e.target.value)}
-                    className="w-full bg-[var(--bg-subtle)] border-0 rounded-[10px] p-2.5 px-4 text-[13px] font-outfit outline-none focus:ring-1 focus:ring-black/10 transition-all appearance-none"
-                  >
-                    <option value="primary">Calendario Principale (Leadomancy)</option>
-                    {calendars.filter(c => !c.primary).map(c => (
-                      <option key={c.id} value={c.id}>{c.summary}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider">
@@ -202,38 +215,61 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <AppointmentInput
-                  label="Data"
-                  type="date"
-                  icon={CalendarIcon}
-                  value={formData.date}
-                  onChange={(e: any) => setFormData({ ...formData, date: e.target.value })}
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <AppointmentInput
-                    label="Inizio"
-                    type="time"
-                    icon={Clock}
-                    value={startTime}
-                    onChange={(e: any) => setStartTime(e.target.value)}
-                  />
-                  <AppointmentInput
-                    label="Fine"
-                    type="time"
-                    value={endTime}
-                    onChange={(e: any) => setEndTime(e.target.value)}
-                  />
-                </div>
-              </div>
+              {!isTask && (
+                <>
+                  {calendars.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+                        <CalendarIcon size={12} />
+                        Calendario
+                      </label>
+                      <select
+                        value={selectedCalendarId}
+                        onChange={(e) => setSelectedCalendarId(e.target.value)}
+                        className="w-full bg-[var(--bg-subtle)] border-0 rounded-[10px] p-2.5 px-4 text-[13px] font-outfit outline-none focus:ring-1 focus:ring-black/10 transition-all appearance-none"
+                      >
+                        <option value="primary">Calendario Principale (Leadomancy)</option>
+                        {calendars.filter(c => !c.primary).map(c => (
+                          <option key={c.id} value={c.id}>{c.summary}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-              <AppointmentInput
-                label="Luogo"
-                icon={MapPin}
-                placeholder="Indirizzo o link meeting"
-                value={formData.location}
-                onChange={(e: any) => setFormData({ ...formData, location: e.target.value })}
-              />
+                  <div className="grid grid-cols-2 gap-4">
+                    <AppointmentInput
+                      label="Data"
+                      type="date"
+                      icon={CalendarIcon}
+                      value={formData.date}
+                      onChange={(e: any) => setFormData({ ...formData, date: e.target.value })}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <AppointmentInput
+                        label="Inizio"
+                        type="time"
+                        icon={Clock}
+                        value={startTime}
+                        onChange={(e: any) => setStartTime(e.target.value)}
+                      />
+                      <AppointmentInput
+                        label="Fine"
+                        type="time"
+                        value={endTime}
+                        onChange={(e: any) => setEndTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <AppointmentInput
+                    label="Luogo"
+                    icon={MapPin}
+                    placeholder="Indirizzo o link meeting"
+                    value={formData.location}
+                    onChange={(e: any) => setFormData({ ...formData, location: e.target.value })}
+                  />
+                </>
+              )}
 
               {/* Cliente Collegato */}
               <div className="flex flex-col gap-1.5 relative">
@@ -405,7 +441,7 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                 type="submit"
                 className="mt-4 w-full bg-[#1A1A18] text-white py-3.5 rounded-full font-outfit font-bold text-[14px] uppercase tracking-[0.15em] hover:bg-black transition-all shadow-lg active:scale-[0.98]"
               >
-                Salva Appuntamento
+                {isTask ? "Aggiungi Task" : "Salva Appuntamento"}
               </button>
             </form>
           </motion.div>

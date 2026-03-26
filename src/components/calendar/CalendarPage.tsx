@@ -88,7 +88,7 @@ export const CalendarPage: React.FC = () => {
     return window.innerWidth < 1280; // Only collapse by default on smaller screens
   });
 
-  const { appointments, updateAppointment } = useAppointments();
+  const { appointments, updateAppointment, toggleComplete } = useAppointments();
   const { 
     calendars, 
     visibleCalendarIds, 
@@ -147,13 +147,15 @@ export const CalendarPage: React.FC = () => {
 
     // Appointments
     appointments.forEach(app => {
+      const isTask = app.type === 'task';
       const calendar = calendars.find(c => c.id === app.calendar_id);
       events.push({
         id: app.id,
         title: app.title,
         start: parseISO(app.start_time),
         end: parseISO(app.end_time),
-        type: app.type === 'task' ? 'task' : 'appointment',
+        type: isTask ? 'task' : 'appointment',
+        allDay: isTask,
         originalData: {
           ...app,
           calendarColor: calendar?.backgroundColor || '#1A1A18',
@@ -274,7 +276,7 @@ export const CalendarPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-[var(--bg-page)] overflow-hidden rounded-t-2xl">
       {/* Header */}
-      <div className="flex flex-col gap-6 p-6 border-b border-[var(--border-light)]">
+      <div className="flex flex-col gap-6 pt-6 pb-6 border-b border-[var(--border-light)]">
         {calendarError && !isErrorDismissed && (
           <motion.div 
             initial={{ height: 0, opacity: 0 }}
@@ -414,6 +416,7 @@ export const CalendarPage: React.FC = () => {
                     setViewMode('day');
                   }}
                   onEventClick={handleEventClick}
+                  toggleComplete={toggleComplete}
                 />
               ) : (
                 <TimeGridView 
@@ -423,6 +426,7 @@ export const CalendarPage: React.FC = () => {
                   onEventClick={handleEventClick}
                   onTimeRangeSelect={handleTimeRangeSelect}
                   onEventDrop={handleEventDrop}
+                  toggleComplete={toggleComplete}
                 />
               )}
             </motion.div>
@@ -459,7 +463,8 @@ const MonthView: React.FC<{
   events: CalendarEvent[];
   onDayClick: (date: Date) => void;
   onEventClick: (event: CalendarEvent) => void;
-}> = ({ currentDate, events, onDayClick, onEventClick }) => {
+  toggleComplete: (args: { id: string; completed: boolean }) => void;
+}> = ({ currentDate, events, onDayClick, onEventClick, toggleComplete }) => {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -523,6 +528,7 @@ const MonthView: React.FC<{
                   )}
                   style={{ backgroundColor: event.originalData.calendarColor }}
                 >
+                  {event.type === 'task' && (event.originalData?.completed ? '✓ ' : '○ ')}
                   {!event.allDay && format(event.start, 'HH:mm')} {event.title}
                 </div>
               ))}
@@ -547,7 +553,8 @@ const TimeGridView: React.FC<{
   onEventClick: (event: CalendarEvent) => void;
   onTimeRangeSelect: (date: Date, start: string, end: string) => void;
   onEventDrop: (eventId: string, start: Date, end: Date) => void;
-}> = ({ currentDate, events, viewMode, onEventClick, onTimeRangeSelect, onEventDrop }) => {
+  toggleComplete: (args: { id: string; completed: boolean }) => void;
+}> = ({ currentDate, events, viewMode, onEventClick, onTimeRangeSelect, onEventDrop, toggleComplete }) => {
   const hours = Array.from({ length: 17 }, (_, i) => i + 6); // 06:00 to 22:00
   const HOUR_HEIGHT = 64;
 
@@ -651,29 +658,65 @@ const TimeGridView: React.FC<{
         </div>
         <div className="flex-1 flex divide-x divide-[var(--border-light)]">
           {days.map(day => {
-            const dayReminders = events.filter(e => e.allDay && isSameDay(e.start, day));
+            const dayReminders = events.filter(e => (e.allDay || e.type === 'task') && isSameDay(e.start, day));
             return (
               <div 
                 key={day.toISOString()} 
                 className="flex-1 p-2 flex flex-col gap-1 min-h-[40px]"
                 onClick={() => onTimeRangeSelect(day, '10:00', '11:00')}
               >
-                {dayReminders.map(rem => (
-                  <div 
-                    key={rem.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEventClick(rem);
-                    }}
-                    className={cn(
-                      "px-2 py-0.5 rounded-full text-[10px] font-outfit font-medium truncate cursor-pointer",
-                      rem.type === 'cliente_reminder' && "bg-[#EDE8FD] text-[#3B2B8A]",
-                      rem.type === 'notizia_reminder' && "bg-[#FEF5D0] text-[#5C3800]"
-                    )}
-                  >
-                    {rem.title}
-                  </div>
-                ))}
+                {dayReminders.map(rem => {
+                  if (rem.type === 'task') {
+                    return (
+                      <div
+                        key={rem.id}
+                        onClick={(e) => { e.stopPropagation(); onEventClick(rem); }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          padding: '2px 7px', borderRadius: 6, cursor: 'pointer',
+                          background: 'white', border: '1px solid var(--border-light)',
+                          opacity: rem.originalData?.completed ? 0.5 : 1, marginBottom: 2
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleComplete({ id: rem.id, completed: !rem.originalData?.completed });
+                          }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
+                        >
+                          {rem.originalData?.completed
+                            ? <CheckCircle2 size={12} style={{ color: '#6DC88A', flexShrink: 0 }} />
+                            : <Circle size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                          }
+                        </button>
+                        <span style={{
+                          fontSize: 11, fontFamily: 'Outfit',
+                          color: rem.originalData?.completed ? 'var(--text-muted)' : 'var(--text-primary)',
+                          textDecoration: rem.originalData?.completed ? 'line-through' : 'none',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                        }}>
+                          {rem.originalData?.notizia_id ? '🏠 ' : rem.originalData?.cliente_id ? '👤 ' : ''}
+                          {rem.title}
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div
+                      key={rem.id}
+                      onClick={(e) => { e.stopPropagation(); onEventClick(rem); }}
+                      className={cn(
+                        "px-2 py-0.5 rounded-full text-[10px] font-outfit font-medium truncate cursor-pointer",
+                        rem.type === 'cliente_reminder' && "bg-[#EDE8FD] text-[#3B2B8A]",
+                        rem.type === 'notizia_reminder' && "bg-[#FEF5D0] text-[#5C3800]"
+                      )}
+                    >
+                      {rem.title}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -748,7 +791,7 @@ const TimeGridView: React.FC<{
             )}
 
             {days.map(day => {
-              const dayEvents = events.filter(e => !e.allDay && isSameDay(e.start, day));
+              const dayEvents = events.filter(e => !e.allDay && e.type !== 'task' && isSameDay(e.start, day));
               return (
                 <div key={day.toISOString()} className="flex-1 relative h-full">
                   {/* Clickable cells for creation */}

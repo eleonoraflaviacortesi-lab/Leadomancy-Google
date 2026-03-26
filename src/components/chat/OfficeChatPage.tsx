@@ -142,7 +142,7 @@ export const OfficeChatPage: React.FC = () => {
       <div 
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-6 flex flex-col gap-6"
+        className="flex-1 overflow-y-auto pt-6 pb-6 flex flex-col gap-6"
       >
         {Object.entries(messageGroups).map(([date, msgs]) => (
           <div key={date} className="flex flex-col gap-4">
