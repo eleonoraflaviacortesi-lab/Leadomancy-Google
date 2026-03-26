@@ -123,9 +123,14 @@ export interface Appointment {
   location: string;
   user_id: string;
   cliente_id: string | null;
+  notizia_id: string | null;
   completed: boolean;
   google_event_id: string | null;
   google_calendar_synced: boolean;
+  type: 'visit' | 'meeting' | 'call' | 'other' | 'task';
+  calendar_id: string | null;
+  priority?: 'bassa' | 'media' | 'alta' | null;
+  card_color?: string | null;
   created_at: string;
   updated_at: string;
 }

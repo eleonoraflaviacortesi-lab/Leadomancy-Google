@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { gapi } from 'gapi-script';
 import { useAuth } from '@/src/hooks/useAuth';
 
@@ -15,14 +15,8 @@ export interface GoogleCalendar {
 export interface GoogleCalendarEvent {
   id: string;
   summary: string;
-  start: {
-    dateTime?: string;
-    date?: string;
-  };
-  end: {
-    dateTime?: string;
-    date?: string;
-  };
+  start: { dateTime?: string; date?: string };
+  end: { dateTime?: string; date?: string };
   calendarId: string;
   calendarColor: string;
 }
@@ -31,158 +25,146 @@ export function useGoogleCalendar() {
   const { isAuthenticated } = useAuth();
   const [calendars, setCalendars] = useState<GoogleCalendar[]>([]);
   const [visibleCalendarIds, setVisibleCalendarIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('leadomancy-visible-calendars');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('leadomancy-visible-calendars');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
   });
   const [events, setEvents] = useState<GoogleCalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<any>(null);
   const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
+  
+  // Ref to always have latest calendars without stale closure
+  const calendarsRef = useRef<GoogleCalendar[]>([]);
+  calendarsRef.current = calendars;
 
-  const fetchAllCalendars = useCallback(async () => {
-    if (!isAuthenticated) return [];
-    
-    // Reset error on each attempt
-    setError(null);
-
-    // Wait for gapi to be ready
-    let attempts = 0;
-    while (!(gapi.client as any).calendar && attempts < 10) {
-      console.log("[GoogleCalendar] Waiting for Calendar API...");
-      await new Promise(resolve => setTimeout(resolve, 500));
-      attempts++;
+  const waitForCalendarApi = async (): Promise<boolean> => {
+    for (let i = 0; i < 20; i++) {
+      if ((gapi.client as any).calendar) return true;
+      await new Promise(r => setTimeout(r, 500));
     }
+    return false;
+  };
 
-    if (!(gapi.client as any).calendar) {
-      console.warn("[GoogleCalendar] Calendar API not available after 5s");
-      return [];
-    }
-
-    try {
-      const response = await (gapi.client as any).calendar.calendarList.list();
-      const calendarList = response.result.items.map((item: any) => ({
-        id: item.id,
-        summary: item.summary,
-        backgroundColor: item.backgroundColor,
-        foregroundColor: item.foregroundColor,
-        selected: item.selected,
-        primary: item.primary || false,
-        accessRole: item.accessRole,
-      }));
-      setCalendars(calendarList);
-      
-      // If success, clear error
-      setError(null);
-      setHasAttemptedFetch(true);
-      
-      // Initialize visible IDs ONLY if they have never been set in localStorage
-      const saved = localStorage.getItem('leadomancy-visible-calendars');
-      if (!saved && calendarList.length > 0) {
-        const ids = calendarList.map((c: any) => c.id);
-        setVisibleCalendarIds(ids);
-        localStorage.setItem('leadomancy-visible-calendars', JSON.stringify(ids));
-      }
-      
-      return calendarList;
-    } catch (err: any) {
-      console.error("[GoogleCalendar] Error fetching calendar list:", err);
-      setHasAttemptedFetch(true);
-      
-      // Only set error if it's a 403 or 404 (API not enabled or not found)
-      const status = err.status || err.result?.error?.code;
-      if (status === 403 || status === 404) {
-        setError(err);
-      } else {
-        setError(null);
-      }
-      return [];
-    }
-  }, [isAuthenticated]);
-
-  const fetchEventsFromAllCalendars = useCallback(async (calendarIds: string[], currentCalendars: GoogleCalendar[]) => {
-    if (!isAuthenticated || !(gapi.client as any).calendar) return [];
-    
-    if (calendarIds.length === 0) {
-      setEvents([]);
-      return [];
-    }
+  const fetchEventsForIds = useCallback(async (ids: string[], cals: GoogleCalendar[]) => {
+    if (!isAuthenticated) return;
+    const ready = await waitForCalendarApi();
+    if (!ready || ids.length === 0) { setEvents([]); return; }
 
     setIsLoading(true);
     try {
       const timeMin = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString();
       const timeMax = new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString();
-      
-      const promises = calendarIds.map(id => 
-        (gapi.client as any).calendar.events.list({
-          calendarId: id,
-          timeMin,
-          timeMax,
-          maxResults: 250,
-          singleEvents: true,
-          orderBy: 'startTime'
-        }).then((resp: any) => {
-          const calendar = currentCalendars.find(c => c.id === id);
-          return (resp.result.items || []).map((event: any) => ({
-            ...event,
-            calendarId: id,
-            calendarColor: calendar?.backgroundColor || '#1a73e8'
-          }));
-        }).catch((err: any) => {
-          console.error(`[GoogleCalendar] Error fetching events for calendar ${id}:`, err);
-          return [];
-        })
+
+      const results = await Promise.all(
+        ids.map(id =>
+          (gapi.client as any).calendar.events.list({
+            calendarId: id, timeMin, timeMax,
+            maxResults: 250, singleEvents: true, orderBy: 'startTime'
+          }).then((resp: any) => {
+            const cal = cals.find(c => c.id === id);
+            return (resp.result.items || []).map((ev: any) => ({
+              ...ev,
+              calendarId: id,
+              calendarColor: cal?.backgroundColor || '#1a73e8'
+            }));
+          }).catch(() => [])
+        )
       );
 
-      const results = await Promise.all(promises);
-      const allEvents = results.flat();
-      
-      const uniqueEvents = Array.from(new Map(allEvents.map(e => [e.id, e])).values());
-      setEvents(uniqueEvents);
-      return uniqueEvents;
+      const unique = Array.from(
+        new Map(results.flat().map(e => [e.id, e])).values()
+      );
+      setEvents(unique);
     } catch (err) {
-      console.error("[GoogleCalendar] Error fetching all events:", err);
       setError(err);
-      return [];
     } finally {
       setIsLoading(false);
+      setHasAttemptedFetch(true);
     }
   }, [isAuthenticated]);
 
-  const toggleCalendar = (id: string) => {
+  const fetchCalendars = useCallback(async (): Promise<GoogleCalendar[]> => {
+    if (!isAuthenticated) return [];
+    const ready = await waitForCalendarApi();
+    if (!ready) return [];
+
+    try {
+      const resp = await (gapi.client as any).calendar.calendarList.list();
+      const list: GoogleCalendar[] = (resp.result.items || []).map((item: any) => ({
+        id: item.id,
+        summary: item.summary,
+        backgroundColor: item.backgroundColor || '#1a73e8',
+        foregroundColor: item.foregroundColor || '#ffffff',
+        selected: item.selected ?? true,
+        primary: item.primary || false,
+        accessRole: item.accessRole,
+      }));
+      setCalendars(list);
+      setError(null);
+
+      // Initialize visible IDs on first load only
+      const saved = localStorage.getItem('leadomancy-visible-calendars');
+      if (!saved && list.length > 0) {
+        const ids = list.map(c => c.id);
+        setVisibleCalendarIds(ids);
+        localStorage.setItem('leadomancy-visible-calendars', JSON.stringify(ids));
+        return list;
+      }
+      return list;
+    } catch (err: any) {
+      const status = err?.status || err?.result?.error?.code;
+      if (status === 403 || status === 404) setError(err);
+      setHasAttemptedFetch(true);
+      return [];
+    }
+  }, [isAuthenticated]);
+
+  // EFFECT 1: fetch calendars on auth
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchCalendars();
+    }
+  }, [isAuthenticated]);
+
+  // EFFECT 2: fetch events whenever visibleCalendarIds OR calendars changes
+  // This is the KEY fix — both must be in the dependency array
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (calendars.length === 0) return;
+    fetchEventsForIds(visibleCalendarIds, calendars);
+  }, [visibleCalendarIds, calendars, isAuthenticated]);
+
+  // EFFECT 3: polling every 60s
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const interval = setInterval(() => {
+      fetchEventsForIds(visibleCalendarIds, calendarsRef.current);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, visibleCalendarIds]);
+
+  const toggleCalendar = useCallback((id: string) => {
     setVisibleCalendarIds(prev => {
-      const next = prev.includes(id) 
-        ? prev.filter(cid => cid !== id) 
+      const next = prev.includes(id)
+        ? prev.filter(cid => cid !== id)
         : [...prev, id];
       localStorage.setItem('leadomancy-visible-calendars', JSON.stringify(next));
       return next;
     });
-  };
+    // NOTE: no need to call fetchEventsForIds here — EFFECT 2 handles it
+  }, []);
 
-  const toggleAll = (show: boolean) => {
+  const toggleAll = useCallback((show: boolean) => {
     const next = show ? calendars.map(c => c.id) : [];
     setVisibleCalendarIds(next);
     localStorage.setItem('leadomancy-visible-calendars', JSON.stringify(next));
-  };
+  }, [calendars]);
 
-  const refreshEvents = useCallback(async () => {
-    const latestCalendars = await fetchAllCalendars();
-    const saved = localStorage.getItem('leadomancy-visible-calendars');
-    const currentVisibleIds = saved ? JSON.parse(saved) : visibleCalendarIds;
-    
-    if (latestCalendars.length > 0) {
-      await fetchEventsFromAllCalendars(currentVisibleIds, latestCalendars);
-    } else if (calendars.length > 0) {
-      await fetchEventsFromAllCalendars(currentVisibleIds, calendars);
-    }
-  }, [fetchAllCalendars, fetchEventsFromAllCalendars, visibleCalendarIds, calendars]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      refreshEvents();
-      const interval = setInterval(refreshEvents, 60000);
-      return () => clearInterval(interval);
-    }
-  }, [isAuthenticated]); // Removed refreshEvents from dependencies to avoid loop
+  const refreshEvents = useCallback(() => {
+    fetchEventsForIds(visibleCalendarIds, calendarsRef.current);
+  }, [fetchEventsForIds, visibleCalendarIds]);
 
   return {
     calendars,
@@ -193,6 +175,6 @@ export function useGoogleCalendar() {
     hasAttemptedFetch,
     toggleCalendar,
     toggleAll,
-    refreshEvents
+    refreshEvents,
   };
 }

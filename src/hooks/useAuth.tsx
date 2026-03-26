@@ -3,7 +3,7 @@ import { useGoogleLogin, TokenResponse } from "@react-oauth/google";
 import { gapi } from "gapi-script";
 import { toast } from "sonner";
 import { Profile } from "@/src/types";
-import { getSheetData, appendRow, SHEETS } from "@/src/lib/googleSheets";
+import { getSheetData, appendRow, SHEETS, clearHeaderCache } from "@/src/lib/googleSheets";
 
 interface AuthContextType {
   user: Profile | null;
@@ -112,6 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             
             console.log("[Auth] API check - Sheets:", !!g.client.sheets, "Calendar:", !!g.client.calendar);
+            
+            clearHeaderCache();
             
             if (!g.client.sheets) {
               console.warn("[Auth] Sheets API still not found in gapi.client after load");

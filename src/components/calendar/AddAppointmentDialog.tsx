@@ -111,11 +111,10 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
 
     // Combine date and time for start_time and end_time
     let start, end;
+    start = new Date(`${formData.date}T${startTime}:00`);
     if (isTask) {
-      start = new Date(`${formData.date}T00:00:00.000Z`);
-      end = new Date(`${formData.date}T00:00:00.000Z`);
+      end = new Date(start.getTime() + 30 * 60000); // +30 mins
     } else {
-      start = new Date(`${formData.date}T${startTime}:00`);
       end = new Date(`${formData.date}T${endTime}:00`);
     }
 
@@ -123,7 +122,7 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
       ...formData,
       start_time: start.toISOString(),
       end_time: end.toISOString(),
-      time: isTask ? '00:00' : startTime, // Legacy field
+      time: startTime, // Legacy field
       calendar_id: isTask ? 'task' : selectedCalendarId
     });
 
@@ -215,6 +214,34 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <AppointmentInput
+                  label="Data"
+                  type="date"
+                  required
+                  icon={CalendarIcon}
+                  value={formData.date}
+                  onChange={(e: any) => setFormData({ ...formData, date: e.target.value })}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <AppointmentInput
+                    label={isTask ? "Ora" : "Inizio"}
+                    type="time"
+                    icon={Clock}
+                    value={startTime}
+                    onChange={(e: any) => setStartTime(e.target.value)}
+                  />
+                  {!isTask && (
+                    <AppointmentInput
+                      label="Fine"
+                      type="time"
+                      value={endTime}
+                      onChange={(e: any) => setEndTime(e.target.value)}
+                    />
+                  )}
+                </div>
+              </div>
+
               {!isTask && (
                 <>
                   {calendars.length > 0 && (
@@ -235,31 +262,6 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                       </select>
                     </div>
                   )}
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <AppointmentInput
-                      label="Data"
-                      type="date"
-                      icon={CalendarIcon}
-                      value={formData.date}
-                      onChange={(e: any) => setFormData({ ...formData, date: e.target.value })}
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <AppointmentInput
-                        label="Inizio"
-                        type="time"
-                        icon={Clock}
-                        value={startTime}
-                        onChange={(e: any) => setStartTime(e.target.value)}
-                      />
-                      <AppointmentInput
-                        label="Fine"
-                        type="time"
-                        value={endTime}
-                        onChange={(e: any) => setEndTime(e.target.value)}
-                      />
-                    </div>
-                  </div>
 
                   <AppointmentInput
                     label="Luogo"

@@ -10,7 +10,8 @@ import {
   Award, 
   Clock, 
   ArrowRight,
-  Star
+  Star,
+  Circle
 } from "lucide-react";
 import { format, isToday, parseISO, addDays } from "date-fns";
 import { it } from "date-fns/locale";
@@ -119,27 +120,19 @@ export const PersonalDashboard: React.FC<{ isOfficeView?: boolean }> = ({ isOffi
     fetchQuote();
   }, []);
 
-  // Today's Reminders & Appointments
-  const todayReminders = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const clientReminders = clienti
-      .filter(c => c.reminder_date === today)
-      .map(c => ({ id: c.id, title: `Richiamare ${c.nome} ${c.cognome}`, type: 'cliente' }));
-    
-    const notiziaReminders = notizie
-      .filter(n => n.reminder_date === today)
-      .map(n => ({ id: n.id, title: `Follow-up: ${n.nome || n.name}`, type: 'notizia' }));
+  // Today's Items
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
 
-    return [...clientReminders, ...notiziaReminders];
-  }, [clienti, notizie]);
+  const todayAppointments = useMemo(() => appointments
+    .filter(a => a.type !== 'task' && a.start_time.startsWith(todayStr))
+    .sort((a, b) => a.start_time.localeCompare(b.start_time))
+    .slice(0, 3), [appointments, todayStr]);
 
-  const nextAppointments = useMemo(() => {
-    const now = new Date();
-    return appointments
-      .filter(a => parseISO(a.start_time) >= now)
-      .sort((a, b) => parseISO(a.start_time).getTime() - parseISO(b.start_time).getTime())
-      .slice(0, 2);
-  }, [appointments]);
+  const todayTasks = useMemo(() => appointments
+    .filter(a => a.type === 'task' && a.start_time.startsWith(todayStr) && !a.completed)
+    .sort((a, b) => a.start_time.localeCompare(b.start_time))
+    .slice(0, 3), [appointments, todayStr]);
 
   // Chart Data (Last 30 days)
   const chartData = useMemo(() => {
@@ -213,44 +206,42 @@ export const PersonalDashboard: React.FC<{ isOfficeView?: boolean }> = ({ isOffi
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Reminders */}
+            {/* Appointments */}
             <div className="flex flex-col gap-4">
-              <span className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase">Promemoria</span>
+              <span className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase">PROSSIMI APPUNTAMENTI</span>
               <div className="flex flex-col gap-3">
-                {todayReminders.length > 0 ? todayReminders.map(rem => (
-                  <div key={rem.id} className="flex items-center gap-3 p-3 bg-[var(--bg-subtle)] rounded-[10px]">
-                    <div className={cn(
-                      "w-2 h-2 rounded-full",
-                      rem.type === 'cliente' ? "bg-[#C8B8F5]" : "bg-[#FEF5D0]"
-                    )} />
-                    <span className="text-[13px] font-outfit font-medium text-[var(--text-primary)]">{rem.title}</span>
-                  </div>
-                )) : (
-                  <p className="text-[12px] text-[var(--text-muted)] italic">Nessun promemoria per oggi</p>
-                )}
+                {todayAppointments.length === 0 
+                  ? <p style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Nessun appuntamento oggi</p>
+                  : todayAppointments.map(a => (
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'Outfit', minWidth: 36 }}>
+                        {a.start_time.slice(11,16)}
+                      </span>
+                      <span style={{ fontSize: 13, fontFamily: 'Outfit', color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {a.title}
+                      </span>
+                    </div>
+                  ))
+                }
               </div>
             </div>
 
-            {/* Next Appointments */}
+            {/* Tasks */}
             <div className="flex flex-col gap-4">
-              <span className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase">Prossimi Appuntamenti</span>
+              <span className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase">TASK DI OGGI</span>
               <div className="flex flex-col gap-3">
-                {nextAppointments.length > 0 ? nextAppointments.map(app => (
-                  <Link key={app.id} to="/activities" className="flex flex-col gap-1 p-3 bg-[var(--bg-subtle)] rounded-[10px] hover:bg-[var(--bg-hover)] transition-colors">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-outfit font-bold text-black">{app.time}</span>
-                      <Clock size={12} className="text-[var(--text-muted)]" />
-                    </div>
-                    <span className="text-[13px] font-outfit font-medium text-[var(--text-primary)] truncate">{app.title}</span>
-                    {app.cliente_id && (
-                      <span className="text-[11px] font-outfit text-[var(--text-muted)]">
-                        {clienti.find(c => c.id === app.cliente_id)?.nome} {clienti.find(c => c.id === app.cliente_id)?.cognome}
+                {todayTasks.length === 0
+                  ? <p style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Nessuna task per oggi</p>
+                  : todayTasks.map(t => (
+                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Circle size={12} style={{ color: '#6DC88A', flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, fontFamily: 'Outfit', color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {t.notizia_id ? '🏠 ' : t.cliente_id ? '👤 ' : ''}
+                        {t.title}
                       </span>
-                    )}
-                  </Link>
-                )) : (
-                  <p className="text-[12px] text-[var(--text-muted)] italic">Nessun appuntamento in programma</p>
-                )}
+                    </div>
+                  ))
+                }
               </div>
             </div>
           </div>

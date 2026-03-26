@@ -87,8 +87,16 @@ export const CalendarPage: React.FC = () => {
     if (saved !== null) return JSON.parse(saved);
     return window.innerWidth < 1280; // Only collapse by default on smaller screens
   });
-
   const { appointments, updateAppointment, toggleComplete } = useAppointments();
+  const [showSchemaWarning, setShowSchemaWarning] = useState(false);
+
+  // Check for schema update
+  useEffect(() => {
+    if (appointments.length > 0 && appointments.every(a => !a.type)) {
+      setShowSchemaWarning(true);
+    }
+  }, [appointments]);
+
   const { 
     calendars, 
     visibleCalendarIds, 
@@ -109,6 +117,24 @@ export const CalendarPage: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('leadomancy-calendar-sidebar-collapsed', JSON.stringify(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
+
+  // Event listeners for opening details
+  useEffect(() => {
+    const handleOpenCliente = (e: any) => {
+      window.location.href = `/clienti/${e.detail.id}`;
+    };
+    const handleOpenNotizia = (e: any) => {
+      window.location.href = `/notizie/${e.detail.id}`;
+    };
+
+    window.addEventListener('leadomancy:open-cliente', handleOpenCliente as EventListener);
+    window.addEventListener('leadomancy:open-notizia', handleOpenNotizia as EventListener);
+
+    return () => {
+      window.removeEventListener('leadomancy:open-cliente', handleOpenCliente as EventListener);
+      window.removeEventListener('leadomancy:open-notizia', handleOpenNotizia as EventListener);
+    };
+  }, []);
 
   // Error handling
   useEffect(() => {
@@ -155,7 +181,7 @@ export const CalendarPage: React.FC = () => {
         start: parseISO(app.start_time),
         end: parseISO(app.end_time),
         type: isTask ? 'task' : 'appointment',
-        allDay: isTask,
+        allDay: false,
         originalData: {
           ...app,
           calendarColor: calendar?.backgroundColor || '#1A1A18',
@@ -277,6 +303,19 @@ export const CalendarPage: React.FC = () => {
     <div className="flex flex-col h-full bg-[var(--bg-page)] overflow-hidden rounded-t-2xl">
       {/* Header */}
       <div className="flex flex-col gap-6 pt-6 pb-6 border-b border-[var(--border-light)]">
+        {showSchemaWarning && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 flex items-center justify-between gap-3 mb-2" role="alert">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-yellow-700">
+                <AlertCircle size={16} />
+                <span className="text-[12px] font-outfit font-medium">
+                  ⚠️ Aggiorna gli header del foglio 'appointments' su Google Sheets — aggiungi le colonne: type, notizia_id, calendar_id
+                </span>
+              </div>
+            </div>
+            <button onClick={() => setShowSchemaWarning(false)} className="text-yellow-700 font-bold text-[12px]">Dismiss</button>
+          </div>
+        )}
         {calendarError && !isErrorDismissed && (
           <motion.div 
             initial={{ height: 0, opacity: 0 }}
@@ -658,7 +697,7 @@ const TimeGridView: React.FC<{
         </div>
         <div className="flex-1 flex divide-x divide-[var(--border-light)]">
           {days.map(day => {
-            const dayReminders = events.filter(e => (e.allDay || e.type === 'task') && isSameDay(e.start, day));
+            const dayReminders = events.filter(e => e.allDay && e.type !== 'task' && isSameDay(e.start, day));
             return (
               <div 
                 key={day.toISOString()} 
@@ -791,7 +830,7 @@ const TimeGridView: React.FC<{
             )}
 
             {days.map(day => {
-              const dayEvents = events.filter(e => !e.allDay && e.type !== 'task' && isSameDay(e.start, day));
+              const dayEvents = events.filter(e => !e.allDay && isSameDay(e.start, day));
               return (
                 <div key={day.toISOString()} className="flex-1 relative h-full">
                   {/* Clickable cells for creation */}
@@ -808,37 +847,85 @@ const TimeGridView: React.FC<{
                   ))}
 
                   {/* Events */}
-                  {dayEvents.map(event => (
-                    <div
-                      key={event.id}
-                      draggable={event.type === 'appointment'}
-                      onDragStart={(e) => handleDragStart(e, event.id)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEventClick(event);
-                      }}
-                      className={cn(
-                        "absolute left-1 right-1 rounded-[6px] p-1 px-2 shadow-sm border-l-[3px] overflow-hidden transition-transform active:scale-[0.98] cursor-pointer z-10",
-                        event.type === 'appointment' && "text-white border-white/20",
-                        event.type === 'google_calendar' && "text-white border-white/20",
-                        event.type === 'task' && "bg-[#EEF1F8] text-[#2B3A5C] border-[#2B3A5C]/20"
-                      )}
-                      style={{ 
-                        ...getEventStyle(event),
-                        backgroundColor: event.originalData.calendarColor
-                      }}
-                    >
-                      <div className="font-outfit font-semibold text-[11px] leading-tight truncate">
-                        {event.title}
+                  {dayEvents.map(event => {
+                    if (event.type === 'task') {
+                      return (
+                        <div
+                          key={event.id}
+                          onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
+                          style={{
+                            ...getEventStyle(event),
+                            background: event.originalData?.completed ? 'var(--bg-subtle)' : 'white',
+                            borderLeft: '3px solid #6DC88A',
+                            borderRadius: 6,
+                            padding: '3px 7px',
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            opacity: event.originalData?.completed ? 0.5 : 1,
+                            cursor: 'pointer',
+                            overflow: 'hidden',
+                            position: 'absolute',
+                            left: '4px',
+                            right: '4px',
+                            zIndex: 10
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              toggleComplete({ id: event.id, completed: !event.originalData?.completed });
+                            }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                          >
+                            {event.originalData?.completed
+                              ? <CheckCircle2 size={12} style={{ color: '#6DC88A' }} />
+                              : <Circle size={12} style={{ color: 'var(--text-muted)' }} />
+                            }
+                          </button>
+                          <span style={{
+                            fontSize: 11, fontFamily: 'Outfit', fontWeight: 500,
+                            color: 'var(--text-primary)',
+                            textDecoration: event.originalData?.completed ? 'line-through' : 'none',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            flex: 1
+                          }}>
+                            {event.originalData?.notizia_id ? '🏠 ' : event.originalData?.cliente_id ? '👤 ' : ''}
+                            {event.title}
+                          </span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div
+                        key={event.id}
+                        draggable={event.type === 'appointment'}
+                        onDragStart={(e) => handleDragStart(e, event.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEventClick(event);
+                        }}
+                        className={cn(
+                          "absolute left-1 right-1 rounded-[6px] p-1 px-2 shadow-sm border-l-[3px] overflow-hidden transition-transform active:scale-[0.98] cursor-pointer z-10",
+                          event.type === 'appointment' && "text-white border-white/20",
+                          event.type === 'google_calendar' && "text-white border-white/20"
+                        )}
+                        style={{ 
+                          ...getEventStyle(event),
+                          backgroundColor: event.originalData.calendarColor
+                        }}
+                      >
+                        <div className="font-outfit font-semibold text-[11px] leading-tight truncate">
+                          {event.title}
+                        </div>
+                        <div className="flex items-center gap-1 mt-0.5 opacity-80">
+                          <Clock size={10} />
+                          <span className="text-[9px] font-outfit">
+                            {format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 mt-0.5 opacity-80">
-                        <Clock size={10} />
-                        <span className="text-[9px] font-outfit">
-                          {format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               );
             })}

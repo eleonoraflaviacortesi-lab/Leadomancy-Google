@@ -30,6 +30,13 @@ export function useAppointments() {
       const data = await getSheetData<Appointment>(SHEETS.appointments);
       return data
         .filter(a => a.user_id === user.id)
+        .map(a => ({
+          ...a,
+          type: a.type || 'visit',
+          notizia_id: a.notizia_id || null,
+          calendar_id: a.calendar_id || null,
+          completed: Boolean(a.completed),
+        }))
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
     },
     staleTime: 0,
