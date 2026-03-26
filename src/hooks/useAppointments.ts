@@ -32,8 +32,8 @@ export function useAppointments() {
         .filter(a => a.user_id === user.id)
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
     },
-    staleTime: 1000 * 60 * 5,
-    refetchInterval: 60000,
+    staleTime: 0,
+    refetchInterval: 5000,
     enabled: !!user,
   });
 
@@ -79,8 +79,9 @@ export function useAppointments() {
       
       return appointment;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey });
+      await queryClient.refetchQueries({ queryKey });
       toast.success("Appuntamento aggiunto");
     },
   });
@@ -88,7 +89,10 @@ export function useAppointments() {
   const updateAppointmentMutation = useMutation({
     mutationFn: async (updates: Partial<Appointment> & { id: string }) => {
       const rowIndex = await findRowIndex(SHEETS.appointments, updates.id);
-      if (!rowIndex) throw new Error("Appuntamento non trovato");
+      if (!rowIndex) {
+        console.warn(`[useAppointments] Appointment ${updates.id} not found in sheet, skipping update.`);
+        return;
+      }
       
       const appointment = appointments.find(a => a.id === updates.id);
       const finalUpdates = { ...updates, updated_at: new Date().toISOString() };
@@ -112,7 +116,10 @@ export function useAppointments() {
   const deleteAppointmentMutation = useMutation({
     mutationFn: async (id: string) => {
       const rowIndex = await findRowIndex(SHEETS.appointments, id);
-      if (!rowIndex) throw new Error("Appuntamento non trovato");
+      if (!rowIndex) {
+        console.warn(`[useAppointments] Appointment ${id} not found in sheet, skipping delete.`);
+        return;
+      }
       
       const appointment = appointments.find(a => a.id === id);
       const promises: Promise<any>[] = [
@@ -134,7 +141,10 @@ export function useAppointments() {
   const toggleComplete = useMutation({
     mutationFn: async ({ id, completed }: { id: string, completed: boolean }) => {
       const rowIndex = await findRowIndex(SHEETS.appointments, id);
-      if (!rowIndex) throw new Error("Appuntamento non trovato");
+      if (!rowIndex) {
+        console.warn(`[useAppointments] Appointment ${id} not found in sheet, skipping toggle.`);
+        return;
+      }
       await updateRow(SHEETS.appointments, rowIndex, { completed });
     },
     onSuccess: () => {

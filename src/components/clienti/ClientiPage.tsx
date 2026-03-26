@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { LayoutGrid, List, Search, Download, Plus, Undo2, Redo2, Filter, X } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +25,12 @@ export const ClientiPage: React.FC = () => {
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setIsAddDialogOpen(true);
+    window.addEventListener('leadomancy:open-add-cliente', handler);
+    return () => window.removeEventListener('leadomancy:open-add-cliente', handler);
+  }, []);
 
   const toggleViewMode = (mode: 'kanban' | 'sheet') => {
     setViewMode(mode);
@@ -55,7 +61,7 @@ export const ClientiPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full max-w-[1600px] mx-auto w-full">
+    <div className="flex flex-col h-full max-w-[1600px] mx-auto w-full rounded-t-2xl">
       {/* Header Section */}
       <div className="flex flex-col gap-6 p-6 pb-0">
         <div className="flex flex-col gap-1">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import EmojiPicker from 'emoji-picker-react';
 import { 
   X, Phone, Mail, MapPin, Euro, Calendar, Clock, Sparkles, User, 
   FileText, MessageSquare, Download, Trash2, Plus, ExternalLink, 
@@ -202,6 +203,7 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
 
   const [isStatusEditing, setIsStatusEditing] = useState(false);
   const [isAssignedEditing, setIsAssignedEditing] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const prevStatusRef = useRef<string | undefined>(cliente?.status);
 
@@ -302,8 +304,21 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 bottom-0 bg-white shadow-2xl z-[70] flex flex-col"
-            style={{ top: '34px', width: 'min(860px, 100vw)', maxHeight: 'calc(100vh - 34px)' }}
+            style={{
+              position: 'fixed',
+              right: 0,
+              top: 34,
+              bottom: 0,
+              width: 'min(880px, 100vw)',
+              zIndex: 70,
+              backgroundColor: 'white',
+              display: 'flex',
+              flexDirection: 'column',
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              boxShadow: '-4px 0 24px rgba(0,0,0,0.08)',
+              borderLeft: '1px solid var(--border-light)'
+            }}
           >
             {/* Header */}
             <div className="flex items-center h-[64px] px-6 border-b border-[var(--border-light)] bg-white sticky top-0 z-10">
@@ -344,22 +359,38 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
             </div>
 
             {/* Content */}
-            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              padding: '24px',
+              boxSizing: 'border-box',
+              width: '100%'
+            }}>
               <div 
-                className="grid gap-6 p-6"
+                className="grid gap-6"
                 style={{ 
                   display: 'grid', 
                   gridTemplateColumns: window.innerWidth > 768 ? 'repeat(3, 1fr)' : '1fr',
-                  gap: 24, 
-                  padding: 24 
+                  gap: 24
                 }}
               >
                 
                 {/* COLUMN 1 */}
                 <div className="flex flex-col gap-6">
                   <div className="flex flex-col items-center text-center gap-3">
-                    <div className="w-[48px] h-[48px] rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[24px]">
-                      {cliente.emoji || '👤'}
+                    <div className="relative">
+                      <button 
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className="w-[48px] h-[48px] rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[24px] hover:bg-black/5 transition-colors"
+                      >
+                        {cliente.emoji || '👤'}
+                      </button>
+                      {showEmojiPicker && (
+                        <div className="absolute z-[80] top-full left-0 mt-2">
+                          <EmojiPicker onEmojiClick={(e) => { onUpdate?.(cliente.id, { emoji: e.emoji }); setShowEmojiPicker(false); }} />
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col gap-1">
                       <h1 className="font-outfit font-semibold text-[20px] text-[var(--text-primary)]">
@@ -392,7 +423,7 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%', flexWrap: 'wrap' }}>
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button 
                           key={star}

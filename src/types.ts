@@ -99,13 +99,14 @@ export interface Appointment {
   end_time: string;
   location?: string;
   description?: string;
-  type: 'visit' | 'meeting' | 'call' | 'other';
+  type: 'visit' | 'meeting' | 'call' | 'other' | 'task';
   cliente_id?: string;
   notizia_id?: string;
   google_event_id?: string;
   google_calendar_synced: boolean;
   calendar_id?: string;
   completed: boolean;
+  tasks?: { id: string, title: string, completed: boolean }[];
   notes?: string;
   created_at: string;
   _rowIndex?: number;

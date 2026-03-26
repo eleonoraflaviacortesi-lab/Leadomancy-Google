@@ -72,6 +72,7 @@ export const CalendarPage: React.FC = () => {
     return window.innerWidth < 768 ? '3days' : 'week';
   });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [defaultType, setDefaultType] = useState<'visit' | 'meeting' | 'call' | 'other' | 'task'>('visit');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [initialStartTime, setInitialStartTime] = useState<string>('10:00');
   const [initialEndTime, setInitialEndTime] = useState<string>('11:00');
@@ -152,7 +153,7 @@ export const CalendarPage: React.FC = () => {
         title: app.title,
         start: parseISO(app.start_time),
         end: parseISO(app.end_time),
-        type: 'appointment',
+        type: app.type === 'task' ? 'task' : 'appointment',
         originalData: {
           ...app,
           calendarColor: calendar?.backgroundColor || '#1A1A18',
@@ -261,6 +262,7 @@ export const CalendarPage: React.FC = () => {
     setSelectedDate(date);
     setInitialStartTime(startTime);
     setInitialEndTime(endTime);
+    setDefaultType('visit');
     setIsAddDialogOpen(true);
   };
 
@@ -270,7 +272,7 @@ export const CalendarPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white overflow-hidden">
+    <div className="flex flex-col h-full bg-[var(--bg-page)] overflow-hidden rounded-t-2xl">
       {/* Header */}
       <div className="flex flex-col gap-6 p-6 border-b border-[var(--border-light)]">
         {calendarError && !isErrorDismissed && (
@@ -358,7 +360,21 @@ export const CalendarPage: React.FC = () => {
             </div>
 
             <button
-              onClick={() => setIsAddDialogOpen(true)}
+              onClick={() => {
+                setDefaultType('task');
+                setIsAddDialogOpen(true);
+              }}
+              className="flex items-center gap-2 px-5 py-2 bg-[var(--bg-subtle)] text-[var(--text-primary)] rounded-full font-outfit font-medium text-[13px] hover:bg-black/5 transition-all shadow-sm border border-[var(--border-light)]"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline">Task</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setDefaultType('visit');
+                setIsAddDialogOpen(true);
+              }}
               className="flex items-center gap-2 px-5 py-2 bg-[#1A1A18] text-white rounded-full font-outfit font-medium text-[13px] hover:bg-black transition-all shadow-sm"
             >
               <Plus size={16} />
@@ -416,11 +432,15 @@ export const CalendarPage: React.FC = () => {
 
       <AddAppointmentDialog 
         isOpen={isAddDialogOpen} 
-        onClose={() => setIsAddDialogOpen(false)} 
+        onClose={() => {
+          setIsAddDialogOpen(false);
+          setDefaultType('visit');
+        }} 
         initialDate={selectedDate || currentDate}
         initialStartTime={initialStartTime}
         initialEndTime={initialEndTime}
         calendars={calendars}
+        defaultType={defaultType}
       />
 
       <EventDetailsDialog
@@ -450,7 +470,7 @@ const MonthView: React.FC<{
   const getEventsForDay = (day: Date) => events.filter(e => isSameDay(e.start, day));
 
   return (
-    <div className="grid grid-cols-7 h-full border-b border-[var(--border-light)]">
+    <div className="grid grid-cols-7 h-full border-b border-[var(--border-light)] bg-white">
       {/* Weekday headers */}
       {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(day => (
         <div key={day} className="h-10 flex items-center justify-center border-b border-[var(--border-light)]">
@@ -695,7 +715,7 @@ const TimeGridView: React.FC<{
           </div>
 
           {/* Grid columns */}
-          <div className="flex-1 flex divide-x divide-[var(--border-light)] relative">
+          <div className="flex-1 flex divide-x divide-[var(--border-light)] relative bg-white">
             {/* Horizontal grid lines */}
             <div className="absolute inset-0 pointer-events-none">
               {hours.map(hour => (

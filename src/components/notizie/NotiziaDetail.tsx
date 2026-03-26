@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import EmojiPicker from 'emoji-picker-react';
 import { X, Phone, MapPin, Euro, Calendar, Clock, Sparkles, User, FileText, MessageSquare, Download, Trash2, Star, ChevronLeft, Palette } from "lucide-react";
 import Markdown from "react-markdown";
 import { Notizia, NotiziaStatus } from "@/src/types";
@@ -163,42 +164,78 @@ const EditableTextarea = ({
   );
 };
 
-export const NotiziaDetail: React.FC<NotiziaDetailProps> = ({ notizia, open, onOpenChange, onUpdate, onDelete }) => {
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState<string | null>(null);
-  const [isStatusEditing, setIsStatusEditing] = useState(false);
-  const notesDebounceRef = useRef<NodeJS.Timeout | null>(null);
+const Section = ({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) => (
+  <div className={cn("flex flex-col gap-2.5 py-6 border-b border-[var(--border-light)] last:border-0", className)}>
+    <span className="font-outfit font-semibold text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">{title}</span>
+    <div className="flex flex-col gap-4">
+      {children}
+    </div>
+  </div>
+);
 
-  if (!notizia) return null;
-
-  const handleNotesSave = (v: string) => {
-    if (notesDebounceRef.current) clearTimeout(notesDebounceRef.current);
-    notesDebounceRef.current = setTimeout(() => {
-      onUpdate?.(notizia.id, { notes: v });
-    }, 600);
-  };
-
-  const addComment = (text: string) => {
-    const updatedComments = [...(notizia.comments || []), { text, date: new Date().toISOString() }];
-    onUpdate?.(notizia.id, { comments: updatedComments });
-  };
-
-  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB', '#E67E22', '#2ECC71', '#F1C40F', '#E74C3C', '#1ABC9C', '#34495E', '#95A5A6', '#ECF0F1'];
-
-  const statusColor = NOTIZIA_STATUS_COLORS[notizia.status as keyof typeof NOTIZIA_STATUS_COLORS] || '#ccc';
-
-  const Section = ({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) => (
-    <div className={cn("flex flex-col gap-2.5 py-6 border-b border-[var(--border-light)] last:border-0", className)}>
-      <span className="font-outfit font-semibold text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">{title}</span>
-      <div className="flex flex-col gap-4">
-        {children}
-      </div>
+const StarRating = ({ rating, onRate }: { rating: number | null; onRate: (r: number) => void }) => {
+  const [localRating, setLocalRating] = useState<number>(rating ?? 0);
+  const [hovered, setHovered] = useState<number | null>(null);
+  
+  // Sync when prop changes
+  useEffect(() => {
+    setLocalRating(rating ?? 0);
+  }, [rating]);
+  
+  const display = hovered ?? localRating;
+  
+  return (
+    <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+      {[1,2,3,4,5].map(star => (
+        <button
+          key={star}
+          type="button"
+          onClick={(e) => { 
+            e.stopPropagation(); 
+            setLocalRating(star);  // update locally immediately
+            onRate(star); 
+          }}
+          onMouseEnter={() => setHovered(star)}
+          onMouseLeave={() => setHovered(null)}
+          style={{ 
+            background: 'none', border: 'none', cursor: 'pointer', padding: '0 1px',
+            fontSize: 18, color: star <= display ? '#F5C842' : '#D1D0CB', lineHeight: 1,
+            transition: 'color 100ms'
+          }}
+        >★</button>
+      ))}
     </div>
   );
+};
+
+const COLOR_OPTIONS = [
+  '#FFF0F0','#FFF8E7','#F0FFF4','#F0F8FF',
+  '#F5F0FF','#FFF0F8','#FFEBCC','#E8F5E9',
+  '#E3F2FD','#FCE4EC','#F3E5F5','#E0F7FA'
+];
+
+export const NotiziaDetail: React.FC<NotiziaDetailProps> = ({ notizia, open, onOpenChange, onUpdate, onDelete }) => {
+  const [isStatusEditing, setIsStatusEditing] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [localCardColor, setLocalCardColor] = useState<string | null>(notizia?.card_color ?? null);
+  const statusColor = NOTIZIA_STATUS_COLORS[notizia.status as keyof typeof NOTIZIA_STATUS_COLORS] || '#000000';
+  const colorInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync when notizia changes
+  useEffect(() => {
+    setLocalCardColor(notizia?.card_color ?? null);
+  }, [notizia?.card_color]);
+
+  const handleNotesSave = (v: string) => onUpdate?.(notizia.id, { notes: v });
+  
+  const addComment = (text: string) => {
+    const newComments = [...(notizia.comments || []), { text, created_at: new Date().toISOString() }];
+    onUpdate?.(notizia.id, { comments: newComments });
+  };
 
   const handleDelete = () => {
-    if (window.confirm("Sei sicuro di voler eliminare questa notizia?")) {
-      onDelete?.(notizia.id);
+    if (notizia && onDelete) {
+      onDelete(notizia.id);
       onOpenChange(false);
     }
   };
@@ -216,8 +253,6 @@ export const NotiziaDetail: React.FC<NotiziaDetailProps> = ({ notizia, open, onO
             className="fixed inset-0 bg-[rgba(0,0,0,0.2)] z-[60]"
             style={{ top: '34px' }}
           />
-
-          {/* Panel */}
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
@@ -226,17 +261,17 @@ export const NotiziaDetail: React.FC<NotiziaDetailProps> = ({ notizia, open, onO
             style={{
               position: 'fixed',
               right: 0,
+              top: 34,
               bottom: 0,
-              top: '34px',
-              width: 'min(600px, 100vw)',
-              maxHeight: 'calc(100vh - 34px)',
-              background: 'white',
+              width: 'min(620px, 100vw)',
               zIndex: 70,
+              backgroundColor: 'white',
               display: 'flex',
               flexDirection: 'column',
+              overflowY: 'auto',
+              overflowX: 'hidden',
               boxShadow: '-4px 0 24px rgba(0,0,0,0.08)',
-              borderLeft: '1px solid var(--border-light)',
-              overflowY: 'auto'
+              borderLeft: '1px solid var(--border-light)'
             }}
           >
             {/* Header */}
@@ -248,10 +283,21 @@ export const NotiziaDetail: React.FC<NotiziaDetailProps> = ({ notizia, open, onO
                 <ChevronLeft size={20} />
               </button>
               
-              <div className="flex-1 px-4 truncate">
+              <div className="flex-1 px-4 truncate flex items-center gap-3">
                 <h2 className="font-outfit font-semibold text-[15px] text-[var(--text-primary)] truncate">
                   {notizia.name}
                 </h2>
+                <StarRating 
+                  rating={notizia.rating} 
+                  onRate={(r) => onUpdate?.(notizia.id, { rating: r })} 
+                />
+                <Badge 
+                  bg={statusColor + '20'} 
+                  fg={statusColor}
+                  onClick={() => setIsStatusEditing(true)}
+                >
+                  {NOTIZIA_STATUS_LABELS[notizia.status as keyof typeof NOTIZIA_STATUS_LABELS]}
+                </Badge>
               </div>
 
               <div className="flex items-center gap-1">
@@ -277,17 +323,31 @@ export const NotiziaDetail: React.FC<NotiziaDetailProps> = ({ notizia, open, onO
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              padding: '24px',
+              boxSizing: 'border-box',
+              width: '100%'
+            }}>
               <div className="flex flex-col">
                 {/* Header Section */}
                 <div className="flex items-center justify-between p-6">
                   <div className="flex items-center gap-3">
-                    <EditableField 
-                      label="" 
-                      value={notizia.emoji || '🏠'} 
-                      onSave={(v) => onUpdate?.(notizia.id, { emoji: v })}
-                      className="min-h-0 w-8 text-[24px]"
-                    />
+                    <div className="relative">
+                      <button 
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className="text-[24px] hover:bg-black/5 rounded p-1 transition-colors"
+                      >
+                        {notizia.emoji || '🏠'}
+                      </button>
+                      {showEmojiPicker && (
+                        <div className="absolute z-[80] top-full left-0 mt-2">
+                          <EmojiPicker onEmojiClick={(e) => { onUpdate?.(notizia.id, { emoji: e.emoji }); setShowEmojiPicker(false); }} />
+                        </div>
+                      )}
+                    </div>
                     <EditableField 
                       label="" 
                       value={notizia.name} 
@@ -418,38 +478,61 @@ export const NotiziaDetail: React.FC<NotiziaDetailProps> = ({ notizia, open, onO
                   </Section>
                 </div>
 
-                <div className="flex items-center gap-12 py-6">
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Rating</span>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button 
-                          key={star}
-                          onClick={() => onUpdate?.(notizia.id, { rating: star })}
-                          className={cn(
-                            "transition-colors",
-                            star <= (notizia.rating || 0) ? "text-amber-400" : "text-gray-200"
-                          )}
-                        >
-                          <Star size={16} fill={star <= (notizia.rating || 0) ? "currentColor" : "none"} />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 48, paddingTop: 24, paddingBottom: 24, width: '100%', flexWrap: 'wrap' }}>
 
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Colore</span>
-                    <div className="grid grid-cols-4 gap-2">
-                      {colors.map(c => (
-                        <button 
-                          key={c} 
-                          onClick={() => onUpdate?.(notizia.id, { card_color: c })} 
-                          className={cn("w-6 h-6 rounded-full border border-[var(--border-light)]", notizia.card_color === c && "ring-2 ring-black ring-offset-1")} 
-                          style={{ backgroundColor: c }} 
-                        />
-                      ))}
-                    </div>
-                  </div>
+<div style={{ padding: '16px 24px', borderTop: '1px solid var(--border-light)' }}>
+  <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: 10 }}>COLORE</p>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+    {COLOR_OPTIONS.map(color => (
+      <button
+        key={color}
+        type="button"
+        onClick={() => { setLocalCardColor(color); onUpdate?.(notizia.id, { card_color: color }); }}
+        style={{
+          width: 24, height: 24, borderRadius: '50%', border: 'none',
+          backgroundColor: color,
+          cursor: 'pointer', flexShrink: 0,
+          outline: localCardColor === color ? '2px solid #1A1A18' : '1.5px solid rgba(0,0,0,0.1)',
+          outlineOffset: localCardColor === color ? 2 : 0,
+          transition: 'transform 150ms',
+        }}
+        onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.15)')}
+        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+      />
+    ))}
+    
+    {/* Custom color picker button */}
+    <button
+      type="button"
+      onClick={() => colorInputRef.current?.click()}
+      style={{
+        width: 24, height: 24, borderRadius: '50%',
+        border: '2px dashed var(--border-medium)',
+        background: 'transparent', cursor: 'pointer', flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 16, color: 'var(--text-muted)', lineHeight: 1
+      }}
+    >+</button>
+    
+    <input
+      ref={colorInputRef}
+      type="color"
+      defaultValue="#ffffff"
+      onChange={e => { setLocalCardColor(e.target.value); onUpdate?.(notizia.id, { card_color: e.target.value }); }}
+      style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+    />
+  </div>
+  
+  {localCardColor && (
+    <button
+      type="button"
+      onClick={() => { setLocalCardColor(null); onUpdate?.(notizia.id, { card_color: null }); }}
+      style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+    >
+      × Rimuovi colore
+    </button>
+  )}
+</div>
                 </div>
 
                 <div className="py-10 text-center">

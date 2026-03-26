@@ -356,17 +356,33 @@ export async function findRowIndex(sheetName: string, id: string | number): Prom
   try {
     await ensureSheetsApi();
 
+    // Get headers to find the correct column for 'id'
+    const headers = await getHeaders(sheetName);
+    const idColIndex = headers.indexOf('id');
+    const colLetter = idColIndex >= 0 ? colIndexToLetter(idColIndex) : 'A';
+
+    console.log(`[GoogleSheets] findRowIndex: searching '${id}' in ${sheetName} column ${colLetter} (index ${idColIndex})`);
+
     const response = await (window as any).gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A:A`,
+      range: `${sheetName}!${colLetter}:${colLetter}`,
     });
 
     const values = response.result.values || [];
-    const rowIndex = values.findIndex((row: any[]) => String(row[0]) === String(id));
+    console.log(`[GoogleSheets] findRowIndex: found ${values.length} rows, first 5:`, values.slice(0, 5).map((r: any[]) => r[0]));
 
-    return rowIndex !== -1 ? rowIndex + 1 : null;
+    // Skip row 0 (header), find matching id
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][0]) === String(id)) {
+        console.log(`[GoogleSheets] findRowIndex: found at row ${i + 1}`);
+        return i + 1; // 1-based row index
+      }
+    }
+
+    console.warn(`[GoogleSheets] findRowIndex: ID '${id}' not found. All values:`, values.map((r: any[]) => r[0]));
+    return null;
   } catch (error) {
-    console.error(`[GoogleSheets] Error finding row index for ID ${id} in ${sheetName}:`, error);
+    console.error(`[GoogleSheets] Error in findRowIndex for ID ${id} in ${sheetName}:`, error);
     throw new Error(`Failed to find row index in sheet: ${sheetName}`);
   }
 }

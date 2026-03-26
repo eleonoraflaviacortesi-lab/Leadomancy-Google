@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { LayoutGrid, List, Search, Download, Plus, Undo2, Redo2, BarChart3, TrendingDown, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useNotizie } from "@/src/hooks/useNotizie";
@@ -29,6 +29,12 @@ export const NotiziePage: React.FC = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [initialStatus, setInitialStatus] = useState<NotiziaStatus | undefined>();
   const [selectedNotizia, setSelectedNotizia] = useState<Notizia | null>(null);
+
+  useEffect(() => {
+    const handler = () => setIsAddDialogOpen(true);
+    window.addEventListener('leadomancy:open-add-notizia', handler);
+    return () => window.removeEventListener('leadomancy:open-add-notizia', handler);
+  }, []);
 
   const toggleViewMode = (mode: 'kanban' | 'sheet') => {
     setViewMode(mode);
@@ -61,7 +67,7 @@ export const NotiziePage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-[1600px] mx-auto w-full">
+    <div className="flex flex-col gap-6 p-6 max-w-[1600px] mx-auto w-full rounded-t-2xl">
       {/* Breadcrumb & Title */}
       <div className="flex flex-col gap-1">
         <span className="font-outfit text-[11px] uppercase tracking-wider text-[var(--text-muted)]">

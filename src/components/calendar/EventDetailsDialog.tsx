@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Calendar as CalendarIcon, Clock, MapPin, User, Trash2, ExternalLink, CheckCircle2, Circle } from "lucide-react";
+import { X, Calendar as CalendarIcon, Clock, MapPin, User, Trash2, ExternalLink, CheckCircle2, Circle, Plus, Check } from "lucide-react";
 import { Appointment } from "@/src/types";
 import { GoogleCalendar, GoogleCalendarEvent } from "@/src/hooks/useGoogleCalendar";
 import { useAppointments } from "@/src/hooks/useAppointments";
@@ -8,6 +8,9 @@ import { format, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
 import { cn } from "@/src/lib/utils";
 import { toast } from "sonner";
+import { v4 as uuidv4 } from 'uuid';
+
+// ... (rest of the file)
 
 interface EventDetailsDialogProps {
   event: {
@@ -26,6 +29,8 @@ interface EventDetailsDialogProps {
 export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({ event, isOpen, onClose, calendars }) => {
   const { deleteAppointment, updateAppointment } = useAppointments();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [tasks, setTasks] = useState(event?.originalData.tasks || []);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
 
   if (!event) return null;
 
@@ -63,6 +68,31 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({ event, i
       toast.success("Calendario aggiornato");
     } catch (error) {
       toast.error("Errore durante l'aggiornamento del calendario");
+    }
+  };
+
+  const addTask = async () => {
+    if (!newTaskTitle.trim() || !isAppointment) return;
+    const newTask = { id: uuidv4(), title: newTaskTitle, completed: false };
+    const updatedTasks = [...tasks, newTask];
+    setTasks(updatedTasks);
+    setNewTaskTitle('');
+    try {
+      await updateAppointment({ id: event.id, tasks: updatedTasks });
+      toast.success("Task aggiunto");
+    } catch (error) {
+      toast.error("Errore durante l'aggiunta del task");
+    }
+  };
+
+  const toggleTask = async (taskId: string) => {
+    if (!isAppointment) return;
+    const updatedTasks = tasks.map((t: any) => t.id === taskId ? { ...t, completed: !t.completed } : t);
+    setTasks(updatedTasks);
+    try {
+      await updateAppointment({ id: event.id, tasks: updatedTasks });
+    } catch (error) {
+      toast.error("Errore durante l'aggiornamento del task");
     }
   };
 
@@ -183,6 +213,34 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({ event, i
                     <p className="text-[13px] font-outfit text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-subtle)] p-3 rounded-xl">
                       {event.originalData.description}
                     </p>
+                  </div>
+                )}
+
+                {isAppointment && (
+                  <div className="flex flex-col gap-3 mt-4">
+                    <span className="text-[11px] font-outfit font-bold uppercase tracking-wider text-[var(--text-muted)]">Tasks</span>
+                    <div className="flex flex-col gap-2">
+                      {tasks.map((task: any) => (
+                        <div key={task.id} className="flex items-center gap-2 bg-[var(--bg-subtle)] p-2 rounded-lg">
+                          <button onClick={() => toggleTask(task.id)} className={cn("w-5 h-5 rounded-full flex items-center justify-center", task.completed ? "bg-green-500 text-white" : "border border-[var(--border-light)]")}>
+                            {task.completed && <Check size={12} />}
+                          </button>
+                          <span className={cn("text-[13px] font-outfit", task.completed && "line-through text-[var(--text-muted)]")}>{task.title}</span>
+                        </div>
+                      ))}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={newTaskTitle}
+                          onChange={(e) => setNewTaskTitle(e.target.value)}
+                          placeholder="Nuovo task..."
+                          className="flex-1 bg-[var(--bg-subtle)] border-0 rounded-lg p-2 text-[13px] font-outfit outline-none"
+                        />
+                        <button onClick={addTask} className="p-2 bg-black text-white rounded-lg">
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

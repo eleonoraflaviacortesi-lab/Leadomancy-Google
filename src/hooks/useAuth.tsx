@@ -244,9 +244,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     console.log("[Auth] Signing out...");
     localStorage.removeItem('leadomancy_access_token');
+    try {
+      const g = (window as any).gapi;
+      if (g?.client) g.client.setToken(null);
+    } catch(e) {}
     setUser(null);
     setIsUsingFallback(false);
     toast.success("Disconnessione effettuata");
+    // Force immediate redirect — React state update may be delayed
+    setTimeout(() => {
+      window.location.href = '/auth';
+    }, 300);
   };
 
   return (

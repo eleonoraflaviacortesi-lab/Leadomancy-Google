@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Search, Check, Calendar as CalendarIcon, Clock, MapPin, User } from "lucide-react";
+import { X, Search, Check, Calendar as CalendarIcon, Clock, MapPin, User, Building2 } from "lucide-react";
 import { useAppointments } from "@/src/hooks/useAppointments";
 import { useClienti } from "@/src/hooks/useClienti";
+import { useNotizie } from "@/src/hooks/useNotizie";
 import { Appointment, Cliente } from "@/src/types";
 import { GoogleCalendar } from "@/src/hooks/useGoogleCalendar";
 import { format } from "date-fns";
@@ -15,6 +16,7 @@ interface AddAppointmentDialogProps {
   initialStartTime?: string;
   initialEndTime?: string;
   calendars?: GoogleCalendar[];
+  defaultType?: 'visit' | 'meeting' | 'call' | 'other' | 'task';
 }
 
 const AppointmentInput = ({ label, icon: Icon, ...props }: any) => (
@@ -36,10 +38,12 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
   initialDate,
   initialStartTime,
   initialEndTime,
-  calendars = []
+  calendars = [],
+  defaultType = 'visit'
 }) => {
   const { addAppointment } = useAppointments();
   const { clienti } = useClienti();
+  const { notizie } = useNotizie();
 
   const [formData, setFormData] = useState<Partial<Appointment>>({
     title: '',
@@ -50,8 +54,9 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
     end_time: '',   
     location: '',
     cliente_id: '',
+    notizia_id: '',
     completed: false,
-    type: 'visit'
+    type: defaultType
   });
 
   const [startTime, setStartTime] = useState(initialStartTime || '10:00');
@@ -59,6 +64,8 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('primary');
   const [clientSearch, setClientSearch] = useState('');
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
+  const [notiziaSearch, setNotiziaSearch] = useState('');
+  const [isNotiziaDropdownOpen, setIsNotiziaDropdownOpen] = useState(false);
 
   // Update state when props change
   useEffect(() => {
@@ -80,9 +87,21 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
     ).slice(0, 10);
   }, [clienti, clientSearch]);
 
+  const filteredNotizie = useMemo(() => {
+    if (!notiziaSearch) return notizie.slice(0, 10);
+    const s = notiziaSearch.toLowerCase();
+    return notizie.filter(n => 
+      n.name.toLowerCase().includes(s)
+    ).slice(0, 10);
+  }, [notizie, notiziaSearch]);
+
   const selectedClient = useMemo(() => 
     clienti.find(c => c.id === formData.cliente_id),
   [clienti, formData.cliente_id]);
+
+  const selectedNotizia = useMemo(() => 
+    notizie.find(n => n.id === formData.notizia_id),
+  [notizie, formData.notizia_id]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -278,6 +297,77 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                           ) : (
                             <div className="p-4 text-center text-[12px] text-[var(--text-muted)] font-outfit">
                               Nessun cliente trovato
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              {/* Notizia Collegata */}
+              <div className="flex flex-col gap-1.5 relative">
+                <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+                  <Building2 size={12} />
+                  Notizia Collegata
+                </label>
+                <div className="relative">
+                  <div 
+                    className={cn(
+                      "w-full bg-[var(--bg-subtle)] rounded-[10px] p-2.5 px-4 text-[13px] font-outfit flex items-center justify-between cursor-pointer",
+                      isNotiziaDropdownOpen && "ring-1 ring-black/10"
+                    )}
+                    onClick={() => setIsNotiziaDropdownOpen(!isNotiziaDropdownOpen)}
+                  >
+                    {selectedNotizia ? (
+                      <span className="text-[var(--text-primary)] font-medium">
+                        {selectedNotizia.name}
+                      </span>
+                    ) : (
+                      <span className="text-[var(--text-muted)]">Seleziona una notizia...</span>
+                    )}
+                    <Search size={14} className="text-[var(--text-muted)]" />
+                  </div>
+
+                  <AnimatePresence>
+                    {isNotiziaDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute top-full left-0 right-0 mt-2 bg-white border border-[var(--border-light)] rounded-[12px] shadow-xl z-50 overflow-hidden"
+                      >
+                        <div className="p-2 border-b border-[var(--border-light)]">
+                          <input
+                            autoFocus
+                            type="text"
+                            placeholder="Cerca notizia..."
+                            className="w-full bg-[var(--bg-subtle)] border-0 rounded-[6px] p-1.5 px-3 text-[12px] font-outfit outline-none"
+                            value={notiziaSearch}
+                            onChange={(e) => setNotiziaSearch(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                          {filteredNotizie.length > 0 ? (
+                            filteredNotizie.map(n => (
+                              <div
+                                key={n.id}
+                                className="p-2.5 px-4 text-[13px] font-outfit hover:bg-[var(--bg-subtle)] cursor-pointer flex items-center justify-between"
+                                onClick={() => {
+                                  setFormData({ ...formData, notizia_id: n.id });
+                                  setIsNotiziaDropdownOpen(false);
+                                  setNotiziaSearch('');
+                                }}
+                              >
+                                <span>{n.name}</span>
+                                {formData.notizia_id === n.id && <Check size={14} className="text-black" />}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-4 text-center text-[12px] text-[var(--text-muted)] font-outfit">
+                              Nessuna notizia trovata
                             </div>
                           )}
                         </div>
