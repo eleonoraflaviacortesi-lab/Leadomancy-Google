@@ -8,6 +8,7 @@ interface NotizieSheetViewProps {
   onDelete?: (id: string) => void;
   searchQuery: string;
   onAddNew?: () => void;
+  isLoading?: boolean;
 }
 
 const COLUMNS = [
@@ -29,7 +30,8 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
   onUpdate,
   onDelete,
   searchQuery,
-  onAddNew
+  onAddNew,
+  isLoading
 }) => {
   const displayData = useMemo(() => {
     if (!notizie || notizie.length === 0) return []
@@ -43,6 +45,14 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
     }
     return result
   }, [notizie, searchQuery]);
+
+  if (isLoading) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'Outfit', fontSize: 13 }}>
+        Caricamento...
+      </div>
+    );
+  }
 
   if (displayData.length === 0 && !searchQuery?.trim()) {
     return (

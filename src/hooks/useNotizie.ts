@@ -17,19 +17,19 @@ const ALL_STATUSES: NotiziaStatus[] = ['new', 'in_progress', 'done', 'on_shot', 
 export function useNotizie() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const queryKey = ['notizie', user?.id];
+  const queryKey = ['notizie', user?.user_id];
 
   const { data: notizie = [], isLoading } = useQuery({
     queryKey,
     queryFn: async () => {
       if (!user) return [];
-      console.log('Current user.id:', user?.id);
+      console.log('Current user.user_id:', user?.user_id);
       const data = await getSheetData<Notizia>(SHEETS.notizie);
       console.log('All notizie from sheet after refetch:', data.map(n => n.user_id));
       
       return data
         .filter(n => {
-          const match = n.user_id === user.id;
+          const match = n.user_id === user.user_id;
           return match;
         })
         .map(n => ({
@@ -72,7 +72,7 @@ export function useNotizie() {
       const noticia: Notizia = {
         ...newNotizia,
         id,
-        user_id: user.id,
+        user_id: user.user_id,
         created_at: now,
         updated_at: now,
         display_order: notizie.length + 1,
@@ -93,7 +93,7 @@ export function useNotizie() {
         { 
           ...newNotizia, 
           id: newNotizia.id || crypto.randomUUID(), 
-          user_id: user?.id,
+          user_id: user?.user_id,
           created_at: new Date().toISOString(), 
           updated_at: new Date().toISOString(), 
           comments: [], 

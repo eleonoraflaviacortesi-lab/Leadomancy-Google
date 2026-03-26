@@ -382,3 +382,39 @@ export function clearHeaderCache(sheetName?: string): void {
     headerCache.clear();
   }
 }
+
+export async function diagnoseSheetsConnection(): Promise<void> {
+  const g = (window as any).gapi;
+  
+  const result: Record<string, any> = {
+    '1_gapi_exists': !!g,
+    '2_gapi_client_exists': !!g?.client,
+    '3_sheets_exists': !!g?.client?.sheets,
+    '4_calendar_exists': !!g?.client?.calendar,
+    '5_spreadsheet_id': import.meta.env.VITE_GOOGLE_SPREADSHEET_ID || 'NOT SET',
+    '6_token': localStorage.getItem('leadomancy_access_token') ? 'EXISTS (first 20 chars: ' + localStorage.getItem('leadomancy_access_token')!.slice(0,20) + ')' : 'NOT FOUND',
+  };
+
+  // Try a direct fetch to Sheets API without gapi
+  const spreadsheetId = import.meta.env.VITE_GOOGLE_SPREADSHEET_ID;
+  const token = localStorage.getItem('leadomancy_access_token');
+  
+  if (spreadsheetId && token) {
+    try {
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/notizie!A1:Z5?key=`;
+      const resp = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await resp.json();
+      result['7_direct_fetch_status'] = resp.status;
+      result['8_direct_fetch_data'] = JSON.stringify(data).slice(0, 300);
+    } catch(e: any) {
+      result['7_direct_fetch_error'] = e.message;
+    }
+  } else {
+    result['7_direct_fetch'] = 'SKIPPED - missing spreadsheetId or token';
+  }
+
+  console.log('=== DIAGNOSIS ===', result);
+  alert(JSON.stringify(result, null, 2));
+}

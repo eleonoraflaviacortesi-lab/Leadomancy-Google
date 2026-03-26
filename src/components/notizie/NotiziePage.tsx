@@ -8,6 +8,7 @@ import { NotizieSheetView } from "./NotizieSheetView";
 import { AddNotiziaDialog } from "./AddNotiziaDialog";
 import { Notizia, NotiziaStatus } from "@/src/types";
 import { cn } from "@/src/lib/utils";
+import { diagnoseSheetsConnection } from '@/src/lib/googleSheets';
 
 export const NotiziePage: React.FC = () => {
   const { notizie, isLoading, updateNotizia, deleteNotizia } = useNotizie();
@@ -136,6 +137,18 @@ export const NotiziePage: React.FC = () => {
           </button>
           <button
             onClick={() => {
+              try {
+                diagnoseSheetsConnection().catch(e => alert('Error: ' + e.message));
+              } catch(e: any) {
+                alert('Sync error: ' + e.message);
+              }
+            }}
+            style={{ padding: '6px 12px', background: '#ef4444', color: 'white', borderRadius: 8, fontSize: 12, cursor: 'pointer', marginLeft: 8 }}
+          >
+            🔍 Test Sheets
+          </button>
+          <button
+            onClick={() => {
               setInitialStatus('new');
               setIsAddDialogOpen(true);
             }}
@@ -160,6 +173,7 @@ export const NotiziePage: React.FC = () => {
             ) : (
               <NotizieSheetView 
                 notizie={filteredNotizie} 
+                isLoading={isLoading}
                 onNotiziaClick={handleNotiziaClick} 
                 onUpdate={(id, updates) => updateNotizia({ id, ...updates })}
                 onDelete={deleteNotizia}

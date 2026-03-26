@@ -17,7 +17,7 @@ const ALL_STATUSES: ClienteStatus[] = ['new', 'contacted', 'qualified', 'proposa
 export function useClienti(options?: { filters?: ClienteFilters }) {
   const { user: profile } = useAuth();
   const queryClient = useQueryClient();
-  const queryKey = ['clienti', profile?.sede];
+  const queryKey = ['clienti', profile?.user_id];
 
   const { data: clienti = [], isLoading } = useQuery({
     queryKey,
