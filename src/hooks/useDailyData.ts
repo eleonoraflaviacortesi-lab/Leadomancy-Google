@@ -1,0 +1,82 @@
+import { useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useAuth } from "@/src/hooks/useAuth";
+import { DailyReport } from "@/src/types";
+import { 
+  getSheetData, 
+  appendRow, 
+  updateRow, 
+  findRowIndex, 
+  SHEETS 
+} from "@/src/lib/googleSheets";
+
+export function useDailyData() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const queryKey = ['daily_reports', user?.id];
+
+  const { data: allData = [], isLoading } = useQuery({
+    queryKey: ['daily_reports'],
+    queryFn: async () => {
+      if (!user) return [];
+      const data = await getSheetData<DailyReport>(SHEETS.daily_reports);
+      return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: !!user,
+  });
+
+  const myData = useMemo(() => {
+    return allData.filter(r => r.user_id === user?.id);
+  }, [allData, user]);
+
+  const todayData = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return myData.find(r => r.date === today) || null;
+  }, [myData]);
+
+  const saveDailyDataMutation = useMutation({
+    mutationFn: async ({ data, date }: { data: Partial<DailyReport>, date: string }) => {
+      if (!user) throw new Error("User not authenticated");
+      
+      // Check if record exists for user_id + date
+      const allReports = await getSheetData<DailyReport>(SHEETS.daily_reports);
+      const existingReport = allReports.find(r => r.user_id === user.id && r.date === date);
+
+      if (existingReport) {
+        const rowIndex = await findRowIndex(SHEETS.daily_reports, existingReport.id);
+        if (rowIndex) {
+          await updateRow(SHEETS.daily_reports, rowIndex, {
+            ...data,
+            updated_at: new Date().toISOString()
+          });
+        }
+      } else {
+        const id = crypto.randomUUID();
+        const now = new Date().toISOString();
+        const newReport: DailyReport = {
+          ...data,
+          id,
+          user_id: user.id,
+          date,
+          created_at: now,
+          updated_at: now,
+        } as DailyReport;
+        await appendRow(SHEETS.daily_reports, newReport);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      toast.success("Dati salvati");
+    },
+  });
+
+  return {
+    myData,
+    allData,
+    todayData,
+    isLoading,
+    saveDailyData: saveDailyDataMutation.mutate,
+  };
+}

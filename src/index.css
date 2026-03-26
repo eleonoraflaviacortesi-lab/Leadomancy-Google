@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-page: #F5F4F0;
+  --bg-surface: #FFFFFF;
+  --bg-subtle: #EFEEEA;
+  --bg-hover: #E9E8E3;
+  --text-primary: #1A1A18;
+  --text-secondary: #6B6B66;
+  --text-muted: #9B9B95;
+  --border-light: #E4E3DE;
+  --border-medium: #D1D0CB;
+  --accent: #1A1A18;
+  --accent-fg: #FFFFFF;
+
+  /* Status Colors */
+  --yellow: #F5E642;
+  --yellow-bg: #FDFBC0;
+  --yellow-fg: #5C5500;
+  --lavender: #C8B8F5;
+  --lavender-bg: #EDE8FD;
+  --lavender-fg: #3B2B8A;
+  --sage: #B8E0C8;
+  --sage-bg: #E8F7EF;
+  --sage-fg: #1B5E38;
+  --peach: #F5C4A0;
+  --peach-bg: #FEF0E4;
+  --peach-fg: #7A3010;
+  --slate: #C0C8D8;
+  --slate-bg: #EEF1F8;
+  --slate-fg: #2B3A5C;
+  --rose: #F5A0B0;
+  --rose-bg: #FEE8EC;
+  --rose-fg: #7A1A2A;
+  --amber: #F5C842;
+  --amber-bg: #FEF5D0;
+  --amber-fg: #5C3800;
+  --banner-height: 34px;
+
+  /* Spacing & Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+}
+
+/* Banner Adjustments */
+aside {
+  top: calc(var(--banner-height) + env(safe-area-inset-top, 0px)) !important;
+  height: calc(100vh - var(--banner-height) - env(safe-area-inset-top, 0px)) !important;
+}
+
+main {
+  padding-top: calc(var(--banner-height) + env(safe-area-inset-top, 0px)) !important;
+}
+
+.dark {
+  --bg-page: #121212;
+  --bg-surface: #1E1E1E;
+  --bg-subtle: #2A2A2A;
+  --bg-hover: #333333;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0A0A0;
+  --text-muted: #666666;
+  --border-light: #333333;
+  --border-medium: #444444;
+  --accent: #FFFFFF;
+  --accent-fg: #000000;
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--bg-page)] text-[var(--text-primary)] font-sans antialiased;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .page-title {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+
+  .text-micro {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+}
