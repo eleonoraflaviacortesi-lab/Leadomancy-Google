@@ -167,8 +167,23 @@ export const NotiziaDetail: React.FC<NotiziaDetailProps> = ({ notizia, open, onO
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [isStatusEditing, setIsStatusEditing] = useState(false);
+  const notesDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   if (!notizia) return null;
+
+  const handleNotesSave = (v: string) => {
+    if (notesDebounceRef.current) clearTimeout(notesDebounceRef.current);
+    notesDebounceRef.current = setTimeout(() => {
+      onUpdate?.(notizia.id, { notes: v });
+    }, 600);
+  };
+
+  const addComment = (text: string) => {
+    const updatedComments = [...(notizia.comments || []), { text, date: new Date().toISOString() }];
+    onUpdate?.(notizia.id, { comments: updatedComments });
+  };
+
+  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB', '#E67E22', '#2ECC71', '#F1C40F', '#E74C3C', '#1ABC9C', '#34495E', '#95A5A6', '#ECF0F1'];
 
   const statusColor = NOTIZIA_STATUS_COLORS[notizia.status as keyof typeof NOTIZIA_STATUS_COLORS] || '#ccc';
 
@@ -352,30 +367,51 @@ export const NotiziaDetail: React.FC<NotiziaDetailProps> = ({ notizia, open, onO
                     <EditableTextarea 
                       label="" 
                       value={notizia.notes} 
-                      onSave={(v) => onUpdate?.(notizia.id, { notes: v })} 
+                      onSave={handleNotesSave} 
                     />
                   </Section>
 
                   <Section title="Promemoria">
-                    <EditableField 
-                      label="Data e Ora" 
-                      value={notizia.reminder_date ? `${notizia.reminder_date}T${notizia.reminder_time || '09:00'}` : null} 
-                      type="datetime-local"
-                      onSave={(v) => {
-                        const [date, time] = v.split('T');
-                        onUpdate?.(notizia.id, { reminder_date: date, reminder_time: time });
-                      }} 
-                    />
+                    <div className="flex gap-4">
+                      <div className="flex flex-col gap-0.5 flex-1">
+                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Data</span>
+                        <input 
+                          type="date" 
+                          value={notizia.reminder_date || ''} 
+                          onChange={(e) => onUpdate?.(notizia.id, { reminder_date: e.target.value })}
+                          className="bg-transparent border-b border-black py-1 text-[13px] font-outfit outline-none"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-0.5 flex-1">
+                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Ora</span>
+                        <input 
+                          type="time" 
+                          value={notizia.reminder_time || '09:00'} 
+                          onChange={(e) => onUpdate?.(notizia.id, { reminder_time: e.target.value })}
+                          className="bg-transparent border-b border-black py-1 text-[13px] font-outfit outline-none"
+                        />
+                      </div>
+                    </div>
                   </Section>
 
                   <Section title="Commenti">
                     <div className="flex flex-col gap-4">
-                      <p className="text-[12px] text-[var(--text-muted)] italic">Nessun commento presente.</p>
+                      {(notizia.comments || []).map((c, i) => (
+                        <div key={i} className="text-[12px] text-[var(--text-primary)] bg-[var(--bg-subtle)] p-2 rounded">
+                          {c.text}
+                        </div>
+                      ))}
                       <div className="flex items-center gap-2">
                         <input 
                           type="text"
                           placeholder="Aggiungi un commento..."
                           className="flex-1 bg-[var(--bg-subtle)] border-0 rounded-full px-4 py-2 text-[12px] font-outfit outline-none"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.currentTarget.value) {
+                              addComment(e.currentTarget.value);
+                              e.currentTarget.value = '';
+                            }
+                          }}
                         />
                       </div>
                     </div>
@@ -403,11 +439,15 @@ export const NotiziaDetail: React.FC<NotiziaDetailProps> = ({ notizia, open, onO
 
                   <div className="flex flex-col gap-2">
                     <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Colore</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full border border-[var(--border-light)]" style={{ backgroundColor: statusColor }} />
-                      <button className="p-1 hover:bg-black/5 rounded text-[var(--text-muted)]">
-                        <Palette size={14} />
-                      </button>
+                    <div className="grid grid-cols-4 gap-2">
+                      {colors.map(c => (
+                        <button 
+                          key={c} 
+                          onClick={() => onUpdate?.(notizia.id, { card_color: c })} 
+                          className={cn("w-6 h-6 rounded-full border border-[var(--border-light)]", notizia.card_color === c && "ring-2 ring-black ring-offset-1")} 
+                          style={{ backgroundColor: c }} 
+                        />
+                      ))}
                     </div>
                   </div>
                 </div>
