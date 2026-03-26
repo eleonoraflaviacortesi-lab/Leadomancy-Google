@@ -45,7 +45,9 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
       {/* Header */}
       <div className="h-14 flex items-center px-3 gap-3">
         <div className="w-7 h-7 bg-black rounded-full flex-shrink-0 flex items-center justify-center">
-          <span className="text-white font-bold text-[14px]">L</span>
+          <svg viewBox="0 0 24 24" fill="white" style={{ width: 16, height: 16 }}>
+            <path d="M12 0 L13.5 4.5 L18 4.5 L14.5 7 L16 11.5 L12 8.5 L8 11.5 L9.5 7 L6 4.5 L10.5 4.5 Z" />
+          </svg>
         </div>
         {!isCollapsed && (
           <span className="font-bold text-[11px] uppercase tracking-[0.15em] text-[var(--text-primary)]">

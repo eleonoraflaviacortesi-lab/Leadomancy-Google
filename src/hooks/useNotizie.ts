@@ -14,9 +14,12 @@ import {
 
 const ALL_STATUSES: NotiziaStatus[] = ['new', 'in_progress', 'done', 'on_shot', 'taken', 'credit', 'no', 'sold'];
 
+import { useKanbanColumns } from "./useKanbanColumns";
+
 export function useNotizie() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { columns } = useKanbanColumns();
   const queryKey = ['notizie', user?.user_id];
 
   const { data: notizie = [], isLoading } = useQuery({
@@ -51,18 +54,18 @@ export function useNotizie() {
 
   const notizieByStatus = useMemo(() => {
     const groups: Record<string, Notizia[]> = {};
-    ALL_STATUSES.forEach(status => {
-      groups[status] = notizie.filter(n => n.status === status);
+    columns.forEach(col => {
+      groups[col.key] = notizie.filter(n => n.status === col.key);
     });
-    // Handle any custom statuses not in the main list
+    // Handle any statuses not in the current columns (e.g. legacy or custom from sheet)
     notizie.forEach(n => {
-      if (!ALL_STATUSES.includes(n.status as NotiziaStatus)) {
+      if (!columns.find(c => c.key === n.status)) {
         if (!groups[n.status]) groups[n.status] = [];
         groups[n.status].push(n);
       }
     });
     return groups;
-  }, [notizie]);
+  }, [notizie, columns]);
 
   const addNotiziaMutation = useMutation({
     mutationFn: async (newNotizia: Partial<Notizia>) => {
@@ -162,6 +165,9 @@ export function useNotizie() {
 
   const deleteNotiziaMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (!window.confirm('Eliminare questa notizia?')) {
+        throw new Error('Eliminazione annullata');
+      }
       const rowIndex = await findRowIndex(SHEETS.notizie, id);
       if (!rowIndex) throw new Error("Notizia non trovata");
       await deleteRow(SHEETS.notizie, rowIndex);
@@ -178,7 +184,7 @@ export function useNotizie() {
       toast.error("Errore durante l'eliminazione");
     },
     onSuccess: () => {
-      toast.success("Eliminato");
+      toast.success("Notizia eliminata");
     },
     onSettled: () => {
       setTimeout(() => {

@@ -14,7 +14,7 @@ import { cn } from "@/src/lib/utils";
 
 export const ClientiPage: React.FC = () => {
   const [filters, setFilters] = useState<ClienteFilters>({});
-  const { filteredClienti, isLoading } = useClienti({ filters });
+  const { filteredClienti, isLoading, updateCliente, deleteCliente, addCliente } = useClienti({ filters });
   const { undo, redo, canUndo, canRedo } = useUndoRedo();
   
   const [viewMode, setViewMode] = useState<'kanban' | 'sheet'>(() => {
@@ -43,6 +43,15 @@ export const ClientiPage: React.FC = () => {
 
   const handleExport = () => {
     toast.success("Esportazione buyers avviata...");
+  };
+
+  const handleDuplicate = async (cliente: Cliente) => {
+    const { id, created_at, updated_at, ...rest } = cliente;
+    addCliente({
+      ...rest,
+      nome: `${rest.nome} (Copia)`,
+      status: 'new'
+    });
   };
 
   return (
@@ -226,7 +235,17 @@ export const ClientiPage: React.FC = () => {
               {viewMode === 'kanban' ? (
                 <ClientiKanban onClienteClick={handleClienteClick} onQuickAdd={handleQuickAdd} />
               ) : (
-                <ClientiSheetView clienti={filteredClienti} onRowClick={handleClienteClick} />
+                <ClientiSheetView 
+                  clienti={filteredClienti} 
+                  agents={[]} // Add agents if available
+                  onCardClick={handleClienteClick}
+                  onUpdate={async (id, updates) => updateCliente({ id, ...updates })}
+                  onDelete={async (id) => deleteCliente(id)}
+                  onDuplicate={handleDuplicate}
+                  searchQuery={filters.search || ""}
+                  onAddNew={() => setIsAddDialogOpen(true)}
+                  isLoading={isLoading}
+                />
               )}
             </>
           )}
@@ -244,6 +263,11 @@ export const ClientiPage: React.FC = () => {
         cliente={selectedCliente}
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
+        onUpdate={(id, updates) => updateCliente({ id, ...updates })}
+        onDelete={(id) => {
+          deleteCliente(id);
+          setIsDetailOpen(false);
+        }}
       />
     </div>
   );

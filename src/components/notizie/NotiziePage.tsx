@@ -1,11 +1,15 @@
 import React, { useState, useMemo } from "react";
-import { LayoutGrid, List, Search, Download, Plus, Undo2, Redo2 } from "lucide-react";
+import { LayoutGrid, List, Search, Download, Plus, Undo2, Redo2, BarChart3, TrendingDown, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useNotizie } from "@/src/hooks/useNotizie";
 import { useUndoRedo } from "@/src/hooks/useUndoRedo";
 import { KanbanBoard } from "./KanbanBoard";
 import { NotizieSheetView } from "./NotizieSheetView";
 import { AddNotiziaDialog } from "./AddNotiziaDialog";
+import { NotiziaDetail } from "./NotiziaDetail";
+import { NotizieStatsChart } from "./NotizieStatsChart";
+import { FunnelChartModal } from "./FunnelChartModal";
+import { ImportCSVDialog } from "./ImportCSVDialog";
 import { Notizia, NotiziaStatus } from "@/src/types";
 import { cn } from "@/src/lib/utils";
 import { diagnoseSheetsConnection } from '@/src/lib/googleSheets';
@@ -19,6 +23,10 @@ export const NotiziePage: React.FC = () => {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
+  const [isFunnelOpen, setIsFunnelOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [initialStatus, setInitialStatus] = useState<NotiziaStatus | undefined>();
   const [selectedNotizia, setSelectedNotizia] = useState<Notizia | null>(null);
 
@@ -40,7 +48,7 @@ export const NotiziePage: React.FC = () => {
 
   const handleNotiziaClick = (notizia: Notizia) => {
     setSelectedNotizia(notizia);
-    toast.info("Dettaglio notizia in arrivo...");
+    setDetailOpen(true);
   };
 
   const handleQuickAdd = (status: NotiziaStatus) => {
@@ -104,6 +112,28 @@ export const NotiziePage: React.FC = () => {
 
         {/* Undo/Redo */}
         <div className="flex items-center gap-1">
+          <button
+            onClick={() => setIsStatsOpen(true)}
+            className="p-2 rounded-full text-[var(--text-primary)] hover:bg-black/5 transition-colors"
+            title="Statistiche"
+          >
+            <BarChart3 size={18} />
+          </button>
+          <button
+            onClick={() => setIsFunnelOpen(true)}
+            className="p-2 rounded-full text-[var(--text-primary)] hover:bg-black/5 transition-colors"
+            title="Funnel"
+          >
+            <TrendingDown size={18} />
+          </button>
+          <button
+            onClick={() => setIsImportOpen(true)}
+            className="p-2 rounded-full text-[var(--text-primary)] hover:bg-black/5 transition-colors"
+            title="Importa CSV"
+          >
+            <Upload size={18} />
+          </button>
+          <div className="w-px h-4 bg-[var(--border-light)] mx-1" />
           <button
             onClick={undo}
             disabled={!canUndo}
@@ -190,6 +220,37 @@ export const NotiziePage: React.FC = () => {
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
         initialStatus={initialStatus}
+      />
+
+      {/* Stats Modal */}
+      <NotizieStatsChart
+        isOpen={isStatsOpen}
+        onClose={() => setIsStatsOpen(false)}
+        notizie={notizie}
+      />
+
+      {/* Detail Panel */}
+      {selectedNotizia && (
+        <NotiziaDetail
+          notizia={selectedNotizia}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          onUpdate={(id, updates) => updateNotizia({ id, ...updates, silent: true })}
+          onDelete={(id) => { deleteNotizia(id); setDetailOpen(false); }}
+        />
+      )}
+
+      {/* Funnel Modal */}
+      <FunnelChartModal
+        isOpen={isFunnelOpen}
+        onClose={() => setIsFunnelOpen(false)}
+        notizie={notizie}
+      />
+
+      {/* Import Dialog */}
+      <ImportCSVDialog
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
       />
     </div>
   );

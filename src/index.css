@@ -102,4 +102,31 @@ main {
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border-medium);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+  }
+
+  .markdown-body {
+    @apply text-[13px] leading-relaxed text-[var(--text-secondary)];
+  }
+  .markdown-body h2 {
+    @apply mt-4 mb-1 text-[13px] font-bold uppercase tracking-tight text-[var(--text-primary)];
+  }
+  .markdown-body p {
+    @apply mb-2;
+  }
+  .markdown-body ul {
+    @apply list-disc list-inside mb-2;
+  }
 }

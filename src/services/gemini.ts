@@ -46,7 +46,7 @@ export async function analyzeCliente(cliente: Cliente): Promise<string> {
 }
 
 export async function generateDailyQuote(): Promise<{ quote: string; author: string }> {
-  const prompt = "Genera una citazione motivazionale breve (massimo 15 parole) per un agente immobiliare di lusso. Rispondi esclusivamente in formato JSON: {\"quote\": \"...\", \"author\": \"...\"}. Lingua: italiano.";
+  const prompt = "Genera una citazione breve (massimo 15 parole) sulla crescita personale, nello stile di Insight Timer (autori come Paulo Coelho, Seneca, Einstein, ecc.). Rispondi esclusivamente in formato JSON: {\"quote\": \"...\", \"author\": \"...\"}. Lingua: italiano.";
 
   try {
     const response = await ai.models.generateContent({

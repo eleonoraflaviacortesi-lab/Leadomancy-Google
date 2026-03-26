@@ -5,18 +5,17 @@ import { Cliente, ClienteStatus } from "@/src/types";
 import { useClienti } from "@/src/hooks/useClienti";
 import { useUndoRedo } from "@/src/hooks/useUndoRedo";
 import { ClienteCard } from "./ClienteCard";
-import { CLIENTE_STATUS_CONFIG } from "./clienteFormOptions";
+import { useClientKanbanColumns, KanbanColumn as ColumnType } from "@/src/hooks/useClientKanbanColumns";
 import { cn } from "@/src/lib/utils";
 
 interface ClientiKanbanProps {
   onClienteClick: (cliente: Cliente) => void;
-  onQuickAdd: (status: ClienteStatus) => void;
+  onQuickAdd: (status: string) => void;
 }
 
-const KANBAN_COLUMNS: ClienteStatus[] = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost'];
-
 export const ClientiKanban: React.FC<ClientiKanbanProps> = ({ onClienteClick, onQuickAdd }) => {
-  const { clientiByStatus, updateCliente, reorderClienti } = useClienti();
+  const { clientiByStatus, updateCliente, deleteCliente, reorderClienti } = useClienti();
+  const { columns } = useClientKanbanColumns();
   const { pushAction } = useUndoRedo();
 
   const onDragEnd = (result: DropResult) => {
@@ -68,13 +67,15 @@ export const ClientiKanban: React.FC<ClientiKanbanProps> = ({ onClienteClick, on
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="flex gap-3 overflow-x-auto pb-4 h-full min-h-[500px]">
-        {KANBAN_COLUMNS.map((status) => (
+        {columns.map((col) => (
           <KanbanColumn
-            key={status}
-            status={status}
-            clienti={clientiByStatus[status] || []}
+            key={col.id}
+            column={col}
+            clienti={clientiByStatus[col.key] || []}
             onClienteClick={onClienteClick}
-            onQuickAdd={() => onQuickAdd(status)}
+            onQuickAdd={() => onQuickAdd(col.key)}
+            updateCliente={updateCliente}
+            deleteCliente={deleteCliente}
           />
         ))}
       </div>
@@ -83,30 +84,39 @@ export const ClientiKanban: React.FC<ClientiKanbanProps> = ({ onClienteClick, on
 };
 
 interface KanbanColumnProps {
-  status: ClienteStatus;
+  column: ColumnType;
   clienti: Cliente[];
   onClienteClick: (cliente: Cliente) => void;
   onQuickAdd: () => void;
+  updateCliente: any;
+  deleteCliente: any;
 }
 
-const KanbanColumn: React.FC<KanbanColumnProps> = ({ status, clienti, onClienteClick, onQuickAdd }) => {
-  const statusConfig = CLIENTE_STATUS_CONFIG[status];
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ 
+  column, 
+  clienti, 
+  onClienteClick, 
+  onQuickAdd,
+  updateCliente,
+  deleteCliente
+}) => {
+  const statusColor = column.color;
 
   return (
     <div className="flex flex-col min-w-[210px] w-[210px] bg-[var(--bg-subtle)] rounded-[12px] p-2 h-full">
       <div 
         className="pt-2 pb-1.5 px-1 flex items-center justify-between border-t-[3px]"
-        style={{ borderTopColor: statusConfig.color }}
+        style={{ borderTopColor: statusColor }}
       >
         <span className="font-outfit font-semibold text-[11px] uppercase tracking-[0.07em] text-[var(--text-secondary)]">
-          {statusConfig.label}
+          {column.label}
         </span>
         <div className="bg-white min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center font-outfit font-semibold text-[10px] text-[var(--text-secondary)] shadow-sm">
           {clienti.length}
         </div>
       </div>
 
-      <Droppable droppableId={status}>
+      <Droppable droppableId={column.key}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
@@ -128,6 +138,11 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ status, clienti, onClienteC
                     <ClienteCard
                       cliente={cliente}
                       onClick={onClienteClick}
+                      onStatusChange={(id, status) => updateCliente({ id, status: status as any })}
+                      onEmojiChange={(id, emoji) => updateCliente({ id, emoji })}
+                      onColorChange={(id, card_color) => updateCliente({ id, card_color })}
+                      onUpdate={(id, updates) => updateCliente({ id, ...updates, silent: true })}
+                      onDelete={(id) => deleteCliente(id)}
                       isDragging={snapshot.isDragging}
                     />
                   </div>

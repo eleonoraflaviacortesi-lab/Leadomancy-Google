@@ -20,7 +20,7 @@ export interface Notizia {
   updated_at: string;
   reminder_date?: string;
   reminder_time?: string;
-  comments?: string[];
+  comments?: any[];
   is_online?: boolean;
   card_color?: string;
   _rowIndex?: number;
@@ -69,9 +69,14 @@ export interface Cliente {
   display_order: number;
   assigned_to: string;
   reminder_date?: string;
-  comments?: string[];
+  last_contact_date?: string;
+  rating?: number;
+  emoji?: string;
+  comments?: any[];
   created_at: string;
   updated_at: string;
+  card_color?: string;
+  custom_fields?: Record<string, any>;
   _rowIndex?: number;
 }
 

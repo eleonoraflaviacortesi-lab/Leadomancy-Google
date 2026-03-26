@@ -1,76 +1,745 @@
-import React from "react";
-import { Cliente } from "@/src/types";
-import { CLIENTE_STATUS_CONFIG } from "./clienteFormOptions";
-import { cn, formatCurrency } from "@/src/lib/utils";
+import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { 
+  Search, 
+  Filter, 
+  ChevronDown, 
+  ChevronUp, 
+  MoreVertical, 
+  GripVertical, 
+  Plus, 
+  Eye, 
+  Trash2, 
+  Copy, 
+  Clipboard, 
+  RotateCcw, 
+  Bold, 
+  Italic, 
+  Strikethrough, 
+  Type, 
+  Palette,
+  Check,
+  X,
+  Phone,
+  ExternalLink,
+  MessageCircle,
+  Star,
+  Copy as CopyIcon,
+  Globe,
+  Layout,
+  MessageSquare
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { Cliente, ClienteStatus } from "@/src/types";
+import { cn } from "@/src/lib/utils";
+import { useColumnTypeOverrides, ColumnType } from "@/src/hooks/useColumnTypeOverrides";
+import { useClientKanbanColumns } from "@/src/hooks/useClientKanbanColumns";
 
 interface ClientiSheetViewProps {
   clienti: Cliente[];
-  onRowClick: (cliente: Cliente) => void;
+  agents: Array<{ user_id: string; full_name: string; avatar_emoji: string }>;
+  onCardClick: (cliente: Cliente) => void;
+  onUpdate: (id: string, updates: Partial<Cliente>) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
+  onDuplicate?: (cliente: Cliente) => Promise<void>;
+  searchQuery: string;
+  onAddNew?: () => void;
+  isLoading?: boolean;
 }
 
-export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({ clienti, onRowClick }) => {
+const DEFAULT_COLUMNS = [
+  { key: 'paese', label: 'Country', width: 100, minWidth: 70, editable: true, type: 'text' },
+  { key: 'lingua', label: 'Language', width: 90, minWidth: 70, editable: true, type: 'lingua' },
+  { key: 'cognome', label: 'Surname', width: 130, minWidth: 80, editable: true, type: 'text' },
+  { key: 'nome', label: 'Name', width: 140, minWidth: 100, editable: true, type: 'text' },
+  { key: 'portale', label: 'Portale', width: 130, minWidth: 90, editable: true, type: 'portale' },
+  { key: 'data_submission', label: 'Data', width: 110, minWidth: 80, editable: true, type: 'text' },
+  { key: 'property_name', label: 'Property', width: 150, minWidth: 100, editable: true, type: 'text' },
+  { key: 'ref_number', label: 'Ref.', width: 80, minWidth: 60, editable: true, type: 'text' },
+  { key: 'last_contact_date', label: 'Data Contatto', width: 120, minWidth: 80, editable: true, type: 'text' },
+  { key: 'contattato_da', label: 'Contattato da', width: 120, minWidth: 80, editable: true, type: 'text' },
+  { key: 'tipo_contatto', label: 'Tipo Contatto', width: 120, minWidth: 90, editable: true, type: 'tipo_contatto' },
+  { key: 'telefono', label: 'Contatto 1', width: 150, minWidth: 100, editable: true, type: 'text' },
+  { key: 'email', label: 'Contatto 2', width: 200, minWidth: 120, editable: true, type: 'text' },
+  { key: 'status', label: 'Status', width: 130, minWidth: 100, editable: true, type: 'status' },
+  { key: 'note_extra', label: 'Note', width: 200, minWidth: 120, editable: true, type: 'text' },
+];
+
+const LINGUA_OPTIONS = ['ENG', 'ITA', 'FRA', 'DEU', 'ESP'];
+const PORTALE_OPTIONS = ['James Edition', 'Idealista', 'Gate-away', 'Sito Cortesi', 'Immobiliare.it', 'Rightmove', 'TALLY', 'Altro'];
+const TIPO_CONTATTO_OPTIONS = ['Mail', 'WhatsApp', 'Call', 'Idealista', 'Sito Cortesi'];
+
+const DEFAULT_LINGUA_COLORS: Record<string, string> = {
+  ENG: '#3b82f6', ITA: '#22c55e', FRA: '#a855f7', DEU: '#f59e0b', ESP: '#ef4444'
+};
+const DEFAULT_PORTALE_COLORS: Record<string, string> = {
+  'James Edition': '#f59e0b', Idealista: '#22c55e', 'Gate-away': '#60a5fa', 'Sito Cortesi': '#a855f7', 
+  'Immobiliare.it': '#ef4444', Rightmove: '#6366f1', TALLY: '#ec4899', Altro: '#6b7280'
+};
+const DEFAULT_TIPO_CONTATTO_COLORS: Record<string, string> = {
+  Mail: '#ef4444', WhatsApp: '#22c55e', Call: '#f59e0b'
+};
+
+const COLOR_PALETTE = [
+  null, '#f0eeec', '#e0ddda', '#c8c4c0', '#a8a4a0', '#808080', '#585858', '#303030',
+  '#fef9e7', '#fef3c7', '#fde68a', '#f5c842', '#e8a317', '#c47f17', '#8b5e14', '#6b3f0d',
+  '#e8f8e8', '#b5f0c0', '#6ddba0', '#38c77e', '#1a9a6c', '#0f7a5a', '#0a5e44', '#053d2e',
+  '#dce8fc', '#b0ccf8', '#6fa2f0', '#3b7de8', '#2060d8', '#1648b8', '#0e3490', '#091e5c',
+  '#f8e0ec', '#f0b0cc', '#e87aaa', '#d8488a', '#c02a70', '#981e5a', '#701644', '#480e2e'
+];
+
+const CellInput = React.memo(({ 
+  initialValue, 
+  onSave, 
+  onCancel, 
+  type = "text",
+  className = ""
+}: { 
+  initialValue: any; 
+  onSave: (val: any) => void; 
+  onCancel: () => void;
+  type?: string;
+  className?: string;
+}) => {
+  const [value, setValue] = useState(initialValue);
+  
   return (
-    <div className="w-full overflow-x-auto rounded-xl border border-[var(--border-light)] bg-white">
-      <table className="min-w-[1000px] w-full border-collapse text-left">
-        <thead>
-          <tr className="bg-[var(--bg-page)] sticky top-0 z-10">
-            <th className="h-9 px-3 border-bottom-2 border-[var(--border-medium)] font-outfit font-medium text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Nome</th>
-            <th className="h-9 px-3 border-bottom-2 border-[var(--border-medium)] font-outfit font-medium text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Cognome</th>
-            <th className="h-9 px-3 border-bottom-2 border-[var(--border-medium)] font-outfit font-medium text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Paese</th>
-            <th className="h-9 px-3 border-bottom-2 border-[var(--border-medium)] font-outfit font-medium text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Budget</th>
-            <th className="h-9 px-3 border-bottom-2 border-[var(--border-medium)] font-outfit font-medium text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Status</th>
-            <th className="h-9 px-3 border-bottom-2 border-[var(--border-medium)] font-outfit font-medium text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Regioni</th>
-            <th className="h-9 px-3 border-bottom-2 border-[var(--border-medium)] font-outfit font-medium text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Tipologia</th>
-            <th className="h-9 px-3 border-bottom-2 border-[var(--border-medium)] font-outfit font-medium text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Portale</th>
-            <th className="h-9 px-3 border-bottom-2 border-[var(--border-medium)] font-outfit font-medium text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Agente</th>
-            <th className="h-9 px-3 border-bottom-2 border-[var(--border-medium)] font-outfit font-medium text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Reminder</th>
-            <th className="h-9 px-3 border-bottom-2 border-[var(--border-medium)] font-outfit font-medium text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">Data</th>
-          </tr>
-        </thead>
-        <tbody>
-          {clienti.map((cliente, index) => {
-            const statusConfig = CLIENTE_STATUS_CONFIG[cliente.status] || CLIENTE_STATUS_CONFIG.new;
-            return (
-              <tr
-                key={cliente.id}
-                onClick={() => onRowClick(cliente)}
-                className={cn(
-                  "h-11 cursor-pointer border-b border-[var(--border-light)] transition-colors duration-100",
-                  index % 2 === 0 ? "bg-white" : "bg-[var(--bg-subtle)]",
-                  "hover:bg-[#FDFBC0]"
-                )}
-              >
-                <td className="px-3 font-outfit font-medium text-[13px] text-[var(--text-primary)]">{cliente.nome}</td>
-                <td className="px-3 font-outfit font-medium text-[13px] text-[var(--text-primary)]">{cliente.cognome}</td>
-                <td className="px-3 text-[12px] text-[var(--text-secondary)]">{cliente.paese}</td>
-                <td className="px-3 font-outfit font-medium text-[12px]">{cliente.budget_max ? formatCurrency(cliente.budget_max) : '-'}</td>
-                <td className="px-3">
-                  <span
-                    className="inline-flex items-center px-2 py-0.5 rounded-full font-outfit font-medium text-[10px] uppercase tracking-wider"
-                    style={{ backgroundColor: statusConfig.bg, color: statusConfig.fg }}
+    <input
+      autoFocus
+      type={type}
+      className={cn("w-full bg-transparent outline-none font-outfit text-[13px]", className)}
+      value={value ?? ""}
+      onChange={(e) => setValue(type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
+      onBlur={() => onSave(value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') onSave(value);
+        if (e.key === 'Escape') onCancel();
+      }}
+    />
+  );
+});
+
+interface FormatSettings {
+  bold?: boolean;
+  italic?: boolean;
+  strikethrough?: boolean;
+  color?: string;
+  backgroundColor?: string;
+}
+
+export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({
+  clienti,
+  agents,
+  onCardClick,
+  onUpdate,
+  onDelete,
+  onDuplicate,
+  searchQuery,
+  onAddNew,
+  isLoading
+}) => {
+  // --- State ---
+  const [customCols, setCustomCols] = useState<Array<{ key: string; label: string }>>(() => {
+    const saved = localStorage.getItem('clienti-sheet-custom-cols');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const allColumns = useMemo(() => {
+    const custom = customCols.map(c => ({
+      key: c.key,
+      label: c.label,
+      width: 150,
+      minWidth: 100,
+      editable: true,
+      type: 'text' as const,
+      isCustom: true
+    }));
+    return [...DEFAULT_COLUMNS, ...custom];
+  }, [customCols]);
+
+  const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem('clienti-sheet-col-widths-v3');
+    return saved ? JSON.parse(saved) : allColumns.reduce((acc, col) => ({ ...acc, [col.key]: col.width }), {});
+  });
+
+  const [colOrder, setColOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('clienti-sheet-col-order-v3');
+    return saved ? JSON.parse(saved) : allColumns.map(c => c.key);
+  });
+
+  const [sortState, setSortState] = useState<{ col: string; dir: 'asc' | 'desc' }>(() => {
+    const saved = localStorage.getItem('clienti-sheet-sort');
+    return saved ? JSON.parse(saved) : { col: 'data_submission', dir: 'desc' };
+  });
+
+  const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
+  const [qualificatiOnly, setQualificatiOnly] = useState(false);
+  const [activeFilterCol, setActiveFilterCol] = useState<string | null>(null);
+  const [filterSearch, setFilterSearch] = useState("");
+
+  const [editingCell, setEditingCell] = useState<{ id: string; key: string } | null>(null);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [selectedColKey, setSelectedColKey] = useState<string | null>(null);
+
+  const [rowFormats, setRowFormats] = useState<Record<string, FormatSettings>>(() => {
+    const saved = localStorage.getItem('clienti-sheet-row-formats-v3');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [colFormats, setColFormats] = useState<Record<string, FormatSettings>>(() => {
+    const saved = localStorage.getItem('clienti-sheet-col-formats-v3');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [linguaColors, setLinguaColors] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('custom-lingua-colors');
+    return saved ? JSON.parse(saved) : DEFAULT_LINGUA_COLORS;
+  });
+
+  const [portaleColors, setPortaleColors] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('custom-portale-colors');
+    return saved ? JSON.parse(saved) : DEFAULT_PORTALE_COLORS;
+  });
+
+  const [tipoContattoColors, setTipoContattoColors] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('custom-tipo-contatto-colors');
+    return saved ? JSON.parse(saved) : DEFAULT_TIPO_CONTATTO_COLORS;
+  });
+
+  const [rowContextMenu, setRowContextMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+  const [cellContextMenu, setCellContextMenu] = useState<{ x: number; y: number; id: string; key: string; value: any } | null>(null);
+  const [headerContextMenu, setHeaderContextMenu] = useState<{ x: number; y: number; key: string } | null>(null);
+  const [badgePopup, setBadgePopup] = useState<{ x: number; y: number; id: string; key: string; type: 'lingua' | 'portale' | 'tipo_contatto' } | null>(null);
+
+  const [copiedValue, setCopiedValue] = useState<any>(null);
+  const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
+  const [dragOverRowId, setDragOverRowId] = useState<string | null>(null);
+  const [draggedColKey, setDraggedColKey] = useState<string | null>(null);
+  const [dragOverColKey, setDragOverColKey] = useState<string | null>(null);
+
+  const { overrides, updateOverride } = useColumnTypeOverrides('clienti');
+  const { columns: kanbanCols } = useClientKanbanColumns();
+
+  // --- Persistence ---
+  useEffect(() => { localStorage.setItem('clienti-sheet-custom-cols', JSON.stringify(customCols)); }, [customCols]);
+  useEffect(() => { localStorage.setItem('clienti-sheet-col-widths-v3', JSON.stringify(colWidths)); }, [colWidths]);
+  useEffect(() => { localStorage.setItem('clienti-sheet-col-order-v3', JSON.stringify(colOrder)); }, [colOrder]);
+  useEffect(() => { localStorage.setItem('clienti-sheet-sort', JSON.stringify(sortState)); }, [sortState]);
+  useEffect(() => { localStorage.setItem('clienti-sheet-row-formats-v3', JSON.stringify(rowFormats)); }, [rowFormats]);
+  useEffect(() => { localStorage.setItem('clienti-sheet-col-formats-v3', JSON.stringify(colFormats)); }, [colFormats]);
+  useEffect(() => { localStorage.setItem('custom-lingua-colors', JSON.stringify(linguaColors)); }, [linguaColors]);
+  useEffect(() => { localStorage.setItem('custom-portale-colors', JSON.stringify(portaleColors)); }, [portaleColors]);
+  useEffect(() => { localStorage.setItem('custom-tipo-contatto-colors', JSON.stringify(tipoContattoColors)); }, [tipoContattoColors]);
+
+  // --- Helpers ---
+  const getContrastColor = (hex: string | undefined) => {
+    if (!hex || hex === 'transparent') return 'inherit';
+    const rgb = hex.replace(/^#/, '').match(/.{2}/g)?.map(x => parseInt(x, 16));
+    if (!rgb) return 'inherit';
+    const luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
+    return luminance < 0.5 ? '#FFFFFF' : '#1A1A18';
+  };
+
+  const getCellFormatting = (rowId: string, colKey: string): React.CSSProperties => {
+    const rowF = rowFormats[rowId] || {};
+    const colF = colFormats[colKey] || {};
+    return {
+      fontWeight: rowF.bold || colF.bold ? 'bold' : 'normal',
+      fontStyle: rowF.italic || colF.italic ? 'italic' : 'normal',
+      textDecoration: rowF.strikethrough || colF.strikethrough ? 'line-through' : 'none',
+      color: rowF.color || colF.color || 'inherit',
+      backgroundColor: rowF.backgroundColor || colF.backgroundColor || 'transparent',
+    };
+  };
+
+  // --- Column Management ---
+  const handleResizeStart = (e: React.MouseEvent, key: string) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = colWidths[key] || 100;
+    const onMouseMove = (moveE: MouseEvent) => {
+      const deltaX = moveE.clientX - startX;
+      const minWidth = allColumns.find(c => c.key === key)?.minWidth || 50;
+      setColWidths(prev => ({ ...prev, [key]: Math.max(minWidth, startWidth + deltaX) }));
+    };
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  const addCustomColumn = () => {
+    const name = prompt("Inserisci il nome della nuova colonna:");
+    if (name) {
+      const key = 'custom_' + Date.now();
+      setCustomCols(prev => [...prev, { key, label: name }]);
+      setColOrder(prev => [...prev, key]);
+      setColWidths(prev => ({ ...prev, [key]: 150 }));
+    }
+  };
+
+  const deleteCustomColumn = (key: string) => {
+    if (confirm("Eliminare questa colonna personalizzata?")) {
+      setCustomCols(prev => prev.filter(c => c.key !== key));
+      setColOrder(prev => prev.filter(k => k !== key));
+    }
+  };
+
+  // --- Filtering & Sorting ---
+  const filteredData = useMemo(() => {
+    let data = [...clienti];
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      data = data.filter(c => 
+        c.nome?.toLowerCase().includes(q) || 
+        c.cognome?.toLowerCase().includes(q) || 
+        c.email?.toLowerCase().includes(q) || 
+        c.telefono?.toLowerCase().includes(q)
+      );
+    }
+    if (qualificatiOnly) {
+      data = data.filter(c => c.status === 'qualified');
+    }
+    Object.entries(colFilters).forEach(([key, allowed]) => {
+      if (allowed.size > 0) {
+        data = data.filter(c => {
+          const val = String((c as any)[key] || (c.custom_fields as any)?.[key] || "");
+          return allowed.has(val);
+        });
+      }
+    });
+    return data;
+  }, [clienti, searchQuery, qualificatiOnly, colFilters]);
+
+  const sortedData = useMemo(() => {
+    const { col, dir } = sortState;
+    return [...filteredData].sort((a, b) => {
+      const valA = (a as any)[col] || (a.custom_fields as any)?.[col] || "";
+      const valB = (b as any)[col] || (b.custom_fields as any)?.[col] || "";
+      let res = 0;
+      if (typeof valA === 'number' && typeof valB === 'number') res = valA - valB;
+      else res = String(valA).localeCompare(String(valB));
+      return dir === 'asc' ? res : -res;
+    });
+  }, [filteredData, sortState]);
+
+  // --- Render Cell ---
+  const renderCell = (cliente: Cliente, col: typeof allColumns[0]) => {
+    const isCustom = (col as any).isCustom;
+    const value = isCustom ? (cliente.custom_fields as any)?.[col.key] : (cliente as any)[col.key];
+    const isEditing = editingCell?.id === cliente.id && editingCell?.key === col.key;
+    const override = overrides[col.key];
+    const cellType = override?.type || col.type;
+
+    const cellStyle: React.CSSProperties = {
+      width: colWidths[col.key],
+      minWidth: col.minWidth,
+      ...getCellFormatting(cliente.id, col.key)
+    };
+
+    if (isEditing) {
+      return (
+        <div className="relative w-full h-full flex items-center px-2" style={cellStyle}>
+          <CellInput
+            initialValue={value}
+            onSave={(val) => {
+              if (isCustom) {
+                const custom = { ...(cliente.custom_fields || {}), [col.key]: val };
+                onUpdate(cliente.id, { custom_fields: custom });
+              } else {
+                onUpdate(cliente.id, { [col.key]: val });
+              }
+              setEditingCell(null);
+            }}
+            onCancel={() => setEditingCell(null)}
+          />
+        </div>
+      );
+    }
+
+    let content: React.ReactNode = value;
+
+    if (cellType === 'status') {
+      const colConfig = kanbanCols.find(c => c.key === value);
+      const color = colConfig?.color || '#E5E7EB';
+      content = (
+        <div className="px-2 py-0.5 rounded-full text-[11px] font-medium flex items-center gap-1.5" style={{ backgroundColor: color + '20', color }}>
+          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+          {colConfig?.label || value}
+        </div>
+      );
+    } else if (['lingua', 'portale', 'tipo_contatto'].includes(cellType)) {
+      const colors = cellType === 'lingua' ? linguaColors : cellType === 'portale' ? portaleColors : tipoContattoColors;
+      const color = colors[value] || '#6b7280';
+      content = (
+        <div 
+          className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:opacity-80 transition-opacity"
+          style={{ backgroundColor: color + '20', color }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setBadgePopup({ x: e.clientX, y: e.clientY, id: cliente.id, key: col.key, type: cellType as any });
+          }}
+        >
+          {value || "---"}
+        </div>
+      );
+    }
+
+    return (
+      <div 
+        className="px-2 h-full flex items-center truncate cursor-text min-h-[32px]"
+        style={cellStyle}
+        onClick={() => col.editable && setEditingCell({ id: cliente.id, key: col.key })}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setCellContextMenu({ x: e.clientX, y: e.clientY, id: cliente.id, key: col.key, value });
+        }}
+      >
+        {content}
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-white border border-[var(--border-light)] rounded-xl overflow-hidden shadow-sm">
+      {/* Toolbar */}
+      <AnimatePresence>
+        {(selectedRowId || selectedColKey) && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex items-center justify-end gap-1 p-1.5 border-b bg-[var(--bg-subtle)]">
+            <ToolbarButton icon={<Bold size={16} />} onClick={() => {
+              const type = selectedRowId ? 'row' : 'col';
+              const id = selectedRowId || selectedColKey!;
+              const current = (type === 'row' ? rowFormats[id] : colFormats[id])?.bold;
+              if(type === 'row') setRowFormats(p => ({...p, [id]: {...(p[id]||{}), bold: !current}}));
+              else setColFormats(p => ({...p, [id]: {...(p[id]||{}), bold: !current}}));
+            }} />
+            <ToolbarButton icon={<Italic size={16} />} onClick={() => {
+              const type = selectedRowId ? 'row' : 'col';
+              const id = selectedRowId || selectedColKey!;
+              const current = (type === 'row' ? rowFormats[id] : colFormats[id])?.italic;
+              if(type === 'row') setRowFormats(p => ({...p, [id]: {...(p[id]||{}), italic: !current}}));
+              else setColFormats(p => ({...p, [id]: {...(p[id]||{}), italic: !current}}));
+            }} />
+            <ToolbarButton icon={<Strikethrough size={16} />} onClick={() => {
+              const type = selectedRowId ? 'row' : 'col';
+              const id = selectedRowId || selectedColKey!;
+              const current = (type === 'row' ? rowFormats[id] : colFormats[id])?.strikethrough;
+              if(type === 'row') setRowFormats(p => ({...p, [id]: {...(p[id]||{}), strikethrough: !current}}));
+              else setColFormats(p => ({...p, [id]: {...(p[id]||{}), strikethrough: !current}}));
+            }} />
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+            <ColorPickerButton icon={<Type size={16} />} onSelect={(color) => {
+              const id = selectedRowId || selectedColKey!;
+              if(selectedRowId) setRowFormats(p => ({...p, [id]: {...(p[id]||{}), color}}));
+              else setColFormats(p => ({...p, [id]: {...(p[id]||{}), color}}));
+            }} />
+            <ColorPickerButton icon={<Palette size={16} />} onSelect={(backgroundColor) => {
+              const id = selectedRowId || selectedColKey!;
+              if(selectedRowId) setRowFormats(p => ({...p, [id]: {...(p[id]||{}), backgroundColor}}));
+              else setColFormats(p => ({...p, [id]: {...(p[id]||{}), backgroundColor}}));
+            }} />
+            <button onClick={() => { setSelectedRowId(null); setSelectedColKey(null); }} className="ml-2 p-1 hover:bg-black/5 rounded"><X size={14} /></button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex-1 overflow-auto relative">
+        <table className="border-collapse table-fixed min-w-full">
+          <thead>
+            <tr className="sticky top-0 z-20 bg-[var(--bg-surface)] shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+              <th className="sticky left-0 z-30 bg-[var(--bg-subtle)] w-[52px] min-w-[52px] border-r border-b h-10" />
+              {colOrder.map(key => {
+                const col = allColumns.find(c => c.key === key)!;
+                const isSorted = sortState.col === key;
+                const isFiltered = colFilters[key]?.size > 0;
+                return (
+                  <th 
+                    key={key} 
+                    className={cn(
+                      "relative border-r border-b h-10 px-2 text-left font-outfit text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] select-none group",
+                      selectedColKey === key && "bg-primary/5"
+                    )}
+                    style={{ width: colWidths[key] }}
                   >
-                    {statusConfig.label}
-                  </span>
-                </td>
-                <td className="px-3 text-[11px] text-[var(--text-secondary)] truncate max-w-[150px]">
-                  {cliente.regioni?.join(', ')}
-                </td>
-                <td className="px-3 text-[11px] text-[var(--text-secondary)] truncate max-w-[150px]">
-                  {cliente.tipologia?.join(', ')}
-                </td>
-                <td className="px-3 text-[12px] text-[var(--text-secondary)]">{cliente.portale}</td>
-                <td className="px-3 text-[12px] text-[var(--text-secondary)]">{cliente.assigned_to}</td>
-                <td className="px-3 text-[11px] text-[var(--text-secondary)]">
-                  {cliente.reminder_date ? new Date(cliente.reminder_date).toLocaleDateString('it-IT') : '-'}
-                </td>
-                <td className="px-3 text-[11px] text-[var(--text-secondary)]">
-                  {new Date(cliente.created_at).toLocaleDateString('it-IT')}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1 cursor-pointer truncate flex-1" onClick={() => setSortState(p => ({ col: key, dir: p.col === key && p.dir === 'asc' ? 'desc' : 'asc' }))} onContextMenu={(e) => { e.preventDefault(); setHeaderContextMenu({ x: e.clientX, y: e.clientY, key }); }}>
+                        {col.label}
+                        {isSorted && (sortState.dir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                      </div>
+                      <button onClick={() => setActiveFilterCol(activeFilterCol === key ? null : key)} className={cn("p-1 rounded hover:bg-black/5 transition-colors", isFiltered ? "text-primary" : "text-gray-400 opacity-0 group-hover:opacity-100")}><Filter size={12} /></button>
+                    </div>
+                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10" onMouseDown={(e) => handleResizeStart(e, key)} />
+                    {activeFilterCol === key && (
+                      <FilterPopover 
+                        columnKey={key}
+                        values={Array.from(new Set(clienti.map(c => String((c as any)[key] || (c.custom_fields as any)?.[key] || "")))).sort()}
+                        selected={colFilters[key] || new Set()}
+                        onToggle={(val) => setColFilters(p => {
+                          const n = {...p}; const s = new Set(n[key] || []);
+                          if(s.has(val)) s.delete(val); else s.add(val);
+                          if(s.size === 0) delete n[key]; else n[key] = s;
+                          return n;
+                        })}
+                        onClose={() => setActiveFilterCol(null)}
+                        onClear={() => setColFilters(p => { const n = {...p}; delete n[key]; return n; })}
+                        search={filterSearch}
+                        onSearchChange={setFilterSearch}
+                        isStatus={key === 'status'}
+                        onQualificatiToggle={() => setQualificatiOnly(!qualificatiOnly)}
+                        qualificatiOnly={qualificatiOnly}
+                      />
+                    )}
+                  </th>
+                );
+              })}
+              <th className="w-10 border-b bg-[var(--bg-subtle)]">
+                <button onClick={addCustomColumn} className="w-full h-full flex items-center justify-center hover:bg-black/5 text-primary"><Plus size={16} /></button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedData.map((cliente, index) => {
+              const bg = cliente.card_color || 'transparent';
+              const contrastText = getContrastColor(cliente.card_color);
+              return (
+                <tr 
+                  key={cliente.id} 
+                  className={cn("group border-b hover:bg-black/[0.02] transition-colors relative", selectedRowId === cliente.id && "bg-primary/5")}
+                  style={{ backgroundColor: bg !== 'transparent' ? bg : undefined, color: bg !== 'transparent' ? contrastText : undefined }}
+                >
+                  <td className="sticky left-0 z-10 bg-[var(--bg-subtle)] border-r text-center font-outfit text-[10px] text-[var(--text-muted)] select-none flex items-center justify-center gap-1 px-1 h-full min-h-[32px]" onContextMenu={(e) => { e.preventDefault(); setRowContextMenu({ x: e.clientX, y: e.clientY, id: cliente.id }); }}>
+                    <div draggable onDragStart={() => setDraggedRowId(cliente.id)} className="cursor-grab active:cursor-grabbing opacity-30 hover:opacity-70"><GripVertical size={14} /></div>
+                    <span className="w-4">{index + 1}</span>
+                    <button onClick={() => onCardClick(cliente)} className="p-1 hover:bg-black/5 rounded opacity-0 group-hover:opacity-100"><Eye size={14} /></button>
+                  </td>
+                  {colOrder.map(key => (
+                    <td key={key} className={cn("border-r p-0 h-full overflow-hidden", selectedColKey === key && "bg-primary/5")} onClick={(e) => { if(e.shiftKey) { setSelectedColKey(key); setSelectedRowId(null); } else { setSelectedRowId(cliente.id); setSelectedColKey(null); } }}>
+                      {renderCell(cliente, allColumns.find(c => c.key === key)!)}
+                    </td>
+                  ))}
+                  <td className="border-b" />
+                </tr>
+              );
+            })}
+            <tr className="h-9 border-b group cursor-pointer hover:bg-black/5" onClick={onAddNew}>
+              <td className="sticky left-0 z-10 bg-[var(--bg-subtle)] border-r flex items-center justify-center h-9"><Plus size={14} className="text-primary" /></td>
+              <td colSpan={colOrder.length + 1} className="px-3 text-[12px] text-primary font-medium">Aggiungi nuovo cliente...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <AnimatePresence>
+        {rowContextMenu && (
+          <RowContextMenu 
+            {...rowContextMenu} 
+            onClose={() => setRowContextMenu(null)}
+            onUpdate={(u) => onUpdate(rowContextMenu.id, u)}
+            onDelete={onDelete ? () => onDelete(rowContextMenu.id) : undefined}
+            onDuplicate={onDuplicate ? () => onDuplicate(clienti.find(c => c.id === rowContextMenu.id)!) : undefined}
+            currentStatus={clienti.find(c => c.id === rowContextMenu.id)?.status}
+            currentLingua={clienti.find(c => c.id === rowContextMenu.id)?.lingua}
+            kanbanCols={kanbanCols}
+            linguaColors={linguaColors}
+          />
+        )}
+        {cellContextMenu && (
+          <CellContextMenu 
+            {...cellContextMenu} 
+            onClose={() => setCellContextMenu(null)}
+            onCopy={() => { navigator.clipboard.writeText(String(cellContextMenu.value || "")); setCopiedValue(cellContextMenu.value); setCellContextMenu(null); }}
+            onPaste={() => { if(copiedValue !== null) onUpdate(cellContextMenu.id, { [cellContextMenu.key]: copiedValue }); setCellContextMenu(null); }}
+            onReset={() => { onUpdate(cellContextMenu.id, { [cellContextMenu.key]: "" }); setCellContextMenu(null); }}
+          />
+        )}
+        {headerContextMenu && (
+          <HeaderContextMenu 
+            {...headerContextMenu} 
+            onClose={() => setHeaderContextMenu(null)}
+            onTypeChange={(t) => updateOverride(headerContextMenu.key, { type: t })}
+            isCustom={headerContextMenu.key.startsWith('custom_')}
+            onDelete={() => deleteCustomColumn(headerContextMenu.key)}
+          />
+        )}
+        {badgePopup && (
+          <BadgePopup 
+            {...badgePopup}
+            onClose={() => setBadgePopup(null)}
+            options={badgePopup.type === 'lingua' ? LINGUA_OPTIONS : badgePopup.type === 'portale' ? PORTALE_OPTIONS : TIPO_CONTATTO_OPTIONS}
+            colors={badgePopup.type === 'lingua' ? linguaColors : badgePopup.type === 'portale' ? portaleColors : tipoContattoColors}
+            onSelect={(val) => { onUpdate(badgePopup.id, { [badgePopup.key]: val }); setBadgePopup(null); }}
+            onUpdateColor={(val, color) => {
+              if(badgePopup.type === 'lingua') setLinguaColors(p => ({...p, [val]: color}));
+              else if(badgePopup.type === 'portale') setPortaleColors(p => ({...p, [val]: color}));
+              else setTipoContattoColors(p => ({...p, [val]: color}));
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+
+// --- Sub-components ---
+
+const ToolbarButton: React.FC<{ icon: React.ReactNode; onClick: () => void; active?: boolean }> = ({ icon, onClick, active }) => (
+  <button onClick={onClick} className={cn("p-1.5 rounded transition-colors", active ? "bg-primary text-white" : "hover:bg-black/5 text-[var(--text-primary)]")}>{icon}</button>
+);
+
+const ColorPickerButton: React.FC<{ icon: React.ReactNode; onSelect: (color: string) => void }> = ({ icon, onSelect }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button onClick={() => setIsOpen(!isOpen)} className="p-1.5 hover:bg-black/5 rounded">{icon}</button>
+      {isOpen && (
+        <div className="absolute top-full right-0 mt-1 p-2 bg-white border rounded-lg shadow-xl z-50 grid grid-cols-8 gap-1 w-[200px]">
+          {COLOR_PALETTE.map((color, i) => (
+            <button key={i} onClick={() => { onSelect(color || 'transparent'); setIsOpen(false); }} className="w-5 h-5 rounded-sm border border-gray-200" style={{ backgroundColor: color || 'transparent' }} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FilterPopover: React.FC<{
+  columnKey: string; values: string[]; selected: Set<string>; onToggle: (val: string) => void;
+  onClose: () => void; onClear: () => void; search: string; onSearchChange: (val: string) => void;
+  isStatus?: boolean; onQualificatiToggle?: () => void; qualificatiOnly?: boolean;
+}> = ({ values, selected, onToggle, onClose, onClear, search, onSearchChange, isStatus, onQualificatiToggle, qualificatiOnly }) => (
+  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute top-full left-0 mt-1 w-56 bg-white border rounded-lg shadow-xl z-50 flex flex-col overflow-hidden">
+    <div className="p-2 border-b">
+      <div className="relative">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+        <input autoFocus className="w-full pl-8 pr-2 py-1.5 bg-gray-50 border rounded-md text-[12px] outline-none" placeholder="Cerca..." value={search} onChange={(e) => onSearchChange(e.target.value)} />
+      </div>
+      {isStatus && (
+        <label className="flex items-center gap-2 mt-2 px-1 cursor-pointer">
+          <input type="checkbox" checked={qualificatiOnly} onChange={onQualificatiToggle} className="rounded text-primary" />
+          <span className="text-[11px] font-medium">Solo Qualificati</span>
+        </label>
+      )}
+    </div>
+    <div className="max-h-60 overflow-y-auto p-1">
+      {values.filter(v => v.toLowerCase().includes(search.toLowerCase())).map(val => (
+        <label key={val} className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded cursor-pointer">
+          <input type="checkbox" checked={selected.has(val)} onChange={() => onToggle(val)} className="rounded text-primary" />
+          <span className="text-[12px] truncate">{val || "(Vuoto)"}</span>
+        </label>
+      ))}
+    </div>
+    <div className="p-2 border-t bg-gray-50 flex justify-between">
+      <button onClick={onClear} className="text-[11px] text-red-500 hover:underline">Resetta</button>
+      <button onClick={onClose} className="text-[11px] font-semibold text-primary">OK</button>
+    </div>
+  </motion.div>
+);
+
+const RowContextMenu: React.FC<{
+  x: number; y: number; id: string; onClose: () => void; onUpdate: (u: Partial<Cliente>) => void;
+  onDelete?: () => void; onDuplicate?: () => void; currentStatus?: string; currentLingua?: string;
+  kanbanCols: any[]; linguaColors: Record<string, string>;
+}> = ({ x, y, onClose, onUpdate, onDelete, onDuplicate, currentStatus, currentLingua, kanbanCols, linguaColors }) => (
+  <>
+    <div className="fixed inset-0 z-[100]" onClick={onClose} />
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="fixed z-[101] w-72 bg-white border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto" style={{ left: Math.min(x, window.innerWidth - 300), top: Math.min(y, window.innerHeight - 500) }}>
+      <div className="p-3 border-b bg-gray-50/50">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 block">Stato</span>
+        <div className="flex flex-wrap gap-1.5">
+          {kanbanCols.map(s => (
+            <button key={s.key} onClick={() => { onUpdate({ status: s.key }); onClose(); }} className={cn("px-2 py-1 rounded-full text-[10px] font-medium transition-all", currentStatus === s.key ? "ring-2 ring-primary" : "hover:scale-105")} style={{ backgroundColor: s.color + '20', color: s.color }}>{s.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="p-3 border-b">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 block">Lingua</span>
+        <div className="flex flex-wrap gap-1.5">
+          {LINGUA_OPTIONS.map(l => (
+            <button key={l} onClick={() => { onUpdate({ lingua: l }); onClose(); }} className={cn("px-2 py-1 rounded-full text-[10px] font-bold uppercase transition-all", currentLingua === l ? "ring-2 ring-primary" : "hover:scale-105")} style={{ backgroundColor: (linguaColors[l] || '#6b7280') + '20', color: linguaColors[l] || '#6b7280' }}>{l}</button>
+          ))}
+        </div>
+      </div>
+      <div className="p-1">
+        <ContextMenuItem icon={<CopyIcon size={14} />} label="Duplica cliente" onClick={() => { onDuplicate?.(); onClose(); }} />
+        <div className="h-px bg-gray-100 my-1" />
+        <ContextMenuItem icon={<Trash2 size={14} />} label="Elimina cliente" onClick={() => { if(confirm("Eliminare?")) onDelete?.(); onClose(); }} className="text-red-500" />
+      </div>
+    </motion.div>
+  </>
+);
+
+const CellContextMenu: React.FC<{ x: number; y: number; onClose: () => void; onCopy: () => void; onPaste: () => void; onReset: () => void; }> = ({ x, y, onClose, onCopy, onPaste, onReset }) => (
+  <>
+    <div className="fixed inset-0 z-[100]" onClick={onClose} />
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="fixed z-[101] w-40 bg-white border rounded-lg shadow-xl overflow-hidden py-1" style={{ left: x, top: y }}>
+      <ContextMenuItem icon={<Copy size={14} />} label="Copia" onClick={onCopy} />
+      <ContextMenuItem icon={<Clipboard size={14} />} label="Incolla" onClick={onPaste} />
+      <div className="h-px bg-gray-100 my-1" />
+      <ContextMenuItem icon={<RotateCcw size={14} />} label="Reset" onClick={onReset} className="text-red-500" />
+    </motion.div>
+  </>
+);
+
+const HeaderContextMenu: React.FC<{ x: number; y: number; onClose: () => void; onTypeChange: (t: ColumnType) => void; isCustom?: boolean; onDelete?: () => void; }> = ({ x, y, onClose, onTypeChange, isCustom, onDelete }) => (
+  <>
+    <div className="fixed inset-0 z-[100]" onClick={onClose} />
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="fixed z-[101] w-48 bg-white border rounded-lg shadow-xl overflow-hidden py-1" style={{ left: x, top: y }}>
+      <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Tipo Colonna</span>
+      <ContextMenuItem label="Testo" onClick={() => onTypeChange('text')} />
+      <ContextMenuItem label="Numero" onClick={() => onTypeChange('number')} />
+      <ContextMenuItem label="URL" onClick={() => onTypeChange('url')} />
+      {isCustom && (
+        <>
+          <div className="h-px bg-gray-100 my-1" />
+          <ContextMenuItem icon={<Trash2 size={14} />} label="Elimina colonna" onClick={() => { onDelete?.(); onClose(); }} className="text-red-500" />
+        </>
+      )}
+    </motion.div>
+  </>
+);
+
+const BadgePopup: React.FC<{
+  x: number; y: number; onClose: () => void; options: string[]; colors: Record<string, string>;
+  onSelect: (v: string) => void; onUpdateColor: (v: string, c: string) => void;
+}> = ({ x, y, onClose, options, colors, onSelect, onUpdateColor }) => {
+  const [showPicker, setShowPicker] = useState<string | null>(null);
+  return (
+    <>
+      <div className="fixed inset-0 z-[100]" onClick={onClose} />
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="fixed z-[101] w-48 bg-white border rounded-xl shadow-2xl p-2" style={{ left: Math.min(x, window.innerWidth - 200), top: Math.min(y, window.innerHeight - 300) }}>
+        <div className="flex flex-col gap-1">
+          {options.map(opt => (
+            <div key={opt} className="flex items-center gap-1 group">
+              <button 
+                onClick={() => onSelect(opt)}
+                onContextMenu={(e) => { e.preventDefault(); setShowPicker(opt); }}
+                className="flex-1 px-2 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wider text-left transition-colors"
+                style={{ backgroundColor: (colors[opt] || '#6b7280') + '20', color: colors[opt] || '#6b7280' }}
+              >
+                {opt}
+              </button>
+            </div>
+          ))}
+          <button onClick={() => { const n = prompt("Nuova opzione:"); if(n) onSelect(n); }} className="mt-1 px-2 py-1.5 border border-dashed rounded-md text-[11px] text-gray-400 hover:text-primary hover:border-primary transition-colors flex items-center gap-2 justify-center">
+            <Plus size={12} /> Aggiungi
+          </button>
+        </div>
+        {showPicker && (
+          <div className="absolute left-full top-0 ml-1 p-2 bg-white border rounded-lg shadow-xl grid grid-cols-5 gap-1 w-[130px]">
+            {COLOR_PALETTE.map((c, i) => (
+              <button key={i} onClick={() => { onUpdateColor(showPicker, c || '#6b7280'); setShowPicker(null); }} className="w-5 h-5 rounded-sm border" style={{ backgroundColor: c || 'transparent' }} />
+            ))}
+          </div>
+        )}
+      </motion.div>
+    </>
+  );
+};
+
+const ContextMenuItem: React.FC<{ icon?: React.ReactNode; label: string; onClick: () => void; className?: string }> = ({ icon, label, onClick, className }) => (
+  <button onClick={onClick} className={cn("w-full px-3 py-2 flex items-center gap-2 text-[12px] hover:bg-black/5 transition-colors text-left", className)}>
+    {icon}
+    {label}
+  </button>
+);

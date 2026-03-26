@@ -17,6 +17,19 @@ interface AddAppointmentDialogProps {
   calendars?: GoogleCalendar[];
 }
 
+const AppointmentInput = ({ label, icon: Icon, ...props }: any) => (
+  <div className="flex flex-col gap-1.5">
+    <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+      {Icon && <Icon size={12} />}
+      {label}
+    </label>
+    <input
+      {...props}
+      className="w-full bg-[var(--bg-subtle)] border-0 rounded-[10px] p-2.5 px-4 text-[13px] font-outfit outline-none focus:ring-1 focus:ring-black/10 transition-all"
+    />
+  </div>
+);
+
 export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({ 
   isOpen, 
   onClose, 
@@ -101,19 +114,6 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
     });
   };
 
-  const Input = ({ label, icon: Icon, ...props }: any) => (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
-        {Icon && <Icon size={12} />}
-        {label}
-      </label>
-      <input
-        {...props}
-        className="w-full bg-[var(--bg-subtle)] border-0 rounded-[10px] p-2.5 px-4 text-[13px] font-outfit outline-none focus:ring-1 focus:ring-black/10 transition-all"
-      />
-    </div>
-  );
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -144,7 +144,7 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5 overflow-y-auto max-h-[70vh]">
-              <Input
+              <AppointmentInput
                 label="Titolo"
                 required
                 placeholder="Es: Visita Villa Olmo"
@@ -184,7 +184,7 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Input
+                <AppointmentInput
                   label="Data"
                   type="date"
                   icon={CalendarIcon}
@@ -192,14 +192,14 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                   onChange={(e: any) => setFormData({ ...formData, date: e.target.value })}
                 />
                 <div className="grid grid-cols-2 gap-2">
-                  <Input
+                  <AppointmentInput
                     label="Inizio"
                     type="time"
                     icon={Clock}
                     value={startTime}
                     onChange={(e: any) => setStartTime(e.target.value)}
                   />
-                  <Input
+                  <AppointmentInput
                     label="Fine"
                     type="time"
                     value={endTime}
@@ -208,7 +208,7 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                 </div>
               </div>
 
-              <Input
+              <AppointmentInput
                 label="Luogo"
                 icon={MapPin}
                 placeholder="Indirizzo o link meeting"

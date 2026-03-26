@@ -5,16 +5,17 @@ import { Notizia, NotiziaStatus } from "@/src/types";
 import { useNotizie } from "@/src/hooks/useNotizie";
 import { useUndoRedo } from "@/src/hooks/useUndoRedo";
 import { NotiziaCard } from "./NotiziaCard";
-import { NOTIZIA_STATUSES, NOTIZIA_STATUS_LABELS, NOTIZIA_STATUS_COLORS } from "./notizieConfig";
+import { useKanbanColumns, KanbanColumn as ColumnType } from "@/src/hooks/useKanbanColumns";
 import { cn } from "@/src/lib/utils";
 
 interface KanbanBoardProps {
   onNotiziaClick: (notizia: Notizia) => void;
-  onQuickAdd: (status: NotiziaStatus) => void;
+  onQuickAdd: (status: string) => void;
 }
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({ onNotiziaClick, onQuickAdd }) => {
-  const { notizieByStatus, updateNotizia, reorderNotizie } = useNotizie();
+  const { notizieByStatus, updateNotizia, deleteNotizia, reorderNotizie } = useNotizie();
+  const { columns } = useKanbanColumns();
   const { pushAction } = useUndoRedo();
 
   const onDragEnd = (result: DropResult) => {
@@ -70,13 +71,15 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ onNotiziaClick, onQuic
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="flex gap-3 overflow-x-auto pb-4 h-full min-h-[500px]">
-        {NOTIZIA_STATUSES.map((status) => (
+        {columns.map((col) => (
           <KanbanColumn
-            key={status}
-            status={status}
-            notizie={notizieByStatus[status] || []}
+            key={col.id}
+            column={col}
+            notizie={notizieByStatus[col.key] || []}
             onNotiziaClick={onNotiziaClick}
-            onQuickAdd={() => onQuickAdd(status)}
+            onQuickAdd={() => onQuickAdd(col.key)}
+            updateNotizia={updateNotizia}
+            deleteNotizia={deleteNotizia}
           />
         ))}
       </div>
@@ -85,14 +88,23 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ onNotiziaClick, onQuic
 };
 
 interface KanbanColumnProps {
-  status: NotiziaStatus;
+  column: ColumnType;
   notizie: Notizia[];
   onNotiziaClick: (notizia: Notizia) => void;
   onQuickAdd: () => void;
+  updateNotizia: any;
+  deleteNotizia: any;
 }
 
-const KanbanColumn: React.FC<KanbanColumnProps> = ({ status, notizie, onNotiziaClick, onQuickAdd }) => {
-  const statusColor = NOTIZIA_STATUS_COLORS[status];
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ 
+  column, 
+  notizie, 
+  onNotiziaClick, 
+  onQuickAdd,
+  updateNotizia,
+  deleteNotizia
+}) => {
+  const statusColor = column.color;
 
   return (
     <div className="flex flex-col min-w-[210px] w-[210px] bg-[var(--bg-subtle)] rounded-[12px] p-2 h-full">
@@ -102,7 +114,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ status, notizie, onNotiziaC
         style={{ borderTopColor: statusColor }}
       >
         <span className="font-outfit font-semibold text-[11px] uppercase tracking-[0.07em] text-[var(--text-secondary)]">
-          {NOTIZIA_STATUS_LABELS[status]}
+          {column.label}
         </span>
         <div className="bg-white min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center font-outfit font-semibold text-[10px] text-[var(--text-secondary)] shadow-sm">
           {notizie.length}
@@ -110,7 +122,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ status, notizie, onNotiziaC
       </div>
 
       {/* Droppable Area */}
-      <Droppable droppableId={status}>
+      <Droppable droppableId={column.key}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
@@ -131,7 +143,12 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ status, notizie, onNotiziaC
                   >
                     <NotiziaCard
                       notizia={notizia}
-                      onClick={onNotiziaClick}
+                      onClick={() => onNotiziaClick(notizia)}
+                      onStatusChange={(id, status) => updateNotizia({ id, status: status as any })}
+                      onEmojiChange={(id, emoji) => updateNotizia({ id, emoji })}
+                      onColorChange={(id, card_color) => updateNotizia({ id, card_color })}
+                      onUpdate={(id, updates) => updateNotizia({ id, ...updates, silent: true })}
+                      onDelete={(id) => deleteNotizia(id)}
                       isDragging={snapshot.isDragging}
                     />
                   </div>

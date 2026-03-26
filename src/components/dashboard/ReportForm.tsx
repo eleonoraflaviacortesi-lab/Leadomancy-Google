@@ -7,6 +7,53 @@ import { cn, formatCurrency } from "@/src/lib/utils";
 import { format, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
 
+const CounterField = ({ label, field, formData, onCounterChange, onNumberInputChange }: { label: string; field: keyof DailyReport; formData: any; onCounterChange: any; onNumberInputChange: any }) => (
+  <div className="flex flex-col gap-2">
+    <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+      {label}
+    </label>
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={() => onCounterChange(field, -1)}
+        className="w-7 h-7 rounded-full bg-[var(--bg-subtle)] hover:bg-[var(--border-light)] flex items-center justify-center transition-colors border border-[var(--border-light)]"
+      >
+        <Minus size={14} className="text-[var(--text-primary)]" />
+      </button>
+      <input
+        type="number"
+        value={formData[field] as number}
+        onChange={(e) => onNumberInputChange(field, e.target.value)}
+        className="w-16 h-9 bg-[var(--bg-subtle)] border-0 rounded-[8px] text-center font-outfit font-medium text-[14px] outline-none focus:ring-1 focus:ring-black/10"
+      />
+      <button
+        type="button"
+        onClick={() => onCounterChange(field, 1)}
+        className="w-7 h-7 rounded-full bg-[var(--bg-subtle)] hover:bg-[var(--border-light)] flex items-center justify-center transition-colors border border-[var(--border-light)]"
+      >
+        <Plus size={14} className="text-[var(--text-primary)]" />
+      </button>
+    </div>
+  </div>
+);
+
+const CurrencyField = ({ label, field, formData, onNumberInputChange }: { label: string; field: keyof DailyReport; formData: any; onNumberInputChange: any }) => (
+  <div className="flex flex-col gap-2">
+    <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+      {label}
+    </label>
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px] font-outfit text-[var(--text-muted)]">€</span>
+      <input
+        type="number"
+        value={formData[field] as number}
+        onChange={(e) => onNumberInputChange(field, e.target.value)}
+        className="w-full h-9 bg-[var(--bg-subtle)] border-0 rounded-[8px] pl-7 pr-3 font-outfit font-medium text-[14px] outline-none focus:ring-1 focus:ring-black/10"
+      />
+    </div>
+  </div>
+);
+
 export const ReportForm: React.FC = () => {
   const { myData, saveDailyData } = useDailyData();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -81,53 +128,6 @@ export const ReportForm: React.FC = () => {
     saveDailyData({ data: formData, date: selectedDate });
   };
 
-  const CounterField = ({ label, field }: { label: string; field: keyof DailyReport }) => (
-    <div className="flex flex-col gap-2">
-      <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-        {label}
-      </label>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => handleCounterChange(field, -1)}
-          className="w-7 h-7 rounded-full bg-[var(--bg-subtle)] hover:bg-[var(--border-light)] flex items-center justify-center transition-colors border border-[var(--border-light)]"
-        >
-          <Minus size={14} className="text-[var(--text-primary)]" />
-        </button>
-        <input
-          type="number"
-          value={formData[field] as number}
-          onChange={(e) => handleNumberInputChange(field, e.target.value)}
-          className="w-16 h-9 bg-[var(--bg-subtle)] border-0 rounded-[8px] text-center font-outfit font-medium text-[14px] outline-none focus:ring-1 focus:ring-black/10"
-        />
-        <button
-          type="button"
-          onClick={() => handleCounterChange(field, 1)}
-          className="w-7 h-7 rounded-full bg-[var(--bg-subtle)] hover:bg-[var(--border-light)] flex items-center justify-center transition-colors border border-[var(--border-light)]"
-        >
-          <Plus size={14} className="text-[var(--text-primary)]" />
-        </button>
-      </div>
-    </div>
-  );
-
-  const CurrencyField = ({ label, field }: { label: string; field: keyof DailyReport }) => (
-    <div className="flex flex-col gap-2">
-      <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-        {label}
-      </label>
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px] font-outfit text-[var(--text-muted)]">€</span>
-        <input
-          type="number"
-          value={formData[field] as number}
-          onChange={(e) => handleNumberInputChange(field, e.target.value)}
-          className="w-full h-9 bg-[var(--bg-subtle)] border-0 rounded-[8px] pl-7 pr-3 font-outfit font-medium text-[14px] outline-none focus:ring-1 focus:ring-black/10"
-        />
-      </div>
-    </div>
-  );
-
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-8">
       {/* Date Selector */}
@@ -165,11 +165,11 @@ export const ReportForm: React.FC = () => {
           ATTIVITÀ
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-          <CounterField label="Contatti Reali" field="contatti_reali" />
-          <CounterField label="Notizie Reali" field="notizie_reali" />
-          <CounterField label="App. Vendita" field="appuntamenti_vendita" />
-          <CounterField label="Incarichi Vendita" field="incarichi_vendita" />
-          <CounterField label="Valutazioni Fatte" field="valutazioni_fatte" />
+          <CounterField label="Contatti Reali" field="contatti_reali" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Notizie Reali" field="notizie_reali" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="App. Vendita" field="appuntamenti_vendita" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Incarichi Vendita" field="incarichi_vendita" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Valutazioni Fatte" field="valutazioni_fatte" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
         </div>
       </div>
 
@@ -179,11 +179,11 @@ export const ReportForm: React.FC = () => {
           VENDITE & TRATTATIVE
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <CounterField label="Vendite (Numero)" field="vendite_numero" />
-          <CurrencyField label="Valore Vendite" field="vendite_valore" />
-          <CounterField label="Nuove Trattative" field="nuove_trattative" />
-          <CounterField label="Trattative Chiuse" field="trattative_chiuse" />
-          <CurrencyField label="Fatturato a Credito" field="fatturato_a_credito" />
+          <CounterField label="Vendite (Numero)" field="vendite_numero" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
+          <CurrencyField label="Valore Vendite" field="vendite_valore" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Nuove Trattative" field="nuove_trattative" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Trattative Chiuse" field="trattative_chiuse" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
+          <CurrencyField label="Fatturato a Credito" field="fatturato_a_credito" formData={formData} onNumberInputChange={handleNumberInputChange} />
         </div>
       </div>
 

@@ -1,22 +1,36 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Phone, Mail, MapPin, Euro, Calendar, Clock, Sparkles, User, FileText, MessageSquare } from "lucide-react";
+import { 
+  X, Phone, Mail, MapPin, Euro, Calendar, Clock, Sparkles, User, 
+  FileText, MessageSquare, Download, Trash2, Plus, ExternalLink, 
+  ThumbsUp, ThumbsDown, Send, Home, ClipboardList, GripVertical,
+  ChevronLeft, Star
+} from "lucide-react";
 import Markdown from "react-markdown";
 import { Cliente } from "@/src/types";
 import { CLIENTE_STATUS_CONFIG } from "./clienteFormOptions";
 import { analyzeCliente } from "@/src/services/gemini";
 import { cn, formatCurrency } from "@/src/lib/utils";
+import { useClienteActivities, ClienteActivity } from "@/src/hooks/useClienteActivities";
+import { usePropertyMatches, PropertyMatch } from "@/src/hooks/usePropertyMatches";
+import { useProfiles } from "@/src/hooks/useProfiles";
+import { generateClientePDF } from "@/src/lib/generateClientePDF";
+import { formatDistanceToNow } from "date-fns";
+import { it } from "date-fns/locale";
 
 interface ClienteDetailProps {
   cliente: Cliente | null;
   isOpen: boolean;
   onClose: () => void;
+  onUpdate?: (id: string, updates: Partial<Cliente>) => void;
+  onDelete?: (id: string) => void;
 }
 
-const Badge = ({ children, bg, fg, className }: { children: React.ReactNode; bg?: string; fg?: string; className?: string }) => (
+const Badge = ({ children, bg, fg, className, onClick }: { children: React.ReactNode; bg?: string; fg?: string; className?: string; onClick?: () => void }) => (
   <span 
+    onClick={onClick}
     className={cn(
-      "px-2 py-0.5 rounded-full font-outfit font-medium text-[10px] uppercase tracking-wider inline-block",
+      "px-2 py-0.5 rounded-full font-outfit font-medium text-[10px] uppercase tracking-wider inline-block cursor-pointer hover:opacity-80",
       className
     )}
     style={{ backgroundColor: bg || 'var(--bg-subtle)', color: fg || 'var(--text-secondary)' }}
@@ -25,9 +39,184 @@ const Badge = ({ children, bg, fg, className }: { children: React.ReactNode; bg?
   </span>
 );
 
-export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, onClose }) => {
+const EditableField = ({ 
+  label, 
+  value, 
+  onSave, 
+  type = "text",
+  prefix,
+  className,
+  valueClassName
+}: { 
+  label: string; 
+  value: string | number | null; 
+  onSave: (v: string) => void;
+  type?: "text" | "number" | "date" | "datetime-local";
+  prefix?: string;
+  className?: string;
+  valueClassName?: string;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value?.toString() || "");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [editing]);
+
+  const handleSave = () => {
+    if (draft !== (value?.toString() || "")) {
+      onSave(draft);
+    }
+    setEditing(false);
+  };
+
+  return (
+    <div 
+      className={cn("flex flex-col gap-0.5 cursor-pointer group min-h-[32px]", className)} 
+      onClick={() => {
+        if (!editing) {
+          setDraft(value?.toString() || "");
+          setEditing(true);
+        }
+      }}
+    >
+      <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">{label}</span>
+      {editing ? (
+        <div className="flex items-center gap-1">
+          {prefix && <span className="text-[13px] font-medium text-[var(--text-muted)]">{prefix}</span>}
+          <input
+            ref={inputRef}
+            type={type}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSave();
+              if (e.key === 'Escape') {
+                setDraft(value?.toString() || "");
+                setEditing(false);
+              }
+            }}
+            className="flex-1 bg-transparent border-b border-black py-0 text-[13px] font-outfit font-normal outline-none"
+          />
+        </div>
+      ) : (
+        <span className={cn("text-[13px] font-outfit font-normal text-[var(--text-primary)] group-hover:text-indigo-600 transition-colors", valueClassName)}>
+          {prefix}{value || '-'}
+        </span>
+      )}
+    </div>
+  );
+};
+
+const EditableTextarea = ({ 
+  label, 
+  value, 
+  onSave,
+  className
+}: { 
+  label: string; 
+  value: string | null; 
+  onSave: (v: string) => void;
+  className?: string;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value || "");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [editing]);
+
+  const handleSave = () => {
+    if (draft !== (value || "")) {
+      onSave(draft);
+    }
+    setEditing(false);
+  };
+
+  return (
+    <div 
+      className={cn("flex flex-col gap-0.5 cursor-pointer group", className)} 
+      onClick={() => {
+        if (!editing) {
+          setDraft(value || "");
+          setEditing(true);
+        }
+      }}
+    >
+      <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">{label}</span>
+      {editing ? (
+        <textarea
+          ref={textareaRef}
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+          }}
+          onBlur={handleSave}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setDraft(value || "");
+              setEditing(false);
+            }
+          }}
+          className="w-full bg-transparent border-b border-black py-0 text-[13px] font-outfit font-normal outline-none resize-none overflow-hidden"
+        />
+      ) : (
+        <p className="text-[13px] font-outfit font-normal text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap group-hover:text-indigo-600 transition-colors">
+          {value || '-'}
+        </p>
+      )}
+    </div>
+  );
+};
+
+const Section = ({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) => (
+  <div className={cn("flex flex-col gap-2.5 py-6 border-b border-[var(--border-light)] last:border-0", className)}>
+    <span className="font-outfit font-semibold text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">{title}</span>
+    <div className="flex flex-col gap-4">
+      {children}
+    </div>
+  </div>
+);
+
+export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, onClose, onUpdate, onDelete }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<string | null>(null);
+  const [comment, setComment] = useState("");
+  const [showAddMatch, setShowAddMatch] = useState(false);
+  const [newMatch, setNewMatch] = useState({ property_name: '', property_url: '', match_score: 80, notes: '' });
+  
+  const { activities, addActivity } = useClienteActivities(cliente?.id || '');
+  const { matches, addMatch, updateMatch, deleteMatch } = usePropertyMatches(cliente?.id || '');
+  const { profiles } = useProfiles();
+
+  const [isStatusEditing, setIsStatusEditing] = useState(false);
+  const [isAssignedEditing, setIsAssignedEditing] = useState(false);
+
+  const prevStatusRef = useRef<string | undefined>(cliente?.status);
+
+  useEffect(() => {
+    if (cliente && prevStatusRef.current !== undefined && prevStatusRef.current !== cliente.status) {
+      const statusLabel = CLIENTE_STATUS_CONFIG[cliente.status]?.label || cliente.status;
+      addActivity({
+        activity_type: 'status_change',
+        title: `Stato cambiato in ${statusLabel}`,
+        description: null,
+        created_by: 'Sistema'
+      });
+    }
+    prevStatusRef.current = cliente?.status;
+  }, [cliente?.status, addActivity, cliente]);
 
   if (!cliente) return null;
 
@@ -40,33 +229,59 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
     setIsAnalyzing(false);
   };
 
-  const Section = ({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) => (
-    <div className="flex flex-col gap-3 py-6 border-b border-[var(--border-light)] last:border-0">
-      <div className="flex items-center gap-2 text-[var(--text-muted)]">
-        <Icon size={14} />
-        <span className="font-outfit font-semibold text-[11px] uppercase tracking-wider">{title}</span>
-      </div>
-      <div className="flex flex-col gap-3">
-        {children}
-      </div>
-    </div>
-  );
+  const handleAddComment = () => {
+    if (!comment.trim()) return;
+    addActivity({
+      activity_type: 'comment',
+      title: "Commento aggiunto",
+      description: comment,
+      created_by: 'Agente'
+    });
+    setComment("");
+  };
 
-  const InfoRow = ({ label, value, href }: { label: string; value: React.ReactNode; href?: string }) => (
-    <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-tight">{label}</span>
-      {href ? (
-        <a href={href} className="text-[13px] font-outfit font-medium text-[var(--text-primary)] hover:underline">
-          {value}
-        </a>
-      ) : (
-        <span className="text-[13px] font-outfit font-medium text-[var(--text-primary)]">
-          {value || '-'}
-        </span>
-      )}
-    </div>
-  );
+  const handleQuickAction = (type: 'call' | 'email' | 'visit' | 'proposal', title: string) => {
+    addActivity({
+      activity_type: type,
+      title,
+      description: null,
+      created_by: 'Agente'
+    });
+    
+    if (onUpdate) {
+      onUpdate(cliente.id, { last_contact_date: new Date().toISOString() });
+    }
+  };
 
+  const handleAddPropertyMatch = () => {
+    if (!newMatch.property_name) return;
+    addMatch({
+      ...newMatch,
+      reaction: null,
+      suggested: false
+    });
+    setNewMatch({ property_name: '', property_url: '', match_score: 80, notes: '' });
+    setShowAddMatch(false);
+  };
+
+  const safeFormatDate = (dateStr: string | undefined) => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('it-IT');
+  };
+
+  const handleWhatsAppShare = (match: PropertyMatch) => {
+    const text = `Ciao! Ho trovato questa proprietà che potrebbe interessarti: ${match.property_name}${match.property_url ? `\nLink: ${match.property_url}` : ''}`;
+    const url = `https://wa.me/${cliente.telefono?.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleDelete = () => {
+    if (window.confirm("Sei sicuro di voler eliminare questo cliente?")) {
+      onDelete?.(cliente.id);
+      onClose();
+    }
+  };
   return (
     <AnimatePresence>
       {isOpen && (
@@ -78,6 +293,7 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
             exit={{ opacity: 0 }}
             onClick={onClose}
             className="fixed inset-0 bg-black/20 z-[60]"
+            style={{ top: '34px' }}
           />
 
           {/* Panel */}
@@ -86,170 +302,304 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-[70] flex flex-col"
+            className="fixed right-0 bottom-0 bg-white shadow-2xl z-[70] flex flex-col"
+            style={{ top: '34px', width: 'min(860px, 100vw)', maxHeight: 'calc(100vh - 34px)' }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-[var(--border-light)]">
-              <div className="flex flex-col">
-                <h2 className="font-outfit font-semibold text-[18px] text-[var(--text-primary)]">
+            <div className="flex items-center h-[64px] px-6 border-b border-[var(--border-light)] bg-white sticky top-0 z-10">
+              <button 
+                onClick={onClose}
+                className="p-2 -ml-2 hover:bg-black/5 rounded-full transition-colors"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              
+              <div className="flex-1 px-4 truncate">
+                <h2 className="font-outfit font-semibold text-[15px] text-[var(--text-primary)] truncate">
                   {cliente.nome} {cliente.cognome}
                 </h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge bg={statusConfig.bg} fg={statusConfig.fg}>
-                    {statusConfig.label}
-                  </Badge>
-                  {cliente.ref_number && (
-                    <span className="text-[11px] text-[var(--text-muted)] font-outfit">
-                      #{cliente.ref_number}
-                    </span>
-                  )}
-                </div>
               </div>
-              <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors">
-                <X size={20} />
-              </button>
+
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={() => generateClientePDF(cliente, activities, matches)}
+                  className="p-2 hover:bg-black/5 rounded-full transition-colors text-[var(--text-muted)]"
+                  title="Scarica PDF"
+                >
+                  <Download size={20} />
+                </button>
+                {onDelete && (
+                  <button 
+                    onClick={handleDelete}
+                    className="p-2 hover:bg-rose-50 rounded-full transition-colors text-rose-500"
+                    title="Elimina"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                )}
+                <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 pt-0">
-              {/* Analisi AI */}
-              <div className="mt-6">
-                {!analysis && !isAnalyzing ? (
-                  <button
-                    onClick={handleAnalyze}
-                    className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-outfit font-semibold text-[13px] flex items-center justify-center gap-2 hover:shadow-lg transition-all"
-                  >
-                    <Sparkles size={16} />
-                    ANALIZZA CON GEMINI
-                  </button>
-                ) : isAnalyzing ? (
-                  <div className="bg-[var(--bg-subtle)] rounded-xl p-4 flex flex-col gap-2 animate-pulse">
-                    <div className="h-4 bg-black/5 rounded w-1/3" />
-                    <div className="h-3 bg-black/5 rounded w-full" />
-                    <div className="h-3 bg-black/5 rounded w-full" />
-                    <div className="h-3 bg-black/5 rounded w-2/3" />
-                  </div>
-                ) : (
-                  <div className="bg-[var(--bg-subtle)] rounded-xl p-4 relative">
-                    <div className="flex items-center gap-2 mb-3 text-indigo-600">
-                      <Sparkles size={14} />
-                      <span className="font-outfit font-bold text-[11px] uppercase tracking-wider">Analisi AI Strategica</span>
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+              <div 
+                className="grid gap-6 p-6"
+                style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: window.innerWidth > 768 ? 'repeat(3, 1fr)' : '1fr',
+                  gap: 24, 
+                  padding: 24 
+                }}
+              >
+                
+                {/* COLUMN 1 */}
+                <div className="flex flex-col gap-6">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className="w-[48px] h-[48px] rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[24px]">
+                      {cliente.emoji || '👤'}
                     </div>
-                    <div className="markdown-body">
-                      <Markdown components={{
-                        h2: ({node, ...props}) => <b className="block mt-4 mb-1 text-[13px] font-outfit font-bold uppercase tracking-tight" {...props} />,
-                        p: ({node, ...props}) => <p className="text-[13px] leading-relaxed text-[var(--text-secondary)] mb-2" {...props} />
-                      }}>
-                        {analysis}
-                      </Markdown>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <Section title="Contatto" icon={User}>
-                <div className="grid grid-cols-2 gap-4">
-                  <InfoRow label="Telefono" value={cliente.telefono} href={`tel:${cliente.telefono}`} />
-                  <InfoRow label="Email" value={cliente.email} href={`mailto:${cliente.email}`} />
-                  <InfoRow label="Paese" value={cliente.paese} />
-                  <InfoRow label="Lingua" value={cliente.lingua} />
-                </div>
-              </Section>
-
-              <Section title="Budget & Ricerca" icon={Euro}>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1 col-span-2">
-                    <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-tight">Budget Massimo</span>
-                    <span className="text-[24px] font-outfit font-bold text-[var(--text-primary)]">
-                      {cliente.budget_max ? formatCurrency(cliente.budget_max) : '-'}
-                    </span>
-                  </div>
-                  <InfoRow label="Mutuo" value={cliente.mutuo} />
-                  <InfoRow label="Tempo di ricerca" value={cliente.tempo_ricerca} />
-                  <div className="col-span-2">
-                    <InfoRow label="Ha visitato" value={<Badge>{cliente.ha_visitato}</Badge>} />
-                  </div>
-                </div>
-              </Section>
-
-              <Section title="Preferenze Zona" icon={MapPin}>
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-tight">Regioni</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {cliente.regioni?.map(r => <Badge key={r}>{r}</Badge>)}
-                    </div>
-                  </div>
-                  <InfoRow label="Vicinanza città" value={cliente.vicinanza_citta} />
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-tight">Motivo zona</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {cliente.motivo_zona?.map(m => <Badge key={m}>{m}</Badge>)}
-                    </div>
-                  </div>
-                </div>
-              </Section>
-
-              <Section title="Preferenze Immobile" icon={FileText}>
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-tight">Tipologia</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {cliente.tipologia?.map(t => <Badge key={t}>{t}</Badge>)}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <InfoRow label="Stile" value={cliente.stile} />
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-tight">Contesto</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {cliente.contesto?.map(c => <Badge key={c}>{c}</Badge>)}
+                    <div className="flex flex-col gap-1">
+                      <h1 className="font-outfit font-semibold text-[20px] text-[var(--text-primary)]">
+                        {cliente.nome} {cliente.cognome}
+                      </h1>
+                      <div className="flex justify-center">
+                        {!isStatusEditing ? (
+                          <Badge 
+                            bg={statusConfig.bg} 
+                            fg={statusConfig.fg} 
+                            onClick={() => setIsStatusEditing(true)}
+                          >
+                            {statusConfig.label}
+                          </Badge>
+                        ) : (
+                          <select
+                            autoFocus
+                            value={cliente.status}
+                            onChange={(e) => {
+                              onUpdate?.(cliente.id, { status: e.target.value as any });
+                              setIsStatusEditing(false);
+                            }}
+                            onBlur={() => setIsStatusEditing(false)}
+                            className="text-[10px] font-outfit font-medium uppercase tracking-wider bg-[var(--bg-subtle)] border-b border-black outline-none"
+                          >
+                            {Object.entries(CLIENTE_STATUS_CONFIG).map(([key, config]) => (
+                              <option key={key} value={key}>{config.label}</option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                     </div>
-                    <InfoRow label="Dimensioni" value={`${cliente.dimensione_min} - ${cliente.dimensione_max} mq`} />
-                    <InfoRow label="Camere" value={cliente.camere} />
-                    <InfoRow label="Bagni" value={cliente.bagni} />
-                    <InfoRow label="Layout" value={cliente.layout} />
-                    <InfoRow label="Dependance" value={cliente.dependance} />
-                    <InfoRow label="Terreno" value={cliente.terreno} />
-                    <InfoRow label="Piscina" value={cliente.piscina} />
-                    <InfoRow label="Uso" value={cliente.uso} />
-                    <InfoRow label="Interesse affitto" value={cliente.interesse_affitto} />
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button 
+                          key={star}
+                          onClick={() => onUpdate?.(cliente.id, { rating: star })}
+                          className={cn(
+                            "transition-colors",
+                            star <= (cliente.rating || 0) ? "text-amber-400" : "text-gray-200"
+                          )}
+                        >
+                          <Star size={14} fill={star <= (cliente.rating || 0) ? "currentColor" : "none"} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-4 pt-4 border-t border-[var(--border-light)]">
+                    <EditableField label="Budget" value={cliente.budget_max} type="number" prefix="€" onSave={(v) => onUpdate?.(cliente.id, { budget_max: parseFloat(v) })} />
+                    <EditableField label="Tempo Ricerca" value={cliente.tempo_ricerca} onSave={(v) => onUpdate?.(cliente.id, { tempo_ricerca: v })} />
+                    <EditableField label="Ha Visitato" value={cliente.ha_visitato} onSave={(v) => onUpdate?.(cliente.id, { ha_visitato: v })} />
+                    
+                    <div className="flex flex-col gap-0.5 group cursor-pointer" onClick={() => window.location.href = `tel:${cliente.telefono}`}>
+                      <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Telefono</span>
+                      <span className="text-[13px] font-outfit font-normal text-[var(--text-primary)] group-hover:text-indigo-600 transition-colors">{cliente.telefono || '-'}</span>
+                    </div>
+
+                    <div className="flex flex-col gap-0.5 group cursor-pointer" onClick={() => window.location.href = `mailto:${cliente.email}`}>
+                      <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Email</span>
+                      <span className="text-[13px] font-outfit font-normal text-[var(--text-primary)] group-hover:text-indigo-600 transition-colors truncate">{cliente.email || '-'}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <EditableField label="Paese" value={cliente.paese} onSave={(v) => onUpdate?.(cliente.id, { paese: v })} />
+                      <EditableField label="Lingua" value={cliente.lingua} onSave={(v) => onUpdate?.(cliente.id, { lingua: v })} />
+                    </div>
                   </div>
                 </div>
-              </Section>
 
-              <Section title="Provenienza & Assegnazione" icon={MessageSquare}>
-                <div className="grid grid-cols-2 gap-4">
-                  <InfoRow label="Portale" value={cliente.portale} />
-                  <InfoRow label="Ref Number" value={cliente.ref_number} />
-                  <InfoRow label="Proprietà visitata" value={cliente.proprieta_visitata} />
-                  <InfoRow label="Contattato da" value={cliente.contattato_da} />
-                  <InfoRow label="Tipo contatto" value={cliente.tipo_contatto} />
-                  <InfoRow label="Assegnato a" value={cliente.assigned_to} />
+                {/* COLUMN 2 */}
+                <div className="flex flex-col gap-0">
+                  <Section title="PREFERENZE ZONA">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Regioni</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {cliente.regioni?.map(r => (
+                            <Badge key={r} bg="var(--bg-subtle)" fg="var(--text-primary)">{r}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <EditableField label="Vicinanza città" value={cliente.vicinanza_citta} onSave={(v) => onUpdate?.(cliente.id, { vicinanza_citta: v })} />
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Motivo zona</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {cliente.motivo_zona?.map(m => (
+                            <Badge key={m} bg="var(--bg-subtle)" fg="var(--text-primary)">{m}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </Section>
+
+                  <Section title="PREFERENZE IMMOBILE">
+                    <div className="flex flex-col gap-6">
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Tipologia</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {cliente.tipologia?.map(t => <Badge key={t}>{t}</Badge>)}
+                          </div>
+                        </div>
+                        <EditableField label="Stile" value={cliente.stile} onSave={(v) => onUpdate?.(cliente.id, { stile: v })} />
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Contesto</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {cliente.contesto?.map(c => <Badge key={c}>{c}</Badge>)}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <EditableField label="Dim. Min" value={cliente.dimensione_min} type="number" onSave={(v) => onUpdate?.(cliente.id, { dimensione_min: parseInt(v) })} />
+                          <EditableField label="Dim. Max" value={cliente.dimensione_max} type="number" onSave={(v) => onUpdate?.(cliente.id, { dimensione_max: parseInt(v) })} />
+                        </div>
+                        <EditableField label="Camere" value={cliente.camere} onSave={(v) => onUpdate?.(cliente.id, { camere: v })} />
+                        <EditableField label="Bagni" value={cliente.bagni} onSave={(v) => onUpdate?.(cliente.id, { bagni: v })} />
+                        <EditableField label="Layout" value={cliente.layout} onSave={(v) => onUpdate?.(cliente.id, { layout: v })} />
+                        <EditableField label="Dependance" value={cliente.dependance} onSave={(v) => onUpdate?.(cliente.id, { dependance: v })} />
+                        <EditableField label="Terreno" value={cliente.terreno} onSave={(v) => onUpdate?.(cliente.id, { terreno: v })} />
+                        <EditableField label="Piscina" value={cliente.piscina} onSave={(v) => onUpdate?.(cliente.id, { piscina: v })} />
+                        <EditableField label="Uso" value={cliente.uso} onSave={(v) => onUpdate?.(cliente.id, { uso: v })} />
+                        <EditableField label="Interesse affitto" value={cliente.interesse_affitto} onSave={(v) => onUpdate?.(cliente.id, { interesse_affitto: v })} />
+                      </div>
+                    </div>
+                  </Section>
                 </div>
-              </Section>
 
-              <Section title="Note & Descrizione" icon={FileText}>
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-tight">Descrizione</span>
-                    <p className="text-[13px] leading-relaxed text-[var(--text-secondary)] bg-[var(--bg-subtle)] p-3 rounded-lg">
-                      {cliente.descrizione || 'Nessuna descrizione.'}
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-tight">Note Extra</span>
-                    <p className="text-[13px] leading-relaxed text-[var(--text-secondary)] border border-[var(--border-light)] p-3 rounded-lg">
-                      {cliente.note_extra || 'Nessuna nota extra.'}
-                    </p>
-                  </div>
+                {/* COLUMN 3 */}
+                <div className="flex flex-col gap-0">
+                  <Section title="PROVENIENZA">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Portale</span>
+                        <Badge bg="var(--bg-subtle)" fg="var(--text-primary)" className="w-fit">{cliente.portale || '-'}</Badge>
+                      </div>
+                      <EditableField label="Proprietà visitata" value={cliente.proprieta_visitata} onSave={(v) => onUpdate?.(cliente.id, { proprieta_visitata: v })} />
+                      <EditableField label="Ref Number" value={cliente.ref_number} onSave={(v) => onUpdate?.(cliente.id, { ref_number: v })} />
+                      <EditableField label="Contattato da" value={cliente.contattato_da} onSave={(v) => onUpdate?.(cliente.id, { contattato_da: v })} />
+                      <EditableField label="Tipo contatto" value={cliente.tipo_contatto} onSave={(v) => onUpdate?.(cliente.id, { tipo_contatto: v })} />
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Data Inserimento</span>
+                        <span className="text-[13px] font-outfit font-normal text-[var(--text-primary)]">
+                          {safeFormatDate(cliente.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                  </Section>
+
+                  <Section title="NOTE">
+                    <div className="flex flex-col gap-6">
+                      <EditableTextarea label="Descrizione" value={cliente.descrizione} onSave={(v) => onUpdate?.(cliente.id, { descrizione: v })} />
+                      <EditableTextarea label="Note Extra" value={cliente.note_extra} onSave={(v) => onUpdate?.(cliente.id, { note_extra: v })} />
+                    </div>
+                  </Section>
+
+                  <Section title="REMINDER">
+                    <div className="flex flex-col gap-4">
+                      <EditableField 
+                        label="Data Reminder" 
+                        value={cliente.reminder_date} 
+                        type="datetime-local"
+                        onSave={(v) => onUpdate?.(cliente.id, { reminder_date: v })} 
+                      />
+                      <a 
+                        href={cliente.reminder_date && !isNaN(new Date(cliente.reminder_date).getTime()) ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=Follow-up+${cliente.nome}+${cliente.cognome}&dates=${new Date(cliente.reminder_date).toISOString().replace(/-|:|\.\d\d\d/g, "")}/${new Date(new Date(cliente.reminder_date).getTime() + 3600000).toISOString().replace(/-|:|\.\d\d\d/g, "")}` : '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-outfit font-bold text-black uppercase tracking-wider hover:underline flex items-center gap-1.5"
+                      >
+                        Apri in Calendar
+                        <ExternalLink size={12} />
+                      </a>
+                    </div>
+                  </Section>
+
+                  <Section title="ANALISI AI">
+                    <div className="flex flex-col gap-4">
+                      <button
+                        onClick={handleAnalyze}
+                        disabled={isAnalyzing}
+                        className="w-full py-2.5 bg-black text-white rounded-full font-outfit font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50"
+                      >
+                        {isAnalyzing ? <Clock size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                        ANALIZZA CON GEMINI
+                      </button>
+                      {analysis && (
+                        <div className="bg-[var(--bg-subtle)] rounded-xl p-4">
+                          <div className="markdown-body">
+                            <Markdown components={{
+                              h2: ({node, ...props}) => <b className="block mt-4 mb-1 text-[12px] font-outfit font-bold uppercase tracking-tight" {...props} />,
+                              p: ({node, ...props}) => <p className="text-[12px] leading-relaxed text-[var(--text-secondary)] mb-2" {...props} />
+                            }}>
+                              {analysis}
+                            </Markdown>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Section>
+
+                  <Section title="COMMENTI">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                        {activities.filter(a => a.activity_type === 'comment').map((activity) => (
+                          <div key={activity.id} className="flex flex-col gap-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-[var(--text-primary)]">{activity.created_by}</span>
+                              <span className="text-[9px] text-[var(--text-muted)]">
+                                {activity.created_at ? formatDistanceToNow(new Date(activity.created_at), { addSuffix: true, locale: it }) : '-'}
+                              </span>
+                            </div>
+                            <p className="text-[12px] text-[var(--text-secondary)] leading-snug">{activity.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="text"
+                          placeholder="Scrivi..."
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+                          className="flex-1 bg-[var(--bg-subtle)] border-0 rounded-full px-4 py-2 text-[12px] font-outfit outline-none"
+                        />
+                        <button 
+                          onClick={handleAddComment}
+                          className="p-2 bg-black text-white rounded-full hover:opacity-80 transition-all"
+                        >
+                          <Send size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </Section>
                 </div>
-              </Section>
 
-              <div className="py-10 text-center">
-                <span className="text-[11px] text-[var(--text-muted)] font-outfit">
-                  Creato il {new Date(cliente.created_at).toLocaleDateString('it-IT')}
+              </div>
+
+              <div className="py-10 text-center border-t border-[var(--border-light)]">
+                <span className="text-[11px] text-[var(--text-muted)] font-outfit uppercase tracking-widest">
+                  Leadomancy CRM
                 </span>
               </div>
             </div>

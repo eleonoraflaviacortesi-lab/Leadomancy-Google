@@ -34,6 +34,52 @@ import { generateDailyQuote } from "@/src/services/gemini";
 import { cn, formatCurrency } from "@/src/lib/utils";
 import { Link } from "react-router-dom";
 
+const Star8Icon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 10, height: 10, flexShrink: 0, color: 'var(--text-muted)', opacity: 0.6 }}>
+    <path d="M12 0 L14.1 8.5 L21.6 4.4 L16.5 11 L24 12 L16.5 13 L21.6 19.6 L14.1 15.5 L12 24 L9.9 15.5 L2.4 19.6 L7.5 13 L0 12 L7.5 11 L2.4 4.4 L9.9 8.5 Z" />
+  </svg>
+);
+
+const KPICard = ({ label, kpi, isCurrency = false }: { label: string; kpi: any; isCurrency?: boolean }) => {
+  if (!kpi) return null;
+  
+  const getProgressColor = (percent: number) => {
+    if (percent < 50) return "#F5A0B0";
+    if (percent < 80) return "#F5C842";
+    return "#B8E0C8";
+  };
+
+  return (
+    <div className="bg-white border border-[var(--border-light)] rounded-[14px] p-5 flex flex-col gap-3 shadow-sm">
+      <div className="flex items-center justify-between">
+        <span className="font-outfit font-medium text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">
+          {label}
+        </span>
+        <div className={cn(
+          "flex items-center gap-1 text-[11px] font-medium",
+          kpi.delta >= 0 ? "text-[var(--sage-fg)]" : "text-[var(--rose-fg)]"
+        )}>
+          {kpi.delta >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+          {kpi.delta >= 0 ? '▲' : '▼'} {Math.abs(kpi.delta)}
+        </div>
+      </div>
+      
+      <div className="font-outfit font-semibold text-[32px] text-[var(--text-primary)] tracking-tight">
+        {isCurrency ? formatCurrency(kpi.value) : kpi.value}
+      </div>
+
+      <div className="w-full h-[3px] bg-[var(--border-light)] rounded-full overflow-hidden mt-1">
+        <motion.div 
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.min(kpi.percent, 100)}%` }}
+          className="h-full"
+          style={{ backgroundColor: getProgressColor(kpi.percent) }}
+        />
+      </div>
+    </div>
+  );
+};
+
 export const PersonalDashboard: React.FC<{ isOfficeView?: boolean }> = ({ isOfficeView = false }) => {
   const { user } = useAuth();
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
@@ -113,80 +159,46 @@ export const PersonalDashboard: React.FC<{ isOfficeView?: boolean }> = ({ isOffi
     });
   }, [sourceData]);
 
-  const KPICard = ({ label, kpi, icon: Icon, isCurrency = false }: any) => {
-    if (!kpi) return null;
-    
-    const getProgressColor = (percent: number) => {
-      if (percent < 50) return "#F5A0B0";
-      if (percent < 80) return "#F5C842";
-      return "#B8E0C8";
-    };
-
-    return (
-      <div className="bg-white border border-[var(--border-light)] rounded-[14px] p-5 flex flex-col gap-3 shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="font-outfit font-medium text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">
-            {label}
-          </span>
-          <div className={cn(
-            "flex items-center gap-1 text-[11px] font-medium",
-            kpi.delta >= 0 ? "text-[var(--sage-fg)]" : "text-[var(--rose-fg)]"
-          )}>
-            {kpi.delta >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-            {kpi.delta >= 0 ? '▲' : '▼'} {Math.abs(kpi.delta)}
-          </div>
-        </div>
-        
-        <div className="font-outfit font-semibold text-[32px] text-[var(--text-primary)] tracking-tight">
-          {isCurrency ? formatCurrency(kpi.value) : kpi.value}
-        </div>
-
-        <div className="w-full h-[3px] bg-[var(--border-light)] rounded-full overflow-hidden mt-1">
-          <motion.div 
-            initial={{ width: 0 }}
-            animate={{ width: `${Math.min(kpi.percent, 100)}%` }}
-            className="h-full"
-            style={{ backgroundColor: getProgressColor(kpi.percent) }}
-          />
-        </div>
-      </div>
-    );
-  };
+  const formattedDate = format(new Date(), 'EEEE d MMMM yyyy', { locale: it });
+  const quoteText = isQuoteLoading ? 'CARICAMENTO...' : quote ? `${quote.quote.toUpperCase()} — ${quote.author.toUpperCase()}` : '';
 
   return (
     <div className="flex flex-col gap-8 p-6 max-w-7xl mx-auto w-full">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <span className="font-outfit text-[11px] uppercase tracking-wider text-[var(--text-muted)]">
-          Leadomancy
-        </span>
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div>
-            <h1 className="font-outfit font-semibold text-[28px] tracking-[-0.5px] text-[var(--text-primary)]">
-              Buongiorno, {user?.nome}
+      <div className="flex flex-col gap-6">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
+          
+          {/* Left: greeting */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', fontFamily: 'Outfit', color: 'var(--text-primary)', margin: 0 }}>
+              Buongiorno, {user?.nome?.split(' ')[0] || ''}
             </h1>
-            <p className="font-outfit text-[13px] text-[var(--text-secondary)] capitalize">
-              {format(new Date(), 'EEEE d MMMM yyyy', { locale: it })}
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'Outfit', margin: 0 }}>
+              {formattedDate}
             </p>
           </div>
 
-          {/* Quote Widget */}
-          <div className="min-w-[200px] max-w-xs">
-            {isQuoteLoading ? (
-              <div className="h-10 w-40 bg-[var(--bg-subtle)] animate-pulse rounded-lg" />
-            ) : quote && (
-              <div className="flex flex-col items-end text-right">
-                <p className="font-outfit italic text-[13px] text-[var(--text-primary)] leading-tight">
-                  "{quote.quote}"
-                </p>
-                <span className="font-outfit text-[11px] text-[var(--text-muted)] mt-1">
-                  — {quote.author}
-                </span>
-              </div>
-            )}
+          {/* Right: quote */}
+          <div className="hidden md:flex" style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, maxWidth: '55%' }}>
+            <Star8Icon />
+            <span style={{ 
+              fontSize: 11, 
+              fontWeight: 500, 
+              letterSpacing: '0.15em', 
+              textTransform: 'uppercase', 
+              color: 'var(--text-muted)', 
+              fontFamily: 'Outfit',
+              textAlign: 'right',
+              lineHeight: 1.5
+            }}>
+              {quoteText}
+            </span>
+            <Star8Icon />
           </div>
+
         </div>
       </div>
+
 
       {/* OGGI Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

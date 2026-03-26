@@ -9,13 +9,313 @@ import {
   Info, 
   Shield, 
   User,
-  CheckCircle2
+  CheckCircle2,
+  GripVertical,
+  Plus
 } from "lucide-react";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { clearHeaderCache } from "@/src/lib/googleSheets";
+import { useKanbanColumns } from "@/src/hooks/useKanbanColumns";
+import { useClientKanbanColumns } from "@/src/hooks/useClientKanbanColumns";
+import { useBannerSettings } from "@/src/hooks/useBannerSettings";
 import { toast } from "sonner";
 import { cn } from "@/src/lib/utils";
+
+const KANBAN_COLOR_PALETTE = [
+  '#C0C8D8', '#C8B8F5', '#B8E0C8', '#F5E642', '#6DC88A', '#F5C842', '#F5A0B0', '#1A1A18',
+  '#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#6366f1', '#ec4899', '#6b7280',
+  '#1e40af', '#166534', '#6b21a8', '#9a3412', '#991b1b', '#3730a3', '#86198f', '#374151',
+  '#60a5fa', '#4ade80', '#c084fc', '#fbbf24', '#f87171', '#818cf8', '#f472b6', '#9ca3af',
+  '#93c5fd', '#86efac', '#d8b4fe', '#fcd34d', '#fca5a5', '#a5b4fc', '#f9a8d4', '#d1d5db'
+];
+
+const KanbanColumnManager = ({ useHook }: { useHook: any }) => {
+  const { columns, addColumn, updateColumn, deleteColumn, reorderColumns } = useHook();
+  const [newLabel, setNewLabel] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [openColorPicker, setOpenColorPicker] = useState<string | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedId || draggedId === targetId) return;
+
+    const items = columns.map((c: any) => c.id);
+    const draggedIdx = items.indexOf(draggedId);
+    const targetIdx = items.indexOf(targetId);
+
+    const newOrder = [...items];
+    newOrder.splice(draggedIdx, 1);
+    newOrder.splice(targetIdx, 0, draggedId);
+
+    reorderColumns(newOrder);
+    setDraggedId(null);
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1">
+        {columns.map((col: any) => (
+          <div 
+            key={col.id}
+            draggable
+            onDragStart={(e) => handleDragStart(e, col.id)}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, col.id)}
+            className={cn(
+              "flex items-center gap-3 p-3 bg-white border border-[var(--border-light)] rounded-xl shadow-sm transition-all",
+              draggedId === col.id ? "opacity-50" : "opacity-100"
+            )}
+          >
+            <div className="cursor-grab active:cursor-grabbing text-[var(--text-muted)]">
+              <GripVertical size={16} />
+            </div>
+            
+            <div className="relative">
+              <button 
+                onClick={() => setOpenColorPicker(openColorPicker === col.id ? null : col.id)}
+                className="w-5 h-5 rounded-full border border-black/5 shadow-inner"
+                style={{ backgroundColor: col.color }}
+              />
+              {openColorPicker === col.id && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setOpenColorPicker(null)} />
+                  <div className="absolute left-0 top-full mt-2 p-2 bg-white border border-[var(--border-light)] rounded-xl shadow-xl grid grid-cols-8 gap-1 w-[200px] z-50">
+                    {KANBAN_COLOR_PALETTE.map(color => (
+                      <button
+                        key={color}
+                        onClick={() => {
+                          updateColumn({ id: col.id, color });
+                          setOpenColorPicker(null);
+                        }}
+                        className="w-5 h-5 rounded-full border border-black/5 hover:scale-110 transition-transform"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex-1">
+              {editingId === col.id ? (
+                <input
+                  autoFocus
+                  className="w-full bg-transparent font-outfit font-bold text-[14px] outline-none"
+                  defaultValue={col.label}
+                  onBlur={(e) => {
+                    updateColumn({ id: col.id, label: e.target.value });
+                    setEditingId(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      updateColumn({ id: col.id, label: (e.target as HTMLInputElement).value });
+                      setEditingId(null);
+                    }
+                  }}
+                />
+              ) : (
+                <span 
+                  className="font-outfit font-bold text-[14px] text-[var(--text-primary)] cursor-text"
+                  onClick={() => col.key !== 'taken' && setEditingId(col.id)}
+                >
+                  {col.label}
+                </span>
+              )}
+            </div>
+
+            {col.key !== 'taken' && (
+              <button 
+                onClick={() => deleteColumn(col.id)}
+                className="p-2 text-[var(--rose-fg)] hover:bg-[var(--rose-bg)] rounded-full transition-colors"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 mt-2">
+        <input 
+          type="text"
+          placeholder="Nuova colonna..."
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          className="flex-1 bg-white border border-[var(--border-light)] rounded-full px-4 py-2 text-[13px] font-outfit outline-none focus:ring-1 focus:ring-black/10"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && newLabel.trim()) {
+              addColumn({ label: newLabel, color: '#C0C8D8' });
+              setNewLabel("");
+            }
+          }}
+        />
+        <button 
+          onClick={() => {
+            if (newLabel.trim()) {
+              addColumn({ label: newLabel, color: '#C0C8D8' });
+              setNewLabel("");
+            }
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-full font-outfit font-bold text-[12px] uppercase hover:bg-black/80 transition-all"
+        >
+          <Plus size={16} />
+          Aggiungi
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const BannerTickerSettings = () => {
+  const { settings, updateSettings, isLoading } = useBannerSettings();
+  const [localSettings, setLocalSettings] = useState(settings);
+
+  useEffect(() => {
+    if (!isLoading) setLocalSettings(settings);
+  }, [settings, isLoading]);
+
+  if (isLoading) return null;
+
+  const handleChange = (field: keyof typeof settings, value: any) => {
+    setLocalSettings(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <div className="flex flex-col gap-4 p-4 bg-white border border-[var(--border-light)] rounded-[14px] shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Testo 1</label>
+          <input 
+            type="text"
+            value={localSettings.text1}
+            onChange={(e) => handleChange('text1', e.target.value)}
+            className="bg-[var(--bg-subtle)] border-0 rounded-lg px-3 py-2 text-[13px] font-outfit outline-none"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Testo 2</label>
+          <input 
+            type="text"
+            value={localSettings.text2}
+            onChange={(e) => handleChange('text2', e.target.value)}
+            className="bg-[var(--bg-subtle)] border-0 rounded-lg px-3 py-2 text-[13px] font-outfit outline-none"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Testo 3</label>
+          <input 
+            type="text"
+            value={localSettings.text3}
+            onChange={(e) => handleChange('text3', e.target.value)}
+            className="bg-[var(--bg-subtle)] border-0 rounded-lg px-3 py-2 text-[13px] font-outfit outline-none"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Testo 4</label>
+          <input 
+            type="text"
+            value={localSettings.text4}
+            onChange={(e) => handleChange('text4', e.target.value)}
+            className="bg-[var(--bg-subtle)] border-0 rounded-lg px-3 py-2 text-[13px] font-outfit outline-none"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Colore Sfondo</label>
+          <div className="flex items-center gap-2">
+            <input 
+              type="color"
+              value={localSettings.bgColor}
+              onChange={(e) => handleChange('bgColor', e.target.value)}
+              className="w-8 h-8 rounded border-0 p-0 overflow-hidden cursor-pointer"
+            />
+            <span className="text-[12px] font-mono uppercase">{localSettings.bgColor}</span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Colore Testo</label>
+          <div className="flex items-center gap-2">
+            <input 
+              type="color"
+              value={localSettings.textColor}
+              onChange={(e) => handleChange('textColor', e.target.value)}
+              className="w-8 h-8 rounded border-0 p-0 overflow-hidden cursor-pointer"
+            />
+            <span className="text-[12px] font-mono uppercase">{localSettings.textColor}</span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Velocità (secondi per loop)</label>
+          <input 
+            type="number"
+            value={localSettings.speed}
+            onChange={(e) => handleChange('speed', parseInt(e.target.value))}
+            className="bg-[var(--bg-subtle)] border-0 rounded-lg px-3 py-2 text-[13px] font-outfit outline-none"
+          />
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-2">
+        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Anteprima</label>
+        <div 
+          className="h-10 rounded-lg flex items-center px-4 gap-8 overflow-hidden font-outfit font-bold text-[12px] uppercase tracking-wider"
+          style={{ backgroundColor: localSettings.bgColor, color: localSettings.textColor }}
+        >
+          <span>{localSettings.text1.replace('{remaining}', '150.000').replace('{target}', '500.000').replace('{fatturatoCredito}', '350.000')}</span>
+          <span>{localSettings.text2}</span>
+          <span>{localSettings.text3}</span>
+          <span>{localSettings.text4}</span>
+        </div>
+      </div>
+
+      <button 
+        onClick={() => {
+          updateSettings(localSettings);
+          toast.success("Impostazioni banner salvate");
+        }}
+        className="mt-2 w-full py-3 bg-black text-white rounded-full font-outfit font-bold text-[12px] uppercase hover:bg-black/80 transition-all"
+      >
+        Salva impostazioni banner
+      </button>
+    </div>
+  );
+};
+
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="flex flex-col gap-4">
+    <h3 className="font-outfit font-bold text-[12px] uppercase tracking-widest text-[var(--text-muted)] border-b border-[var(--border-light)] pb-2">
+      {title}
+    </h3>
+    <div className="flex flex-col gap-3">
+      {children}
+    </div>
+  </div>
+);
+
+const SettingRow = ({ icon: Icon, label, description, action }: any) => (
+  <div className="flex items-center justify-between p-4 bg-white border border-[var(--border-light)] rounded-[14px] shadow-sm">
+    <div className="flex items-center gap-4">
+      <div className="w-10 h-10 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-primary)]">
+        <Icon size={20} />
+      </div>
+      <div className="flex flex-col">
+        <span className="font-outfit font-bold text-[14px] text-[var(--text-primary)]">{label}</span>
+        {description && <span className="text-[11px] text-[var(--text-muted)] font-medium">{description}</span>}
+      </div>
+    </div>
+    {action}
+  </div>
+);
 
 export const SettingsPage: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -38,32 +338,6 @@ export const SettingsPage: React.FC = () => {
     clearHeaderCache();
     toast.success("Cache svuotata con successo");
   };
-
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="flex flex-col gap-4">
-      <h3 className="font-outfit font-bold text-[12px] uppercase tracking-widest text-[var(--text-muted)] border-b border-[var(--border-light)] pb-2">
-        {title}
-      </h3>
-      <div className="flex flex-col gap-3">
-        {children}
-      </div>
-    </div>
-  );
-
-  const SettingRow = ({ icon: Icon, label, description, action }: any) => (
-    <div className="flex items-center justify-between p-4 bg-white border border-[var(--border-light)] rounded-[14px] shadow-sm">
-      <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-primary)]">
-          <Icon size={20} />
-        </div>
-        <div className="flex flex-col">
-          <span className="font-outfit font-bold text-[14px] text-[var(--text-primary)]">{label}</span>
-          {description && <span className="text-[11px] text-[var(--text-muted)] font-medium">{description}</span>}
-        </div>
-      </div>
-      {action}
-    </div>
-  );
 
   return (
     <div className="flex flex-col gap-8 p-6 max-w-3xl mx-auto w-full">
@@ -156,14 +430,32 @@ export const SettingsPage: React.FC = () => {
               </button>
             }
           />
-          <div className="flex flex-col items-center gap-2 py-6">
-            <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center mb-2">
-              <span className="text-white font-bold text-[22px]">L</span>
-            </div>
-            <span className="font-outfit font-bold text-[14px] uppercase tracking-widest">LEADOMANCY</span>
-            <span className="text-[11px] font-outfit font-medium text-[var(--text-muted)]">Version 1.0.0 — Build 2026.03.25</span>
-          </div>
         </Section>
+
+        {/* COLONNE KANBAN — NOTIZIE */}
+        <Section title="COLONNE KANBAN — NOTIZIE">
+          <KanbanColumnManager useHook={useKanbanColumns} />
+        </Section>
+
+        {/* COLONNE KANBAN — BUYERS */}
+        <Section title="COLONNE KANBAN — BUYERS">
+          <KanbanColumnManager useHook={useClientKanbanColumns} />
+        </Section>
+
+        {/* BANNER TICKER */}
+        <Section title="BANNER TICKER">
+          <BannerTickerSettings />
+        </Section>
+
+        <div className="flex flex-col items-center gap-2 py-6">
+          <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center mb-2">
+          <svg viewBox="0 0 24 24" fill="white" style={{ width: 16, height: 16 }}>
+            <path d="M12 0 L13.5 4.5 L18 4.5 L14.5 7 L16 11.5 L12 8.5 L8 11.5 L9.5 7 L6 4.5 L10.5 4.5 Z" />
+          </svg>
+          </div>
+          <span className="font-outfit font-bold text-[14px] uppercase tracking-widest">LEADOMANCY</span>
+          <span className="text-[11px] font-outfit font-medium text-[var(--text-muted)]">Version 1.0.0 — Build 2026.03.25</span>
+        </div>
       </div>
     </div>
   );

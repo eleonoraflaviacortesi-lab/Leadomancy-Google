@@ -14,19 +14,22 @@ import {
 
 const ALL_STATUSES: ClienteStatus[] = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost'];
 
+import { useClientKanbanColumns } from "./useClientKanbanColumns";
+
 export function useClienti(options?: { filters?: ClienteFilters }) {
-  const { user: profile } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const queryKey = ['clienti', profile?.user_id];
+  const { columns } = useClientKanbanColumns();
+  const queryKey = ['clienti', user?.user_id || user?.sede];
 
   const { data: clienti = [], isLoading } = useQuery({
     queryKey,
     queryFn: async () => {
-      if (!profile?.sede) return [];
+      if (!user?.sede) return [];
       const data = await getSheetData<Cliente>(SHEETS.clienti);
       
       return data
-        .filter(c => c.sede === profile.sede)
+        .filter(c => c.sede === user.sede)
         .map(c => ({
           ...c,
           regioni: Array.isArray(c.regioni) ? c.regioni : [],
@@ -44,7 +47,7 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchInterval: 30000, // 30 seconds
-    enabled: !!profile?.sede,
+    enabled: !!user?.sede,
   });
 
   const filteredClienti = useMemo(() => {
@@ -74,25 +77,33 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
 
   const clientiByStatus = useMemo(() => {
     const groups: Record<string, Cliente[]> = {};
-    ALL_STATUSES.forEach(status => {
-      groups[status] = filteredClienti.filter(c => c.status === status);
+    columns.forEach(col => {
+      groups[col.key] = filteredClienti.filter(c => c.status === col.key);
+    });
+    // Handle any statuses not in the current columns
+    filteredClienti.forEach(c => {
+      if (!columns.find(col => col.key === c.status)) {
+        if (!groups[c.status]) groups[c.status] = [];
+        groups[c.status].push(c);
+      }
     });
     return groups;
-  }, [filteredClienti]);
+  }, [filteredClienti, columns]);
 
   const addClienteMutation = useMutation({
     mutationFn: async (newCliente: Partial<Cliente>) => {
-      if (!profile) throw new Error("User not authenticated");
+      if (!user) throw new Error("User not authenticated");
       const id = crypto.randomUUID();
       const now = new Date().toISOString();
       const cliente: Cliente = {
         ...newCliente,
         id,
-        assigned_to: profile.user_id,
-        sede: profile.sede,
+        user_id: user?.user_id || user?.id,
+        assigned_to: user.user_id,
+        sede: user?.sede || 'Firenze',
         created_at: now,
         updated_at: now,
-        display_order: clienti.length + 1,
+        display_order: (clienti.length || 0) + 1,
         status: newCliente.status || 'new',
         regioni: newCliente.regioni || [],
         motivo_zona: newCliente.motivo_zona || [],
@@ -106,30 +117,34 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
     },
     onMutate: async (newCliente) => {
       await queryClient.cancelQueries({ queryKey });
-      const previousClienti = queryClient.getQueryData<Cliente[]>(queryKey);
+      const previous = queryClient.getQueryData(queryKey);
       
-      const optimisticCliente = {
+      queryClient.setQueryData(queryKey, (old: any[] = []) => [...old, {
         ...newCliente,
-        id: 'temp-id',
-        assigned_to: profile?.user_id,
-        sede: profile?.sede,
+        id: crypto.randomUUID(),
+        user_id: user?.user_id || user?.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        display_order: (previousClienti?.length || 0) + 1,
-      } as Cliente;
+        comments: [],
+        regioni: newCliente.regioni || [],
+        motivo_zona: newCliente.motivo_zona || [],
+        tipologia: newCliente.tipologia || [],
+        contesto: newCliente.contesto || [],
+        status: newCliente.status || 'new',
+        display_order: (old?.length || 0) + 1,
+      }]);
 
-      queryClient.setQueryData<Cliente[]>(queryKey, (old) => [...(old || []), optimisticCliente]);
-      return { previousClienti };
+      return { previous };
     },
-    onError: (err, newCliente, context) => {
-      queryClient.setQueryData(queryKey, context?.previousClienti);
-      toast.error("Errore durante l'aggiunta del cliente");
+    onError: (err, _, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+      toast.error('Errore durante il salvataggio');
     },
     onSuccess: () => {
       toast.success("Cliente aggiunto");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
+      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 2000);
     },
   });
 
@@ -172,6 +187,9 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
 
   const deleteClienteMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (!window.confirm('Eliminare questo buyer?')) {
+        throw new Error('Eliminazione annullata');
+      }
       const rowIndex = await findRowIndex(SHEETS.clienti, id);
       if (!rowIndex) throw new Error("Cliente non trovato");
       await deleteRow(SHEETS.clienti, rowIndex);
@@ -188,10 +206,10 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
       toast.error("Errore durante l'eliminazione");
     },
     onSuccess: () => {
-      toast.success("Eliminato");
+      toast.success("Buyer eliminato");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
+      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 2000);
     },
   });
 
