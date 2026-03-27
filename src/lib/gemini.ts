@@ -1,64 +1,64 @@
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { Cliente, Notizia } from "@/src/types";
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
 
 interface GeminiMessage {
   role: 'user' | 'model';
   parts: [{ text: string }];
 }
 
-async function callGemini(
+export async function callGemini(
   messages: GeminiMessage[],
   systemInstruction?: string,
   jsonMode?: boolean
 ): Promise<string> {
-  const body: any = {
-    contents: messages,
-  };
-
-  if (systemInstruction) {
-    body.system_instruction = {
-      parts: [{ text: systemInstruction }]
-    };
+  if (!GEMINI_API_KEY) {
+    throw new Error('Gemini API Key is missing. Please configure GEMINI_API_KEY in the Secrets panel.');
   }
+  
+  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+  
+  const fetchWithRetry = async (retryCount = 0): Promise<string> => {
+    try {
+      const response: GenerateContentResponse = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: messages,
+        config: {
+          systemInstruction: systemInstruction,
+          responseMimeType: jsonMode ? "application/json" : "text/plain",
+        },
+      });
 
-  if (jsonMode) {
-    body.generationConfig = {
-      response_mime_type: "application/json"
-    };
-  }
+      const text = response.text;
+      if (text === undefined) {
+        throw new Error('No content returned from Gemini');
+      }
+      return text;
+    } catch (error: any) {
+      const errorMessage = error?.message?.toLowerCase() || "";
+      const isRetryable = 
+        errorMessage.includes("high demand") || 
+        errorMessage.includes("429") || 
+        errorMessage.includes("503") ||
+        errorMessage.includes("overloaded") ||
+        errorMessage.includes("deadline exceeded") ||
+        errorMessage.includes("service unavailable");
 
-  const fetchWithRetry = async (retryCount = 0): Promise<Response> => {
-    const response = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (response.status === 429 && retryCount < 1) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return fetchWithRetry(retryCount + 1);
+      if (isRetryable && retryCount < 3) {
+        // Exponential backoff: 2s, 4s, 8s + jitter
+        const delay = Math.pow(2, retryCount + 1) * 1000 + Math.random() * 1000;
+        console.warn(`Gemini high demand, retrying in ${Math.round(delay)}ms... (Attempt ${retryCount + 1}/3)`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return fetchWithRetry(retryCount + 1);
+      }
+      
+      console.error("Gemini API Error after retries:", error);
+      throw error;
     }
-
-    return response;
   };
 
-  const response = await fetchWithRetry();
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error?.message || 'Gemini API call failed');
-  }
-
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (text === undefined) {
-    throw new Error('No content returned from Gemini');
-  }
-
-  return text;
+  return fetchWithRetry();
 }
 
 /**

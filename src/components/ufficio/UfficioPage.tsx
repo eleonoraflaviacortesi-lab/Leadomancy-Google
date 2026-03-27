@@ -139,13 +139,10 @@ export const UfficioPage: React.FC = () => {
   }, [allData, user, isAdmin]);
 
   return (
-    <div className="flex flex-col gap-8 pt-6 pb-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-8 pb-6 w-full">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <span className="font-outfit text-[11px] uppercase tracking-wider text-[var(--text-muted)]">
-          Leadomancy / Gestione
-        </span>
-        <h1 className="font-outfit font-semibold text-[28px] tracking-tight text-[var(--text-primary)]">
+      <div className="flex flex-col gap-1 mb-[10px]">
+        <h1 className="font-outfit font-semibold text-[22px] tracking-tight text-[var(--text-primary)]">
           Ufficio {user?.sede}
         </h1>
       </div>

@@ -61,14 +61,11 @@ export const ClientiPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full max-w-[1600px] mx-auto w-full rounded-t-2xl">
+    <div className="flex flex-col h-full w-full">
       {/* Header Section */}
-      <div className="flex flex-col gap-6 pt-6 pb-0">
-        <div className="flex flex-col gap-1">
-          <span className="font-outfit text-[11px] uppercase tracking-wider text-[var(--text-muted)]">
-            Leadomancy / Buyers
-          </span>
-          <h1 className="font-outfit font-semibold text-[28px] tracking-tight text-[var(--text-primary)]">
+      <div className="flex flex-col gap-6 pb-0">
+        <div className="flex flex-col gap-1 mb-[10px]">
+          <h1 className="font-outfit font-semibold text-[22px] tracking-tight text-[var(--text-primary)]">
             Luxury Buyers
           </h1>
         </div>

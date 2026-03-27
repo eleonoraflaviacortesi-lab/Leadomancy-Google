@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Search, Check, Calendar as CalendarIcon, Clock, MapPin, User, Building2 } from "lucide-react";
+import { X, Search, Check, Calendar as CalendarIcon, Clock, MapPin, User, Building2, ChevronDown, Save } from "lucide-react";
 import { useAppointments } from "@/src/hooks/useAppointments";
 import { useClienti } from "@/src/hooks/useClienti";
 import { useNotizie } from "@/src/hooks/useNotizie";
@@ -20,14 +20,14 @@ interface AddAppointmentDialogProps {
 }
 
 const AppointmentInput = ({ label, icon: Icon, ...props }: any) => (
-  <div className="flex flex-col gap-1.5">
-    <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+  <div className="flex flex-col gap-2">
+    <label className="font-outfit font-bold text-[10px] uppercase tracking-[0.15em] text-[var(--text-muted)] flex items-center gap-2 px-1">
       {Icon && <Icon size={12} />}
       {label}
     </label>
     <input
       {...props}
-      className="w-full bg-[var(--bg-subtle)] border-0 rounded-[10px] p-2.5 px-4 text-[13px] font-outfit outline-none focus:ring-1 focus:ring-black/10 transition-all"
+      className="w-full h-12 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[14px] px-4 text-[14px] font-outfit font-bold text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all hover:border-[var(--border-medium)] shadow-sm"
     />
   </div>
 );
@@ -149,48 +149,57 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/25"
           />
 
           <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            initial={{ scale: 0.97, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="relative w-full max-w-lg bg-white rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col"
+            exit={{ scale: 0.97, opacity: 0, y: 20 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="relative w-full max-w-lg bg-white rounded-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-[var(--border-light)]">
-              <h2 className="font-outfit font-bold text-[16px] uppercase tracking-[0.1em] text-[var(--text-primary)]">
-                {isTask ? "Nuova Task" : "Nuovo Appuntamento"}
-              </h2>
-              <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+            <div className="flex items-center justify-between p-8 border-b border-[var(--border-light)]">
+              <div className="flex flex-col gap-1">
+                <span className="font-outfit text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                  Calendario
+                </span>
+                <h2 className="font-outfit font-bold text-[22px] tracking-[-0.5px] text-[var(--text-primary)]">
+                  {isTask ? "Nuova Task" : "Nuovo Appuntamento"}
+                </h2>
+              </div>
+              <button 
+                onClick={onClose} 
+                className="w-9 h-9 flex items-center justify-center bg-[var(--bg-subtle)] hover:bg-[var(--border-light)] rounded-full transition-colors"
+              >
                 <X size={20} />
               </button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5 overflow-y-auto max-h-[70vh]">
+            <form onSubmit={handleSubmit} className="p-8 flex flex-col gap-6 overflow-y-auto max-h-[70vh]">
               {/* Type Selector */}
-              <div className="flex gap-2 mb-2">
+              <div className="flex p-1 bg-[var(--bg-subtle)] rounded-full w-fit">
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, type: 'visit' })}
                   className={cn(
-                    "h-8 px-4 rounded-full font-outfit text-[13px] font-medium transition-all",
-                    !isTask ? "bg-[#1A1A18] text-white" : "bg-[var(--bg-subtle)] text-[var(--text-secondary)]"
+                    "h-8 px-5 rounded-full font-outfit text-[12px] font-bold uppercase tracking-[0.05em] transition-all",
+                    !isTask ? "bg-white text-[var(--text-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                   )}
                 >
-                  📅 Appuntamento
+                  Appuntamento
                 </button>
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, type: 'task' })}
                   className={cn(
-                    "h-8 px-4 rounded-full font-outfit text-[13px] font-medium transition-all",
-                    isTask ? "bg-[#1A1A18] text-white" : "bg-[var(--bg-subtle)] text-[var(--text-secondary)]"
+                    "h-8 px-5 rounded-full font-outfit text-[12px] font-bold uppercase tracking-[0.05em] transition-all",
+                    isTask ? "bg-white text-[var(--text-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                   )}
                 >
-                  ✓ Task / Promemoria
+                  Task / Promemoria
                 </button>
               </div>
 
@@ -202,19 +211,19 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                 onChange={(e: any) => setFormData({ ...formData, title: e.target.value })}
               />
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+              <div className="flex flex-col gap-2">
+                <label className="font-outfit font-bold text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">
                   Descrizione
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Dettagli dell'appuntamento..."
-                  className="w-full bg-[var(--bg-subtle)] border-0 rounded-[10px] p-3 px-4 text-[13px] font-outfit outline-none focus:ring-1 focus:ring-black/10 transition-all h-24 resize-none"
+                  className="w-full bg-[var(--bg-subtle)] border-none rounded-[12px] p-4 text-[14px] font-outfit outline-none h-28 resize-none placeholder:text-[var(--text-muted)]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
                 <AppointmentInput
                   label="Data"
                   type="date"
@@ -223,7 +232,7 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                   value={formData.date}
                   onChange={(e: any) => setFormData({ ...formData, date: e.target.value })}
                 />
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-3">
                   <AppointmentInput
                     label={isTask ? "Ora" : "Inizio"}
                     type="time"
@@ -245,21 +254,24 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
               {!isTask && (
                 <>
                   {calendars.length > 0 && (
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+                    <div className="flex flex-col gap-2">
+                      <label className="font-outfit font-bold text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)] flex items-center gap-2">
                         <CalendarIcon size={12} />
                         Calendario
                       </label>
-                      <select
-                        value={selectedCalendarId}
-                        onChange={(e) => setSelectedCalendarId(e.target.value)}
-                        className="w-full bg-[var(--bg-subtle)] border-0 rounded-[10px] p-2.5 px-4 text-[13px] font-outfit outline-none focus:ring-1 focus:ring-black/10 transition-all appearance-none"
-                      >
-                        <option value="primary">Calendario Principale (Leadomancy)</option>
-                        {calendars.filter(c => !c.primary).map(c => (
-                          <option key={c.id} value={c.id}>{c.summary}</option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <select
+                          value={selectedCalendarId}
+                          onChange={(e) => setSelectedCalendarId(e.target.value)}
+                          className="w-full h-11 bg-[var(--bg-subtle)] border-none rounded-[12px] px-4 text-[14px] font-outfit outline-none appearance-none cursor-pointer"
+                        >
+                          <option value="primary">Calendario Principale (Leadomancy)</option>
+                          {calendars.filter(c => !c.primary).map(c => (
+                            <option key={c.id} value={c.id}>{c.summary}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+                      </div>
                     </div>
                   )}
 
@@ -274,16 +286,16 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
               )}
 
               {/* Cliente Collegato */}
-              <div className="flex flex-col gap-1.5 relative">
-                <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+              <div className="flex flex-col gap-2 relative">
+                <label className="font-outfit font-bold text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)] flex items-center gap-2">
                   <User size={12} />
                   Cliente Collegato
                 </label>
                 <div className="relative">
                   <div 
                     className={cn(
-                      "w-full bg-[var(--bg-subtle)] rounded-[10px] p-2.5 px-4 text-[13px] font-outfit flex items-center justify-between cursor-pointer",
-                      isClientDropdownOpen && "ring-1 ring-black/10"
+                      "w-full h-11 bg-[var(--bg-subtle)] rounded-[12px] px-4 text-[14px] font-outfit flex items-center justify-between cursor-pointer transition-all",
+                      isClientDropdownOpen && "ring-1 ring-black/5"
                     )}
                     onClick={() => setIsClientDropdownOpen(!isClientDropdownOpen)}
                   >
@@ -303,14 +315,14 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full left-0 right-0 mt-2 bg-white border border-[var(--border-light)] rounded-[12px] shadow-xl z-50 overflow-hidden"
+                        className="absolute top-full left-0 right-0 mt-2 bg-white border border-[var(--border-light)] rounded-[16px] shadow-[0_10px_40px_rgba(0,0,0,0.12)] z-50 overflow-hidden"
                       >
-                        <div className="p-2 border-b border-[var(--border-light)]">
+                        <div className="p-3 border-b border-[var(--border-light)]">
                           <input
                             autoFocus
                             type="text"
                             placeholder="Cerca cliente..."
-                            className="w-full bg-[var(--bg-subtle)] border-0 rounded-[6px] p-1.5 px-3 text-[12px] font-outfit outline-none"
+                            className="w-full h-9 bg-[var(--bg-subtle)] border-none rounded-[8px] px-3 text-[13px] font-outfit outline-none placeholder:text-[var(--text-muted)]"
                             value={clientSearch}
                             onChange={(e) => setClientSearch(e.target.value)}
                             onClick={(e) => e.stopPropagation()}
@@ -321,7 +333,7 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                             filteredClienti.map(c => (
                               <div
                                 key={c.id}
-                                className="p-2.5 px-4 text-[13px] font-outfit hover:bg-[var(--bg-subtle)] cursor-pointer flex items-center justify-between"
+                                className="p-3 px-4 text-[14px] font-outfit hover:bg-[var(--bg-subtle)] cursor-pointer flex items-center justify-between transition-colors"
                                 onClick={() => {
                                   setFormData({ ...formData, cliente_id: c.id });
                                   setIsClientDropdownOpen(false);
@@ -333,7 +345,7 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                               </div>
                             ))
                           ) : (
-                            <div className="p-4 text-center text-[12px] text-[var(--text-muted)] font-outfit">
+                            <div className="p-6 text-center text-[13px] text-[var(--text-muted)] font-outfit">
                               Nessun cliente trovato
                             </div>
                           )}
@@ -345,16 +357,16 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
               </div>
 
               {/* Notizia Collegata */}
-              <div className="flex flex-col gap-1.5 relative">
-                <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
+              <div className="flex flex-col gap-2 relative">
+                <label className="font-outfit font-bold text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)] flex items-center gap-2">
                   <Building2 size={12} />
                   Notizia Collegata
                 </label>
                 <div className="relative">
                   <div 
                     className={cn(
-                      "w-full bg-[var(--bg-subtle)] rounded-[10px] p-2.5 px-4 text-[13px] font-outfit flex items-center justify-between cursor-pointer",
-                      isNotiziaDropdownOpen && "ring-1 ring-black/10"
+                      "w-full h-11 bg-[var(--bg-subtle)] rounded-[12px] px-4 text-[14px] font-outfit flex items-center justify-between cursor-pointer transition-all",
+                      isNotiziaDropdownOpen && "ring-1 ring-black/5"
                     )}
                     onClick={() => setIsNotiziaDropdownOpen(!isNotiziaDropdownOpen)}
                   >
@@ -374,14 +386,14 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full left-0 right-0 mt-2 bg-white border border-[var(--border-light)] rounded-[12px] shadow-xl z-50 overflow-hidden"
+                        className="absolute top-full left-0 right-0 mt-2 bg-white border border-[var(--border-light)] rounded-[16px] shadow-[0_10px_40px_rgba(0,0,0,0.12)] z-50 overflow-hidden"
                       >
-                        <div className="p-2 border-b border-[var(--border-light)]">
+                        <div className="p-3 border-b border-[var(--border-light)]">
                           <input
                             autoFocus
                             type="text"
                             placeholder="Cerca notizia..."
-                            className="w-full bg-[var(--bg-subtle)] border-0 rounded-[6px] p-1.5 px-3 text-[12px] font-outfit outline-none"
+                            className="w-full h-9 bg-[var(--bg-subtle)] border-none rounded-[8px] px-3 text-[13px] font-outfit outline-none placeholder:text-[var(--text-muted)]"
                             value={notiziaSearch}
                             onChange={(e) => setNotiziaSearch(e.target.value)}
                             onClick={(e) => e.stopPropagation()}
@@ -392,7 +404,7 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                             filteredNotizie.map(n => (
                               <div
                                 key={n.id}
-                                className="p-2.5 px-4 text-[13px] font-outfit hover:bg-[var(--bg-subtle)] cursor-pointer flex items-center justify-between"
+                                className="p-3 px-4 text-[14px] font-outfit hover:bg-[var(--bg-subtle)] cursor-pointer flex items-center justify-between transition-colors"
                                 onClick={() => {
                                   setFormData({ ...formData, notizia_id: n.id });
                                   setIsNotiziaDropdownOpen(false);
@@ -404,7 +416,7 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                               </div>
                             ))
                           ) : (
-                            <div className="p-4 text-center text-[12px] text-[var(--text-muted)] font-outfit">
+                            <div className="p-6 text-center text-[13px] text-[var(--text-muted)] font-outfit">
                               Nessuna notizia trovata
                             </div>
                           )}
@@ -416,24 +428,21 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
               </div>
 
               {/* Completato Toggle */}
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-[13px] font-outfit font-medium text-[var(--text-primary)]">
+              <div className="flex items-center justify-between mt-2 p-4 bg-[var(--bg-subtle)] rounded-[16px]">
+                <span className="text-[13px] font-outfit font-bold uppercase tracking-[0.05em] text-[var(--text-primary)]">
                   Segna come completato
                 </span>
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, completed: !formData.completed })}
                   className={cn(
-                    "w-10 h-5 rounded-full transition-colors relative",
-                    formData.completed ? "bg-black" : "bg-[var(--bg-subtle)] border border-[var(--border-light)]"
+                    "w-11 h-6 rounded-full transition-all relative",
+                    formData.completed ? "bg-black" : "bg-[var(--border-medium)]"
                   )}
                 >
                   <motion.div
                     animate={{ x: formData.completed ? 22 : 2 }}
-                    className={cn(
-                      "absolute top-0.5 w-3.5 h-3.5 rounded-full",
-                      formData.completed ? "bg-white" : "bg-[var(--text-muted)]"
-                    )}
+                    className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm"
                   />
                 </button>
               </div>
@@ -441,8 +450,9 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
               {/* Submit */}
               <button
                 type="submit"
-                className="mt-4 w-full bg-[#1A1A18] text-white py-3.5 rounded-full font-outfit font-bold text-[14px] uppercase tracking-[0.15em] hover:bg-black transition-all shadow-lg active:scale-[0.98]"
+                className="mt-4 w-full h-14 bg-[var(--text-primary)] text-white rounded-full font-outfit font-bold text-[13px] uppercase tracking-[0.2em] hover:opacity-90 transition-all shadow-lg shadow-[var(--text-primary)]/10 active:scale-[0.98] flex items-center justify-center gap-3"
               >
+                <Save size={20} />
                 {isTask ? "Aggiungi Task" : "Salva Appuntamento"}
               </button>
             </form>

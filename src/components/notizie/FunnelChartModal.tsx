@@ -33,87 +33,94 @@ export const FunnelChartModal: React.FC<FunnelChartModalProps> = ({ isOpen, onCl
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/25"
           />
           <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="relative bg-white rounded-[16px] p-6 w-[min(90vw,500px)] max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col"
+            initial={{ scale: 0.97, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.97, opacity: 0, y: 20 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="relative w-full max-w-[500px] bg-white rounded-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[85vh]"
           >
-            <button 
-              onClick={onClose} 
-              className="absolute top-4 right-4 p-2 hover:bg-black/5 rounded-full transition-colors z-10"
-            >
-              <X size={24} />
-            </button>
-
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center text-white">
-                <TrendingDown size={20} />
+            {/* Header */}
+            <div className="flex items-center justify-between p-8 border-b border-[var(--border-light)] shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-[#1A1A18] flex items-center justify-center text-white shadow-lg shadow-black/10">
+                  <TrendingDown size={22} />
+                </div>
+                <div>
+                  <h2 className="font-outfit font-bold text-[20px] text-[var(--text-primary)] tracking-[-0.5px]">Funnel di Acquisizione</h2>
+                  <p className="font-outfit font-bold text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Conversione per stato</p>
+                </div>
               </div>
-              <div>
-                <h2 className="font-outfit font-semibold text-[20px] text-[var(--text-primary)]">Funnel di Acquisizione</h2>
-                <p className="text-[12px] text-[var(--text-muted)] font-outfit uppercase tracking-wider">Conversione per stato</p>
-              </div>
+              <button 
+                onClick={onClose} 
+                className="w-10 h-10 flex items-center justify-center bg-[var(--bg-subtle)] hover:bg-[var(--border-light)] rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
             </div>
 
-            <div className="space-y-4 mb-8">
-              {funnelData.map((stage, index) => {
-                const widthPercent = Math.max((stage.count / maxCount) * 100, 5);
-                
-                return (
-                  <motion.div 
-                    key={stage.key}
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="group"
-                  >
-                    <div className="flex items-center justify-between mb-1.5 px-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-outfit font-bold text-[11px] uppercase tracking-tight text-[var(--text-primary)]">
-                          {stage.label}
-                        </span>
-                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)]">
-                          {stage.count} notizie
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-outfit font-bold text-[var(--text-muted)]">
-                        {stage.percentage.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="relative h-10 w-full bg-[var(--bg-subtle)] rounded-xl overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${widthPercent}%` }}
-                        transition={{ duration: 1, ease: "easeOut", delay: index * 0.1 }}
-                        className="absolute inset-y-0 left-0 flex items-center justify-end pr-4"
-                        style={{ backgroundColor: stage.color }}
-                      >
-                        {widthPercent > 15 && (
-                          <span className="text-[10px] font-outfit font-bold text-black/60 uppercase">
+            <div className="p-8 overflow-y-auto flex-1">
+              <div className="flex flex-col gap-6">
+                {funnelData.map((stage, index) => {
+                  const widthPercent = Math.max((stage.count / maxCount) * 100, 5);
+                  
+                  return (
+                    <motion.div 
+                      key={stage.key}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="group"
+                    >
+                      <div className="flex items-center justify-between mb-2 px-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-outfit font-bold text-[11px] uppercase tracking-[0.05em] text-[var(--text-primary)]">
                             {stage.label}
                           </span>
-                        )}
-                      </motion.div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+                          <span className="text-[10px] font-outfit font-bold text-[var(--text-muted)] bg-[var(--bg-subtle)] px-2 py-0.5 rounded-full">
+                            {stage.count}
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-outfit font-bold text-[var(--text-muted)]">
+                          {stage.percentage.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="relative h-11 w-full bg-[var(--bg-subtle)] rounded-[14px] overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${widthPercent}%` }}
+                          transition={{ duration: 1, ease: "easeOut", delay: index * 0.1 }}
+                          className="absolute inset-y-0 left-0 flex items-center justify-end pr-4 shadow-sm"
+                          style={{ backgroundColor: stage.color }}
+                        >
+                          {widthPercent > 25 && (
+                            <span className="text-[10px] font-outfit font-bold text-black/40 uppercase tracking-wider">
+                              {stage.label}
+                            </span>
+                          )}
+                        </motion.div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="p-6 bg-[var(--bg-subtle)] rounded-2xl text-center">
-              <p className="text-[11px] font-outfit text-[var(--text-muted)] leading-relaxed">
-                Il funnel mostra la distribuzione delle notizie attraverso le fasi del processo di acquisizione.<br />
-                Il totale delle notizie gestite è <span className="font-bold text-[var(--text-primary)]">{notizie.length}</span>.
-              </p>
+            <div className="p-8 border-t border-[var(--border-light)] bg-[var(--bg-subtle)] shrink-0">
+              <div className="bg-white/50 rounded-[16px] p-4 border border-white/50">
+                <p className="text-[12px] font-outfit text-[var(--text-secondary)] leading-relaxed text-center">
+                  Il funnel mostra la distribuzione delle notizie attraverso le fasi del processo di acquisizione.<br />
+                  Il totale delle notizie gestite è <span className="font-bold text-[var(--text-primary)]">{notizie.length}</span>.
+                </p>
+              </div>
             </div>
           </motion.div>
         </div>

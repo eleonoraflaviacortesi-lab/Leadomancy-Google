@@ -302,7 +302,7 @@ export const CalendarPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-[var(--bg-page)] overflow-hidden rounded-t-2xl">
       {/* Header */}
-      <div className="flex flex-col gap-6 pt-6 pb-6 border-b border-[var(--border-light)]">
+      <div className="flex flex-col gap-6 border-b border-[var(--border-light)]">
         {showSchemaWarning && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 flex items-center justify-between gap-3 mb-2" role="alert">
             <div className="flex items-center gap-3">
@@ -344,12 +344,9 @@ export const CalendarPage: React.FC = () => {
             </button>
           </motion.div>
         )}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-[10px]">
           <div className="flex flex-col">
-            <span className="font-outfit text-[11px] uppercase tracking-wider text-[var(--text-muted)]">
-              Leadomancy / Attività
-            </span>
-            <h1 className="font-outfit font-semibold text-[24px] tracking-tight text-[var(--text-primary)] capitalize">
+            <h1 className="font-outfit font-semibold text-[22px] tracking-tight text-[var(--text-primary)] capitalize">
               {format(currentDate, 'MMMM yyyy', { locale: it })}
             </h1>
           </div>

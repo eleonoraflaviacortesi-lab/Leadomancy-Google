@@ -137,7 +137,7 @@ export const OfficeChatPage: React.FC = () => {
   const messageGroups = groupMessagesByDate(messages);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] bg-[var(--bg-page)]">
+    <div className="flex flex-col h-[calc(100vh-104px)] bg-[var(--bg-page)]">
       {/* Messages Area */}
       <div 
         ref={scrollRef}

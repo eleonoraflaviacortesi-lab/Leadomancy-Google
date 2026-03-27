@@ -23,6 +23,7 @@ export interface Notizia {
   comments?: any[];
   is_online?: boolean;
   card_color?: string;
+  agent_name?: string;
   _rowIndex?: number;
 }
 

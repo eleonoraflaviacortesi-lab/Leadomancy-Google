@@ -52,10 +52,6 @@ aside {
   height: calc(100vh - var(--banner-height) - env(safe-area-inset-top, 0px)) !important;
 }
 
-main {
-  padding-top: calc(var(--banner-height) + env(safe-area-inset-top, 0px)) !important;
-}
-
 .dark {
   --bg-page: #121212;
   --bg-surface: #1E1E1E;

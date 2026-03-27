@@ -125,83 +125,56 @@ export const ClienteCard: React.FC<ClienteCardProps> = ({
           rotate: isDragging ? 1 : 0,
           scale: isDragging ? 1.02 : 1,
         }}
-        whileHover={!isDragging ? { y: -1, borderColor: 'var(--border-medium)' } : {}}
+        whileHover={!isDragging ? { y: -2, boxShadow: 'var(--shadow-card-hover)' } : {}}
         onClick={() => onClick(cliente)}
         onContextMenu={handleContextMenu}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         className={cn(
-          "group relative flex flex-col gap-2 p-3 bg-white border border-[var(--border-light)] rounded-[10px] cursor-pointer transition-all duration-150 ease-in-out border-l-[3px]",
+          "group relative flex flex-col bg-white border border-[var(--border-light)] rounded-[14px] cursor-pointer transition-all duration-150 ease-in-out px-4 pt-3.5 pb-3",
           isDragging && "shadow-[0_12px_40px_rgba(0,0,0,0.16)] z-50",
-          !isDragging && "hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
+          !isDragging && "shadow-[var(--shadow-card)]"
         )}
-        style={{ 
-          borderLeftColor: statusConfig.color,
-          backgroundColor: cliente.card_color || undefined,
-          color: cliente.card_color ? (dark ? '#FFFFFF' : '#1A1A18') : undefined,
-        }}
       >
-        {/* Header: Name + Menu */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-col overflow-hidden">
-            <div className="flex items-center gap-1.5">
-              {cliente.emoji && <span className="text-[14px]">{cliente.emoji}</span>}
-              <span className="font-outfit font-medium text-[13px] leading-tight truncate" style={{ color: 'inherit', opacity: 1 }}>
-                {cliente.nome} {cliente.cognome}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              {cliente.paese && (
-                <span className="text-[11px] truncate" style={{ color: 'inherit', opacity: 0.75 }}>
-                  {cliente.paese}
-                </span>
-              )}
-              {cliente.budget_max && (
-                <span className="text-[11px] font-medium" style={{ color: 'inherit', opacity: 0.75 }}>
-                  • {formatCurrency(cliente.budget_max)}
-                </span>
-              )}
-            </div>
+        {/* ROW 1: type label + menu */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="bg-[var(--bg-subtle)] text-[var(--text-muted)] font-outfit font-semibold text-[9px] uppercase tracking-[0.1em] px-[7px] py-[2px] rounded-full">
+            BUYER
           </div>
-          <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 -mr-1 hover:bg-black/5 rounded" style={{ color: 'inherit' }}>
-            <MoreHorizontal size={14} />
+          <button className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
+            <MoreHorizontal size={16} />
           </button>
         </div>
 
-        {/* Regions */}
-        {cliente.regioni && cliente.regioni.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {displayedRegioni.map((regione) => (
-              <span
-                key={regione}
-                className={cn(
-                  "px-1.5 py-0.5 rounded-md text-[9px] font-outfit uppercase tracking-wider",
-                  cliente.card_color && dark ? "bg-white/20 text-white" : "bg-[var(--bg-subtle)] text-[var(--text-secondary)]"
-                )}
-                style={cliente.card_color ? { color: 'inherit' } : {}}
-              >
-                {regione}
-              </span>
-            ))}
-            {remainingRegioniCount > 0 && (
-              <span className="text-[9px] font-outfit self-center" style={{ color: 'inherit', opacity: 0.6 }}>
-                +{remainingRegioniCount} more
-              </span>
-            )}
-          </div>
-        )}
+        {/* ROW 2: title */}
+        <h3 className="font-outfit font-semibold text-[14px] leading-[1.3] text-[var(--text-primary)] line-clamp-2 mt-1">
+          {cliente.nome} {cliente.cognome}
+        </h3>
 
-        {/* Footer: Status + Bell */}
-        <div className="flex items-center justify-between mt-1">
-          <span
-            className="px-2 py-0.5 rounded-full font-outfit font-medium text-[9px] uppercase tracking-wider"
-            style={cliente.card_color && dark ? { backgroundColor: 'rgba(255,255,255,0.2)', color: '#FFFFFF' } : { backgroundColor: statusConfig.bg, color: statusConfig.fg }}
-          >
-            {statusConfig.label}
+        {/* ROW 3: thin progress bar (Placeholder) */}
+        <div className="h-[3px] w-full bg-[var(--bg-subtle)] rounded-full overflow-hidden my-2.5">
+          <div 
+            className="h-full rounded-full transition-all duration-500" 
+            style={{ 
+              backgroundColor: statusConfig.color, 
+              width: `${(cliente.rating || 0) * 20}%` 
+            }} 
+          />
+        </div>
+
+        {/* ROW 4: bottom row */}
+        <div className="flex items-center justify-between mt-auto pt-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[10px] font-outfit font-semibold flex-shrink-0">
+              {cliente.assigned_to?.split(' ').map(n => n[0]).join('') || 'A'}
+            </div>
+            <span className="font-outfit font-medium text-[11px] text-[var(--text-secondary)] truncate">
+              {cliente.assigned_to || 'Agente'}
+            </span>
+          </div>
+          <span className="font-outfit font-normal text-[11px] text-[var(--text-muted)] flex-shrink-0">
+            {new Date(cliente.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
           </span>
-          {hasUrgentReminder && (
-            <Bell size={12} className={cliente.card_color && dark ? "text-white" : "text-rose-500"} style={{ color: 'inherit' }} />
-          )}
         </div>
       </motion.div>
 

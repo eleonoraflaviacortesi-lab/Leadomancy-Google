@@ -120,66 +120,57 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
           scale: isDragging ? 1.02 : 1,
           y: isDragging ? 0 : 0,
         }}
-        whileHover={!isDragging && !isOnShot ? { y: -1, borderColor: 'var(--border-medium)' } : {}}
+        whileHover={!isDragging && !isOnShot ? { y: -2, boxShadow: 'var(--shadow-card-hover)' } : {}}
         onClick={() => onClick(notizia)}
         onContextMenu={handleContextMenu}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         className={cn(
-          "group relative flex flex-col gap-2 p-3 bg-white border border-[var(--border-light)] rounded-[10px] cursor-pointer transition-all duration-150 ease-in-out",
+          "group relative flex flex-col bg-white border border-[var(--border-light)] rounded-[14px] cursor-pointer transition-all duration-150 ease-in-out px-4 pt-3.5 pb-3",
           isDragging && "shadow-[0_12px_40px_rgba(0,0,0,0.16)] z-50",
-          !isDragging && "hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-          isOnShot ? "bg-[#F5E642] border-[#F5E642] text-[#5C5500]" : "border-l-[3px]"
+          !isDragging && "shadow-[var(--shadow-card)]"
         )}
-        style={{
-          borderLeftColor: !isOnShot ? statusColor : undefined,
-          backgroundColor: notizia.card_color || (isOnShot ? "#F5E642" : undefined),
-          color: notizia.card_color ? (dark ? '#FFFFFF' : '#1A1A18') : undefined,
-        }}
       >
-        {/* Row 1: Emoji + Name + Menu */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-2 overflow-hidden">
-            <span className="text-[16px] flex-shrink-0">{notizia.emoji || '🏠'}</span>
-            <span className="font-outfit font-medium text-[13px] leading-tight line-clamp-2" style={{ color: 'inherit', opacity: 1 }}>
-              {notizia.name}
-            </span>
+        {/* ROW 1: type label + menu */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="bg-[var(--bg-subtle)] text-[var(--text-muted)] font-outfit font-semibold text-[9px] uppercase tracking-[0.1em] px-[7px] py-[2px] rounded-full">
+            {notizia.type || 'NOTIZIA'}
           </div>
-          <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 -mr-1 hover:bg-black/5 rounded" style={{ color: 'inherit' }}>
-            <MoreHorizontal size={14} />
+          <button className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
+            <MoreHorizontal size={16} />
           </button>
         </div>
 
-        {/* Row 2: Zona */}
-        {notizia.zona && (
-          <div className={cn(
-            "text-[11px] truncate",
-            isOnShot ? "text-[#5C5500]/70" : ""
-          )} style={{ color: 'inherit', opacity: 0.75 }}>
-            {notizia.zona}
-          </div>
-        )}
+        {/* ROW 2: title */}
+        <h3 className="font-outfit font-semibold text-[14px] leading-[1.3] text-[var(--text-primary)] line-clamp-2 mt-1">
+          {notizia.name}
+        </h3>
 
-        {/* Row 3: Prezzo */}
-        {notizia.prezzo_richiesto && (
-          <div className="font-outfit font-medium text-[12px]" style={{ color: 'inherit', opacity: 1 }}>
-            {formatCurrency(notizia.prezzo_richiesto)}
-          </div>
-        )}
+        {/* ROW 3: thin progress bar */}
+        <div className="h-[3px] w-full bg-[var(--bg-subtle)] rounded-full overflow-hidden my-2.5">
+          <div 
+            className="h-full rounded-full transition-all duration-500" 
+            style={{ 
+              backgroundColor: statusColor, 
+              width: `${(notizia.rating || 0) * 20}%` 
+            }} 
+          />
+        </div>
 
-        {/* Footer: Rating + Bell */}
-        {(notizia.rating || hasUrgentReminder) && (
-          <div className="flex items-center justify-between mt-1">
-            <div className="flex items-center gap-0.5" style={{ color: 'inherit' }}>
-              {notizia.rating && Array.from({ length: notizia.rating }).map((_, i) => (
-                <Star key={i} size={10} fill="currentColor" className={isOnShot ? "text-[#5C5500]" : (notizia.card_color && dark ? "text-white" : "text-amber-400")} style={{ color: 'inherit' }} />
-              ))}
+        {/* ROW 4: bottom row */}
+        <div className="flex items-center justify-between mt-auto pt-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[10px] font-outfit font-semibold flex-shrink-0">
+              {notizia.agent_name?.split(' ').map(n => n[0]).join('') || 'A'}
             </div>
-            {hasUrgentReminder && (
-              <Bell size={12} className={isOnShot ? "text-[#5C5500]" : (notizia.card_color && dark ? "text-white" : "text-rose-500")} style={{ color: 'inherit' }} />
-            )}
+            <span className="font-outfit font-medium text-[11px] text-[var(--text-secondary)] truncate">
+              {notizia.agent_name || 'Agente'}
+            </span>
           </div>
-        )}
+          <span className="font-outfit font-normal text-[11px] text-[var(--text-muted)] flex-shrink-0">
+            {new Date(notizia.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
+          </span>
+        </div>
       </motion.div>
 
       <AnimatePresence>

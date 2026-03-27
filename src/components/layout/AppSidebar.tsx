@@ -61,12 +61,12 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
   return (
     <aside
       className={cn(
-        "flex flex-col fixed left-0 top-[70px] h-screen bg-[var(--bg-surface)] border-r border-[var(--border-light)] transition-all duration-200 ease-in-out z-50",
+        "flex flex-col fixed left-0 top-[34px] h-screen bg-[var(--bg-surface)] border-r border-[var(--border-light)] transition-all duration-200 ease-in-out z-50",
         isCollapsed ? "w-[52px]" : "w-[220px]"
       )}
     >
       {/* Header */}
-      <div className="py-[15px] flex items-center px-3 gap-3">
+      <div className="py-[15px] flex items-center px-[10px] gap-3">
         <div className="w-7 h-7 bg-black rounded-full flex-shrink-0 flex items-center justify-center">
           <svg viewBox="0 0 24 24" fill="white" style={{ width: 16, height: 16 }}>
             <path d="M12 1 L13.5 8.5 L20.5 6 L16 12 L22 14.5 L15 15.5 L17 22.5 L12 18 L7 22.5 L9 15.5 L2 14.5 L8 12 L3.5 6 L10.5 8.5 Z" />
@@ -84,7 +84,7 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           className={cn(
-            "flex items-center justify-center bg-[#1A1A18] text-white rounded-full h-[34px] transition-all hover:opacity-85",
+            "flex items-center justify-center bg-[#202020] text-white rounded-full h-[34px] transition-all hover:opacity-85",
             isCollapsed ? "w-[34px]" : "w-full gap-2"
           )}
         >
@@ -110,7 +110,7 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
 
       {/* Navigation */}
       <nav className="flex-1 px-2 py-4 space-y-1">
-        {NAV_ITEMS.map((item) => (
+        {NAV_ITEMS.map((item, index) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -119,11 +119,12 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
                 "flex items-center h-[34px] rounded-full px-2 gap-[10px] transition-colors",
                 isActive
                   ? "bg-[var(--bg-subtle)] text-[var(--text-primary)] font-medium"
-                  : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]",
+                index === 7 && "mt-1"
               )
             }
           >
-            <item.icon size={15} className="flex-shrink-0 ml-[5px]" />
+            <item.icon size={15} className={cn("flex-shrink-0 ml-[3px]", index === 0 && "pl-0 mr-0")} />
             {!isCollapsed && <span className="text-[12px]">{item.label}</span>}
           </NavLink>
         ))}
@@ -155,7 +156,7 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
             "flex items-center h-[34px] w-full rounded-full px-2 gap-[10px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
           )}
         >
-          <LogOut size={18} className="flex-shrink-0 ml-[5px]" />
+          <LogOut size={18} className="flex-shrink-0 ml-0" />
           {!isCollapsed && <span className="text-[12px]">Esci</span>}
         </button>
 

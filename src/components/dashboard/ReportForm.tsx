@@ -1,54 +1,62 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Plus, Minus, Save, Calendar, AlertCircle } from "lucide-react";
+import { Plus, Minus, Save, Calendar, AlertCircle, TrendingUp, DollarSign, Users, FileText, ShoppingBag, CreditCard } from "lucide-react";
 import { useDailyData } from "@/src/hooks/useDailyData";
 import { DailyReport } from "@/src/types";
 import { cn, formatCurrency } from "@/src/lib/utils";
 import { format, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
 
-const CounterField = ({ label, field, formData, onCounterChange, onNumberInputChange }: { label: string; field: keyof DailyReport; formData: any; onCounterChange: any; onNumberInputChange: any }) => (
-  <div className="flex flex-col gap-2">
-    <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-      {label}
-    </label>
+const CounterField = ({ label, field, formData, onCounterChange, onNumberInputChange }: { 
+  label: string; 
+  field: keyof DailyReport; 
+  formData: any; 
+  onCounterChange: any; 
+  onNumberInputChange: any 
+}) => (
+  <div className="flex flex-col gap-3 p-5 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[20px] group hover:border-[var(--border-medium)] transition-all shadow-sm">
+    <span className="text-[13px] font-outfit font-bold text-[var(--text-primary)] uppercase tracking-wide">{label}</span>
     <div className="flex items-center gap-3">
       <button
         type="button"
         onClick={() => onCounterChange(field, -1)}
-        className="w-7 h-7 rounded-full bg-[var(--bg-subtle)] hover:bg-[var(--border-light)] flex items-center justify-center transition-colors border border-[var(--border-light)]"
+        className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[var(--border-light)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] active:scale-95 transition-all shadow-sm"
       >
-        <Minus size={14} className="text-[var(--text-primary)]" />
+        <Minus size={16} />
       </button>
       <input
         type="number"
         value={formData[field] as number}
         onChange={(e) => onNumberInputChange(field, e.target.value)}
-        className="w-16 h-9 bg-[var(--bg-subtle)] border-0 rounded-[8px] text-center font-outfit font-medium text-[14px] outline-none focus:ring-1 focus:ring-black/10"
+        className="flex-1 min-w-0 bg-white border border-[var(--border-light)] rounded-xl h-10 text-center font-outfit font-bold text-[15px] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all shadow-sm"
       />
       <button
         type="button"
         onClick={() => onCounterChange(field, 1)}
-        className="w-7 h-7 rounded-full bg-[var(--bg-subtle)] hover:bg-[var(--border-light)] flex items-center justify-center transition-colors border border-[var(--border-light)]"
+        className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[var(--border-light)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] active:scale-95 transition-all shadow-sm"
       >
-        <Plus size={14} className="text-[var(--text-primary)]" />
+        <Plus size={16} />
       </button>
     </div>
   </div>
 );
 
-const CurrencyField = ({ label, field, formData, onNumberInputChange }: { label: string; field: keyof DailyReport; formData: any; onNumberInputChange: any }) => (
-  <div className="flex flex-col gap-2">
-    <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-      {label}
-    </label>
+const CurrencyField = ({ label, field, formData, onNumberInputChange }: { 
+  label: string; 
+  field: keyof DailyReport; 
+  formData: any; 
+  onNumberInputChange: any 
+}) => (
+  <div className="flex flex-col gap-3 p-5 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[20px] group hover:border-[var(--border-medium)] transition-all shadow-sm">
+    <span className="text-[13px] font-outfit font-bold text-[var(--text-primary)] uppercase tracking-wide">{label}</span>
     <div className="relative">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px] font-outfit text-[var(--text-muted)]">€</span>
+      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[14px] font-outfit font-bold text-[var(--text-muted)]">€</span>
       <input
         type="number"
         value={formData[field] as number}
         onChange={(e) => onNumberInputChange(field, e.target.value)}
-        className="w-full h-9 bg-[var(--bg-subtle)] border-0 rounded-[8px] pl-7 pr-3 font-outfit font-medium text-[14px] outline-none focus:ring-1 focus:ring-black/10"
+        placeholder="0.00"
+        className="w-full pl-8 pr-4 h-10 bg-white border border-[var(--border-light)] rounded-xl font-outfit font-bold text-[15px] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all shadow-sm"
       />
     </div>
   </div>
@@ -129,11 +137,11 @@ export const ReportForm: React.FC = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-10">
       {/* Date Selector */}
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-2">
+        <div className="flex flex-col gap-2">
+          <label className="text-[11px] font-outfit font-bold text-[var(--text-muted)] uppercase tracking-[0.1em] flex items-center gap-2 px-1">
             <Calendar size={12} />
             Data del Report
           </label>
@@ -141,7 +149,7 @@ export const ReportForm: React.FC = () => {
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-full sm:w-48 bg-white border border-[var(--border-light)] rounded-[10px] p-2.5 px-4 text-[13px] font-outfit font-medium outline-none focus:ring-1 focus:ring-black/10 shadow-sm"
+            className="w-full sm:w-56 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[14px] p-3 px-4 text-[14px] font-outfit font-bold text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all shadow-sm hover:border-[var(--border-medium)]"
           />
         </div>
 
@@ -149,10 +157,10 @@ export const ReportForm: React.FC = () => {
           <motion.div 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-[#FEF5D0] border border-[#F5C842]/30 rounded-[12px] p-4 flex items-center gap-3"
+            className="bg-[#FEF5D0] border border-[#F5C842]/30 rounded-[16px] p-4 flex items-center gap-3 shadow-sm"
           >
             <AlertCircle size={18} className="text-[#5C3800]" />
-            <span className="text-[13px] font-outfit font-medium text-[#5C3800]">
+            <span className="text-[13px] font-outfit font-bold text-[#5C3800]">
               Stai modificando il report del {format(parseISO(selectedDate), 'd MMMM yyyy', { locale: it })}
             </span>
           </motion.div>
@@ -161,10 +169,13 @@ export const ReportForm: React.FC = () => {
 
       {/* ATTIVITÀ Section */}
       <div className="flex flex-col gap-6">
-        <h3 className="font-outfit font-bold text-[12px] uppercase tracking-widest text-[var(--text-muted)] border-b border-[var(--border-light)] pb-2">
-          ATTIVITÀ
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+        <div className="flex items-center gap-2 px-1">
+          <TrendingUp size={14} className="text-[var(--text-muted)]" />
+          <h3 className="font-outfit font-bold text-[11px] uppercase tracking-[0.15em] text-[var(--text-muted)]">
+            ATTIVITÀ DEL GIORNO
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <CounterField label="Contatti Reali" field="contatti_reali" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
           <CounterField label="Notizie Reali" field="notizie_reali" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
           <CounterField label="App. Vendita" field="appuntamenti_vendita" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
@@ -175,10 +186,13 @@ export const ReportForm: React.FC = () => {
 
       {/* VENDITE & TRATTATIVE Section */}
       <div className="flex flex-col gap-6">
-        <h3 className="font-outfit font-bold text-[12px] uppercase tracking-widest text-[var(--text-muted)] border-b border-[var(--border-light)] pb-2">
-          VENDITE & TRATTATIVE
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="flex items-center gap-2 px-1">
+          <DollarSign size={14} className="text-[var(--text-muted)]" />
+          <h3 className="font-outfit font-bold text-[11px] uppercase tracking-[0.15em] text-[var(--text-muted)]">
+            VENDITE & TRATTATIVE
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <CounterField label="Vendite (Numero)" field="vendite_numero" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
           <CurrencyField label="Valore Vendite" field="vendite_valore" formData={formData} onNumberInputChange={handleNumberInputChange} />
           <CounterField label="Nuove Trattative" field="nuove_trattative" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
@@ -188,26 +202,28 @@ export const ReportForm: React.FC = () => {
       </div>
 
       {/* NOTE Section */}
-      <div className="flex flex-col gap-2">
-        <label className="text-[11px] font-outfit font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-          NOTE
+      <div className="flex flex-col gap-3">
+        <label className="text-[11px] font-outfit font-bold text-[var(--text-muted)] uppercase tracking-[0.1em] px-1">
+          NOTE E COMMENTI
         </label>
         <textarea
           value={formData.notes}
           onChange={(e) => handleInputChange('notes', e.target.value)}
           placeholder="Aggiungi dettagli o commenti sulla giornata..."
-          className="w-full bg-[var(--bg-subtle)] border-0 rounded-[10px] p-4 text-[13px] font-outfit outline-none focus:ring-1 focus:ring-black/10 min-h-[100px] resize-none"
+          className="w-full bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[16px] p-5 text-[14px] font-outfit text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 min-h-[120px] resize-none shadow-sm hover:border-[var(--border-medium)] transition-all"
         />
       </div>
 
       {/* Submit */}
-      <button
-        type="submit"
-        className="w-full bg-[#1A1A18] text-white h-12 rounded-full font-outfit font-bold text-[14px] uppercase tracking-[0.15em] hover:bg-black transition-all shadow-lg shadow-black/10 flex items-center justify-center gap-2 active:scale-[0.98]"
-      >
-        <Save size={18} />
-        SALVA REPORT
-      </button>
+      <div className="pt-6 border-t border-[var(--border-light)]">
+        <button
+          type="submit"
+          className="w-full bg-[var(--text-primary)] text-white h-14 rounded-full font-outfit font-bold text-[14px] uppercase tracking-[0.2em] hover:opacity-90 transition-all shadow-lg shadow-[var(--text-primary)]/10 flex items-center justify-center gap-3 active:scale-[0.98]"
+        >
+          <Save size={20} />
+          SALVA REPORT
+        </button>
+      </div>
     </form>
   );
 };

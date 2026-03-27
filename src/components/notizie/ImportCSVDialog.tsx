@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Upload, FileText, Check, AlertCircle, ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
+import { X, Upload, FileText, Check, AlertCircle, ChevronRight, ChevronLeft, Loader2, ChevronDown, FileCheck, ArrowRight } from "lucide-react";
 import { useNotizie } from "@/src/hooks/useNotizie";
 import { Notizia, NotiziaStatus } from "@/src/types";
 import { cn } from "@/src/lib/utils";
@@ -161,36 +161,41 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 z-[100] backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/25"
           />
           <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-white shadow-2xl z-[110] rounded-3xl overflow-hidden flex flex-col"
+            initial={{ scale: 0.97, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.97, opacity: 0, y: 20 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="relative w-full max-w-2xl bg-white rounded-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[90vh]"
           >
-            <div className="flex items-center justify-between p-6 border-b border-[var(--border-light)]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center text-white">
-                  <Upload size={20} />
+            {/* Header */}
+            <div className="flex items-center justify-between p-8 border-b border-[var(--border-light)] shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-[#1A1A18] flex items-center justify-center text-white shadow-lg shadow-black/10">
+                  <Upload size={22} />
                 </div>
                 <div>
-                  <h2 className="font-outfit font-semibold text-[20px] text-[var(--text-primary)]">Importa Notizie</h2>
-                  <p className="text-[12px] text-[var(--text-muted)] font-outfit uppercase tracking-wider">Carica da file CSV</p>
+                  <h2 className="font-outfit font-bold text-[20px] text-[var(--text-primary)] tracking-[-0.5px]">Importa Notizie</h2>
+                  <p className="font-outfit font-bold text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Carica da file CSV</p>
                 </div>
               </div>
-              <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors">
-                <X size={24} />
+              <button 
+                onClick={onClose} 
+                className="w-10 h-10 flex items-center justify-center bg-[var(--bg-subtle)] hover:bg-[var(--border-light)] rounded-full transition-colors"
+              >
+                <X size={20} />
               </button>
             </div>
 
-            <div className="p-8 min-h-[400px] flex flex-col">
+            <div className="p-8 overflow-y-auto flex-1">
               {step === 'upload' && (
                 <div 
                   onClick={() => fileInputRef.current?.click()}
@@ -203,14 +208,14 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
                       handleFileUpload(event);
                     }
                   }}
-                  className="flex-1 border-2 border-dashed border-[var(--border-light)] rounded-2xl flex flex-col items-center justify-center gap-4 hover:border-black/20 hover:bg-black/[0.02] transition-all cursor-pointer group"
+                  className="h-[360px] border-2 border-dashed border-[var(--border-light)] rounded-[24px] flex flex-col items-center justify-center gap-5 hover:border-black/20 hover:bg-[var(--bg-subtle)] transition-all cursor-pointer group"
                 >
-                  <div className="w-16 h-16 rounded-full bg-black/5 flex items-center justify-center text-[var(--text-muted)] group-hover:scale-110 transition-transform">
-                    <Upload size={32} />
+                  <div className="w-20 h-20 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-muted)] group-hover:scale-110 group-hover:bg-white group-hover:shadow-xl transition-all duration-300">
+                    <Upload size={36} />
                   </div>
                   <div className="text-center">
-                    <p className="font-outfit font-bold text-[16px] text-[var(--text-primary)]">Clicca o trascina il file CSV</p>
-                    <p className="font-outfit text-[13px] text-[var(--text-muted)]">Solo file .csv supportati</p>
+                    <p className="font-outfit font-bold text-[18px] text-[var(--text-primary)] mb-1">Clicca o trascina il file CSV</p>
+                    <p className="font-outfit font-medium text-[14px] text-[var(--text-muted)]">Solo file .csv supportati</p>
                   </div>
                   <input 
                     type="file" 
@@ -223,23 +228,23 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
               )}
 
               {step === 'mapping' && (
-                <div className="flex-1 flex flex-col gap-6">
-                  <div className="bg-[var(--bg-subtle)] p-4 rounded-xl">
-                    <h3 className="font-outfit font-bold text-[12px] uppercase tracking-wider text-[var(--text-muted)] mb-3">Anteprima Dati (Prime 5 righe)</h3>
+                <div className="flex flex-col gap-8">
+                  <div className="bg-[var(--bg-subtle)] p-6 rounded-[20px] border border-[var(--border-light)]">
+                    <h3 className="font-outfit font-bold text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)] mb-4">Anteprima Dati (Prime 5 righe)</h3>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-[11px] font-outfit">
+                      <table className="w-full text-[12px] font-outfit border-collapse">
                         <thead>
-                          <tr className="border-b border-black/5">
+                          <tr className="border-b border-[var(--border-light)]">
                             {headers.map((h, i) => (
-                              <th key={i} className="text-left py-2 px-3 text-[var(--text-muted)] font-medium">{h}</th>
+                              <th key={i} className="text-left py-3 px-4 text-[var(--text-muted)] font-bold whitespace-nowrap">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {csvData.slice(0, 5).map((row, i) => (
-                            <tr key={i} className="border-b border-black/5 last:border-0">
+                            <tr key={i} className="border-b border-black/[0.03] last:border-0">
                               {row.map((cell, j) => (
-                                <td key={j} className="py-2 px-3 text-[var(--text-primary)] truncate max-w-[150px]">{cell}</td>
+                                <td key={j} className="py-3 px-4 text-[var(--text-primary)] truncate max-w-[150px]">{cell}</td>
                               ))}
                             </tr>
                           ))}
@@ -248,22 +253,25 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <h3 className="font-outfit font-bold text-[12px] uppercase tracking-wider text-[var(--text-muted)]">Mappatura Campi</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-4">
+                    <h3 className="font-outfit font-bold text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Mappatura Campi</h3>
+                    <div className="grid grid-cols-2 gap-6">
                       {NOTIZIA_FIELDS.map(field => (
-                        <div key={field.key} className="flex flex-col gap-1.5">
-                          <label className="text-[11px] font-outfit font-bold text-[var(--text-primary)]">{field.label}</label>
-                          <select 
-                            value={mapping[field.key] || ''}
-                            onChange={(e) => setMapping({...mapping, [field.key]: e.target.value})}
-                            className="bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-lg px-3 py-2 text-[12px] font-outfit outline-none focus:ring-1 focus:ring-black/10"
-                          >
-                            <option value="">Non mappare</option>
-                            {headers.map((h, i) => (
-                              <option key={i} value={h}>{h}</option>
-                            ))}
-                          </select>
+                        <div key={field.key} className="flex flex-col gap-2">
+                          <label className="font-outfit font-bold text-[11px] text-[var(--text-primary)] px-1">{field.label}</label>
+                          <div className="relative">
+                            <select 
+                              value={mapping[field.key] || ''}
+                              onChange={(e) => setMapping({...mapping, [field.key]: e.target.value})}
+                              className="w-full h-11 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[14px] px-4 text-[13px] font-outfit font-bold text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 appearance-none cursor-pointer hover:border-[var(--border-medium)] transition-all shadow-sm"
+                            >
+                              <option value="">Non mappare</option>
+                              {headers.map((h, i) => (
+                                <option key={i} value={h}>{h}</option>
+                              ))}
+                            </select>
+                            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -272,45 +280,45 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
               )}
 
               {step === 'confirm' && (
-                <div className="flex-1 flex flex-col items-center justify-center gap-6">
-                  <div className="w-20 h-20 rounded-full bg-[var(--sage-bg)] text-[var(--sage-fg)] flex items-center justify-center">
-                    <Check size={40} />
+                <div className="flex flex-col items-center justify-center gap-8 py-8">
+                  <div className="w-24 h-24 rounded-full bg-[#F0FFF4] text-[#2D8A4E] border-2 border-[#6DC88A] flex items-center justify-center shadow-lg shadow-green-500/10">
+                    <Check size={48} />
                   </div>
                   <div className="text-center">
-                    <h3 className="font-outfit font-bold text-[20px] text-[var(--text-primary)]">Pronto per l'importazione</h3>
-                    <p className="font-outfit text-[14px] text-[var(--text-muted)] mt-1">
-                      Stai per importare <span className="font-bold text-[var(--text-primary)]">{csvData.length}</span> notizie.
+                    <h3 className="font-outfit font-bold text-[24px] text-[var(--text-primary)] mb-2">Pronto per l'importazione</h3>
+                    <p className="font-outfit font-medium text-[16px] text-[var(--text-muted)]">
+                      Stai per importare <span className="font-bold text-[var(--text-primary)]">{csvData.length}</span> notizie nel sistema.
                     </p>
                   </div>
-                  <div className="w-full max-w-sm bg-[var(--bg-subtle)] p-4 rounded-xl space-y-2">
-                    <div className="flex justify-between text-[12px] font-outfit">
-                      <span className="text-[var(--text-muted)]">File:</span>
-                      <span className="font-bold">{file?.name}</span>
+                  <div className="w-full max-w-sm bg-[var(--bg-subtle)] p-6 rounded-[20px] border border-[var(--border-light)] space-y-4">
+                    <div className="flex justify-between items-center text-[13px] font-outfit">
+                      <span className="text-[var(--text-muted)] font-medium">File:</span>
+                      <span className="font-bold text-[var(--text-primary)]">{file?.name}</span>
                     </div>
-                    <div className="flex justify-between text-[12px] font-outfit">
-                      <span className="text-[var(--text-muted)]">Campi mappati:</span>
-                      <span className="font-bold">{Object.keys(mapping).length} su {NOTIZIA_FIELDS.length}</span>
+                    <div className="flex justify-between items-center text-[13px] font-outfit">
+                      <span className="text-[var(--text-muted)] font-medium">Campi mappati:</span>
+                      <span className="font-bold text-[var(--text-primary)]">{Object.keys(mapping).length} su {NOTIZIA_FIELDS.length}</span>
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="p-6 border-t border-[var(--border-light)] bg-[var(--bg-subtle)] flex items-center justify-between">
+            <div className="p-8 border-t border-[var(--border-light)] bg-[var(--bg-subtle)] flex items-center justify-between shrink-0">
               {step !== 'upload' ? (
                 <button 
                   onClick={() => setStep(step === 'mapping' ? 'upload' : 'mapping')}
-                  className="flex items-center gap-2 px-4 py-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors font-outfit font-bold text-[13px]"
+                  className="flex items-center gap-2 px-6 h-12 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border-light)] rounded-full transition-all font-outfit font-bold text-[13px] uppercase tracking-[0.15em] border border-transparent hover:border-[var(--border-light)]"
                 >
-                  <ChevronLeft size={16} />
+                  <ChevronLeft size={18} />
                   Indietro
                 </button>
               ) : <div />}
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <button 
                   onClick={onClose}
-                  className="px-6 py-2.5 text-[var(--text-muted)] font-outfit font-bold text-[13px] hover:text-[var(--text-primary)] transition-colors"
+                  className="px-6 h-12 text-[var(--text-secondary)] font-outfit font-bold text-[13px] uppercase tracking-[0.15em] hover:text-[var(--text-primary)] transition-colors"
                 >
                   Annulla
                 </button>
@@ -321,17 +329,17 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
                       else handleImport();
                     }}
                     disabled={isImporting}
-                    className="flex items-center gap-2 px-8 py-2.5 bg-black text-white rounded-full font-outfit font-bold text-[13px] hover:bg-black/80 transition-all disabled:opacity-50"
+                    className="flex items-center gap-3 px-8 h-12 bg-[var(--text-primary)] text-white rounded-full font-outfit font-bold text-[13px] uppercase tracking-[0.2em] hover:opacity-90 transition-all disabled:opacity-50 shadow-lg shadow-[var(--text-primary)]/10"
                   >
                     {isImporting ? (
                       <>
-                        <Loader2 size={16} className="animate-spin" />
+                        <Loader2 size={18} className="animate-spin" />
                         Importazione...
                       </>
                     ) : (
                       <>
                         {step === 'mapping' ? 'Continua' : 'Conferma Import'}
-                        <ChevronRight size={16} />
+                        <ChevronRight size={18} />
                       </>
                     )}
                   </button>
@@ -339,7 +347,7 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
