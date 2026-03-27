@@ -11,17 +11,21 @@ import {
   Save,
   Loader2
 } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useProfiles } from "@/src/hooks/useProfiles";
 import { cn } from "@/src/lib/utils";
 
 const EMOJI_GRID = [
-  '👤', '👨‍💼', '👩‍💼', '👨‍💻', '👩‍💻', '🏠', '🏢', '🔑', '💼', '📈',
-  '🌟', '🔥', '💎', '🎯', '🚀', '🏆', '🤝', '📱', '💻', '🌍'
+  '👤','👨💼','👩💼','🧑💼','👨💻','👩💻','🧑💻',
+  '🏠','🏢','🔑','💼','📈','📊','🗂️',
+  '🌟','⭐','✨','🔥','💎','🎯','🚀',
+  '🏆','🥇','🤝','🌍','🌺','🦋','🎨',
+  '🏄','🧘','🎭','🎪','🌈','🦚','🐝'
 ];
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { updateProfile, isLoading: isProfilesLoading } = useProfiles();
   
   const [isEditingAvatar, setIsEditingAvatar] = useState(false);
@@ -46,11 +50,22 @@ export default function ProfilePage() {
     if (!user) return;
     setIsSaving(true);
     try {
-      await updateProfile({ userId: user.user_id, updates: formData });
-      // In a real app, we'd also trigger a refresh of the auth user
-      window.location.reload(); // Simple way to refresh auth state
+      await new Promise<void>((resolve, reject) => {
+        updateProfile(
+          { userId: user.user_id || user.id, updates: formData },
+          {
+            onSuccess: () => {
+              refreshUser(formData);
+              toast.success('Profilo salvato');
+              resolve();
+            },
+            onError: (err) => reject(err)
+          }
+        );
+      });
     } catch (error) {
-      console.error("Error updating profile:", error);
+      console.error('Error saving profile:', error);
+      toast.error('Errore nel salvataggio del profilo');
     } finally {
       setIsSaving(false);
     }
@@ -83,6 +98,29 @@ export default function ProfilePage() {
                 exit={{ opacity: 0, y: 10 }}
                 className="absolute top-full left-1/2 -translate-x-1/2 mt-4 bg-white border border-[var(--border-light)] rounded-[16px] p-4 shadow-2xl z-50 w-64"
               >
+                <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--border-light)' }}>
+                  <p style={{ fontSize: 10, fontFamily: 'Outfit', fontWeight: 600, 
+                    textTransform: 'uppercase', letterSpacing: '0.08em', 
+                    color: 'var(--text-muted)', marginBottom: 6 }}>
+                    Scrivi un emoji
+                  </p>
+                  <input
+                    type="text"
+                    placeholder="Es: 🌺 🦋 🎨 🏄"
+                    maxLength={4}
+                    style={{
+                      width: '100%', background: 'var(--bg-subtle)', border: 'none',
+                      borderRadius: 8, padding: '8px 10px', fontFamily: 'Outfit',
+                      fontSize: 20, outline: 'none', textAlign: 'center',
+                    }}
+                    onChange={(e) => {
+                      const val = e.target.value.trim();
+                      if (val) {
+                        setFormData({ ...formData, avatar_emoji: val });
+                      }
+                    }}
+                  />
+                </div>
                 <div className="grid grid-cols-5 gap-2">
                   {EMOJI_GRID.map(emoji => (
                     <button

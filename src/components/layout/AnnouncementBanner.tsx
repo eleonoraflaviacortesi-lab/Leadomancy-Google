@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useBannerSettings } from '@/src/hooks/useBannerSettings';
 import { useKPIs } from '@/src/hooks/useKPIs';
 import { formatCurrency } from '@/src/lib/utils';
+import { generateDailyQuote } from '@/src/services/gemini';
 
 const Star8 = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="h-2.5 w-2.5 mx-3 opacity-80">
@@ -13,6 +14,27 @@ export const AnnouncementBanner: React.FC = () => {
   const { settings, isLoading: isSettingsLoading } = useBannerSettings();
   const { kpis: yearKpis, isLoading: isYearLoading } = useKPIs('year', true);
   const { kpis: monthKpis, isLoading: isMonthLoading } = useKPIs('month', true);
+  const [quote, setQuote] = useState('');
+
+  useEffect(() => {
+    const today = new Date().toDateString();
+    try {
+      const cached = sessionStorage.getItem('leadomancy_quote_today');
+      if (cached) {
+        const { date, text } = JSON.parse(cached);
+        if (date === today && text) { setQuote(text.toUpperCase()); return; }
+      }
+    } catch {}
+    
+    generateDailyQuote().then(q => {
+      if (q && q.quote) {
+        const text = q.quote.toUpperCase();
+        setQuote(text);
+        sessionStorage.setItem('leadomancy_quote_today', 
+          JSON.stringify({ date: today, text }));
+      }
+    });
+  }, []);
 
   const tickerItems = useMemo(() => {
     // Default fallback texts if KPI data is not ready
@@ -41,9 +63,11 @@ export const AnnouncementBanner: React.FC = () => {
     // Append extra items
     items.push(`VENDITE ${monthKpis.vendite?.value || 0}/${monthKpis.vendite?.target || 0}`);
     items.push(`INCARICHI MESE ${monthKpis.incarichi?.value || 0}/${monthKpis.incarichi?.target || 0}`);
+    
+    if (quote) items.splice(Math.floor(items.length / 2), 0, quote);
 
     return items.length > 0 ? items : fallbackTexts;
-  }, [settings, yearKpis, monthKpis]);
+  }, [settings, yearKpis, monthKpis, quote]);
 
   console.log("Banner rendering, texts:", tickerItems);
 

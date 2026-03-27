@@ -108,6 +108,7 @@ export interface Appointment {
   completed: boolean;
   tasks?: { id: string, title: string, completed: boolean }[];
   notes?: string;
+  card_color?: string;
   created_at: string;
   _rowIndex?: number;
 }

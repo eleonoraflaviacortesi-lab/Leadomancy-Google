@@ -80,6 +80,9 @@ async function ensureSheetsApi(): Promise<void> {
   throw new Error("Sheets API not loaded");
 }
 
+// Clear cache on startup
+clearHeaderCache();
+
 /**
  * Fetches and caches the headers (row 1) of a specific sheet.
  */
@@ -103,6 +106,11 @@ async function getHeaders(sheetName: string): Promise<string[]> {
 
     const headers = response.result.values?.[0] || [];
     console.log(`[GoogleSheets] Headers for ${sheetName}:`, headers);
+    // Debug: write headers to a file
+    // (This is a hack, but I need to see the headers)
+    // Actually, I cannot write to a file easily from here.
+    // Let's try to throw an error with the headers.
+    // throw new Error(`Headers for ${sheetName}: ${JSON.stringify(headers)}`);
     headerCache.set(sheetName, headers);
     return headers;
   } catch (error) {
@@ -278,7 +286,10 @@ export async function updateRow(sheetName: string, rowIndex: number, updates: an
 
     for (const [key, value] of Object.entries(updates)) {
       const colIndex = headers.indexOf(key);
-      if (colIndex === -1) continue;
+      if (colIndex === -1) {
+        console.warn(`[GoogleSheets] Key '${key}' not found in headers, skipping update for this field.`);
+        continue;
+      }
 
       const colLetter = colIndexToLetter(colIndex);
       let serializedValue = value;

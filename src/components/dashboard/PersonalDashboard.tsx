@@ -93,33 +93,6 @@ export const PersonalDashboard: React.FC<{ isOfficeView?: boolean }> = ({ isOffi
 
   const sourceData = isOfficeView ? allData : myData;
 
-  // Daily Quote
-  const [quote, setQuote] = useState<{ quote: string; author: string } | null>(null);
-  const [isQuoteLoading, setIsQuoteLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchQuote = async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const cached = sessionStorage.getItem('leadomancy_quote_today');
-      
-      if (cached) {
-        const { date, data } = JSON.parse(cached);
-        if (date === today) {
-          setQuote(data);
-          setIsQuoteLoading(false);
-          return;
-        }
-      }
-
-      const newQuote = await generateDailyQuote();
-      setQuote(newQuote);
-      sessionStorage.setItem('leadomancy_quote_today', JSON.stringify({ date: today, data: newQuote }));
-      setIsQuoteLoading(false);
-    };
-
-    fetchQuote();
-  }, []);
-
   // Today's Items
   const today = new Date();
   const todayStr = format(today, 'yyyy-MM-dd');
@@ -153,7 +126,6 @@ export const PersonalDashboard: React.FC<{ isOfficeView?: boolean }> = ({ isOffi
   }, [sourceData]);
 
   const formattedDate = format(new Date(), 'EEEE d MMMM yyyy', { locale: it });
-  const quoteText = isQuoteLoading ? 'CARICAMENTO...' : quote ? `${quote.quote.toUpperCase()} — ${quote.author.toUpperCase()}` : '';
 
   return (
     <div className="flex flex-col gap-8 pt-6 pb-6 max-w-7xl mx-auto w-full">
@@ -169,24 +141,6 @@ export const PersonalDashboard: React.FC<{ isOfficeView?: boolean }> = ({ isOffi
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'Outfit', margin: 0 }}>
               {formattedDate}
             </p>
-          </div>
-
-          {/* Right: quote */}
-          <div className="hidden md:flex" style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, maxWidth: '55%' }}>
-            <Star8Icon />
-            <span style={{ 
-              fontSize: 11, 
-              fontWeight: 500, 
-              letterSpacing: '0.15em', 
-              textTransform: 'uppercase', 
-              color: 'var(--text-muted)', 
-              fontFamily: 'Outfit',
-              textAlign: 'right',
-              lineHeight: 1.5
-            }}>
-              {quoteText}
-            </span>
-            <Star8Icon />
           </div>
 
         </div>

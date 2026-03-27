@@ -12,6 +12,7 @@ interface AuthContextType {
   isUsingFallback: boolean;
   signIn: () => void;
   signOut: () => Promise<void>;
+  refreshUser: (updates: Partial<Profile>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -199,6 +200,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log("[Auth] Final Step: Setting user profile...");
       setUser(profile);
+      clearHeaderCache();
+      console.log('[Auth] Header cache cleared on login');
     } catch (error) {
       console.error("[Auth] CRITICAL ERROR in fetchUserProfile:", error);
       
@@ -259,6 +262,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 300);
   };
 
+  const refreshUser = (updates: Partial<Profile>) => {
+    setUser(prev => prev ? { ...prev, ...updates } : null);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -268,6 +275,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isUsingFallback,
         signIn,
         signOut,
+        refreshUser,
       }}
     >
       {children}

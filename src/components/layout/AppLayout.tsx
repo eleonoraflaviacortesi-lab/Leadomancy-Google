@@ -96,9 +96,10 @@ export default function AppLayout() {
           {/* Main Content */}
           <main
             className={cn(
-              "transition-all duration-200 ease-in-out pt-6 pb-6 pr-6 pl-8",
+              "transition-all duration-200 ease-in-out",
               isCollapsed ? "ml-[52px]" : "ml-[220px]"
             )}
+            style={{ padding: '24px 24px 24px 32px', minHeight: '100vh' }}
           >
             <Outlet />
           </main>

@@ -26,15 +26,22 @@ export function useProfiles() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async ({ userId, updates }: { userId: string, updates: Partial<Profile> }) => {
-      const profile = profiles.find(p => p.user_id === userId);
-      if (!profile) throw new Error("Profilo non trovato");
+      const allProfiles = await getSheetData<Profile>(SHEETS.users);
+      const profile = allProfiles.find(p => 
+        p.user_id === userId || p.id === userId
+      );
+      if (!profile) throw new Error('Profilo non trovato');
       
-      const rowIndex = await findRowIndex(SHEETS.users, profile.id);
-      if (!rowIndex) throw new Error("Profilo non trovato nel foglio");
+      let rowIndex = await findRowIndex(SHEETS.users, profile.id);
+      if (!rowIndex) {
+        rowIndex = await findRowIndex(SHEETS.users, userId);
+      }
+      if (!rowIndex) throw new Error('Riga profilo non trovata nel foglio');
       
       await updateRow(SHEETS.users, rowIndex, updates);
+      return { ...profile, ...updates };
     },
-    onSuccess: () => {
+    onSuccess: (updatedProfile) => {
       queryClient.invalidateQueries({ queryKey });
       toast.success("Profilo aggiornato");
     },

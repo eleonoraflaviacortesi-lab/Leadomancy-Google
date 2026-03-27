@@ -29,13 +29,17 @@ export function useAppointments() {
       if (!user) return [];
       const data = await getSheetData<Appointment>(SHEETS.appointments);
       return data
-        .filter(a => a.user_id === user.id)
+        .filter(a => a.user_id === (user.user_id || user.id))
         .map(a => ({
           ...a,
           type: a.type || 'visit',
           notizia_id: a.notizia_id || null,
           calendar_id: a.calendar_id || null,
-          completed: Boolean(a.completed),
+          priority: (a as any).priority || null,
+          card_color: (a as any).card_color || null,
+          completed: a.completed === true || (a as any).completed === 'true',
+          start_time: a.start_time || new Date().toISOString(),
+          end_time: a.end_time || new Date().toISOString(),
         }))
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
     },
@@ -62,7 +66,7 @@ export function useAppointments() {
       const appointment: Appointment = {
         ...newApp,
         id,
-        user_id: user.id,
+        user_id: user.user_id || user.id,
         completed: false,
         google_calendar_synced: false,
         google_event_id: null,

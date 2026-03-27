@@ -61,7 +61,7 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
   return (
     <aside
       className={cn(
-        "flex flex-col fixed left-0 top-0 h-screen bg-[var(--bg-surface)] border-r border-[var(--border-light)] transition-all duration-200 ease-in-out z-50",
+        "flex flex-col fixed left-0 top-[70px] h-screen bg-[var(--bg-surface)] border-r border-[var(--border-light)] transition-all duration-200 ease-in-out z-50",
         isCollapsed ? "w-[52px]" : "w-[220px]"
       )}
     >

@@ -178,8 +178,8 @@ export const CalendarPage: React.FC = () => {
       events.push({
         id: app.id,
         title: app.title,
-        start: parseISO(app.start_time),
-        end: parseISO(app.end_time),
+        start: app.start_time && !isNaN(parseISO(app.start_time).getTime()) ? parseISO(app.start_time) : new Date(),
+        end: app.end_time && !isNaN(parseISO(app.end_time).getTime()) ? parseISO(app.end_time) : new Date(),
         type: isTask ? 'task' : 'appointment',
         allDay: false,
         originalData: {
