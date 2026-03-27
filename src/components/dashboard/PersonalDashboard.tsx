@@ -367,10 +367,10 @@ export const PersonalDashboard: React.FC<{ isOfficeView?: boolean }> = ({ isOffi
     <div className="flex flex-col gap-4 pb-10 w-full">
       {/* Header Section */}
       <div className="flex flex-col">
-        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
           Leadomancy / Dashboard
         </p>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-[-16px]">
           <div className="flex flex-col">
             <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
               Buongiorno, {user?.full_name?.split(' ')[0] || user?.nome?.split(' ')[0] || ''}
@@ -440,7 +440,7 @@ export const PersonalDashboard: React.FC<{ isOfficeView?: boolean }> = ({ isOffi
 
       {/* Main Grid with Drag and Drop */}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 mt-[-12px]">
           {/* Side Column (1/3) - Now on the Left */}
           <Droppable droppableId="side">
             {(provided, snapshot) => (

@@ -69,16 +69,18 @@ export const NotiziePage: React.FC = () => {
     <div className="flex flex-col gap-4 pb-6 w-full">
       {/* Breadcrumb & Title */}
       <div className="flex flex-col">
-        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
           Leadomancy / Notizie
         </p>
-        <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
-          Notizie
-        </h1>
+        <div className="mt-[-16px]">
+          <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
+            Notizie
+          </h1>
+        </div>
       </div>
 
       {/* Controls Row */}
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4 mt-[-12px]">
         {/* View Toggle */}
         <div className="flex bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)]">
           <button

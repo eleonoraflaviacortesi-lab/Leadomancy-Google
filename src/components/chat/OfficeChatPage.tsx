@@ -140,19 +140,21 @@ export const OfficeChatPage: React.FC = () => {
     <div className="flex flex-col h-[calc(100vh-104px)] bg-[var(--bg-page)]">
       {/* Header Section */}
       <div className="flex flex-col px-4 pt-0">
-        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
           Leadomancy / Chat
         </p>
-        <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
-          Chat di Sede
-        </h1>
+        <div className="mt-[-16px]">
+          <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
+            Chat di Sede
+          </h1>
+        </div>
       </div>
 
       {/* Messages Area */}
       <div 
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto pt-6 pb-6 flex flex-col gap-6"
+        className="flex-1 overflow-y-auto pt-6 pb-6 flex flex-col gap-6 mt-[-12px]"
       >
         {Object.entries(messageGroups).map(([date, msgs]) => (
           <div key={date} className="flex flex-col gap-4">

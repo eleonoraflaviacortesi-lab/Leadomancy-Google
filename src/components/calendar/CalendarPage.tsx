@@ -303,9 +303,9 @@ export const CalendarPage: React.FC = () => {
     <div className="flex flex-col h-full bg-[var(--bg-page)] overflow-hidden rounded-t-2xl">
       {/* Header */}
       <div className="flex flex-col border-b border-[var(--border-light)] p-4 pb-0">
-        <div className="flex items-center justify-between mb-0">
+        <div className="flex items-center justify-between mb-0 mt-[-16px]">
           <div className="flex flex-col">
-            <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
               Leadomancy / Attività
             </p>
             <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', margin: 0, textTransform: 'capitalize' }}>
@@ -384,7 +384,7 @@ export const CalendarPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden mt-[-12px]">
         <CalendarSidebar 
           calendars={calendars}
           visibleCalendarIds={visibleCalendarIds}

@@ -20,20 +20,8 @@ interface GeminiAdviceCardProps {
 }
 
 export const GeminiAdviceCard: React.FC<GeminiAdviceCardProps> = ({ kpis }) => {
-  const [advices, setAdvices] = useState<Advice[]>(() => {
-    const cached = localStorage.getItem('gemini-advice-cache');
-    if (cached) {
-      try {
-        const { data, timestamp } = JSON.parse(cached);
-        // Cache for 24 hours to save quota
-        if (Date.now() - timestamp < 1000 * 60 * 60 * 24) {
-          return data;
-        }
-      } catch (e) {}
-    }
-    return [];
-  });
-  const [isLoading, setIsLoading] = useState(advices.length === 0);
+  const [advices, setAdvices] = useState<Advice[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fallbackAdvices: Advice[] = [
@@ -42,9 +30,28 @@ export const GeminiAdviceCard: React.FC<GeminiAdviceCardProps> = ({ kpis }) => {
     { icon: "🤝", titolo: "Follow-up", testo: "Pianifica una chiamata di cortesia per i clienti che hanno visitato un immobile la scorsa settimana." }
   ];
 
-  const fetchAdvice = useCallback(async () => {
+  const fetchAdvice = useCallback(async (force = false) => {
     setIsLoading(true);
     setError(null);
+
+    const cacheKey = 'leadomancy_gemini_advice';
+    
+    if (!force) {
+      // Check sessionStorage cache first
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const { date, data } = JSON.parse(cached);
+          const today = new Date().toDateString();
+          if (date === today && Array.isArray(data) && data.length > 0) {
+            setAdvices(data);
+            setIsLoading(false);
+            return; // Use cached, don't call API
+          }
+        } catch {}
+      }
+    }
+
     try {
       const system = "Sei un consulente strategico per agenti immobiliari di lusso in Italia. Rispondi sempre in italiano in formato JSON.";
       const prompt = `Analizza questi KPI dell'agente:
@@ -67,17 +74,17 @@ Usa un tono professionale ed elegante.`;
       const adviceList = Array.isArray(data) ? data : fallbackAdvices;
       setAdvices(adviceList);
       
-      // Cache the successful response
-      localStorage.setItem('gemini-advice-cache', JSON.stringify({
-        data: adviceList,
-        timestamp: Date.now()
+      // Save to cache
+      sessionStorage.setItem(cacheKey, JSON.stringify({
+        date: new Date().toDateString(),
+        data: adviceList
       }));
     } catch (err: any) {
       console.error("Gemini Advice Error:", err);
       const msg = err?.message?.toLowerCase() || "";
       
       // If we have cached data, keep using it even if expired
-      const cached = localStorage.getItem('gemini-advice-cache');
+      const cached = sessionStorage.getItem(cacheKey);
       if (cached) {
         try {
           const { data } = JSON.parse(cached);
@@ -90,7 +97,6 @@ Usa un tono professionale ed elegante.`;
       setAdvices(fallbackAdvices);
       
       if (err?.status === 429 || msg.includes("quota") || msg.includes("429")) {
-        // Silently use fallback, maybe log it
         console.warn("Gemini Quota exceeded, using fallback advice.");
       } else if (msg.includes("high demand") || msg.includes("overloaded") || msg.includes("503")) {
         console.warn("Gemini overloaded, using fallback advice.");
@@ -103,11 +109,8 @@ Usa un tono professionale ed elegante.`;
   }, [kpis, fallbackAdvices]);
 
   useEffect(() => {
-    // Only fetch if we don't have cached data or if explicitly requested
-    if (advices.length === 0) {
-      fetchAdvice();
-    }
-  }, [fetchAdvice, advices.length]);
+    fetchAdvice();
+  }, [fetchAdvice]);
 
   return (
     <div className="bg-white border border-[var(--border-light)] rounded-[14px] p-5 flex flex-col gap-4 shadow-sm h-full">
@@ -119,7 +122,7 @@ Usa un tono professionale ed elegante.`;
           </h3>
         </div>
         <button 
-          onClick={fetchAdvice}
+          onClick={() => fetchAdvice(true)}
           disabled={isLoading}
           className="p-1.5 hover:bg-[var(--bg-subtle)] rounded-full transition-colors disabled:opacity-50"
           title="Rigenera"
@@ -146,7 +149,7 @@ Usa un tono professionale ed elegante.`;
             <div className="flex flex-col items-center justify-center py-4 text-center" key="error">
               <p className="text-[12px] text-[var(--rose-fg)] font-outfit">{error}</p>
               <button 
-                onClick={fetchAdvice}
+                onClick={() => fetchAdvice(true)}
                 className="mt-2 text-[11px] font-semibold text-[var(--text-primary)] hover:underline"
               >
                 Riprova
