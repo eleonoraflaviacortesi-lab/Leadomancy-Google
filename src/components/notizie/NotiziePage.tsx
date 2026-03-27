@@ -12,7 +12,6 @@ import { FunnelChartModal } from "./FunnelChartModal";
 import { ImportCSVDialog } from "./ImportCSVDialog";
 import { Notizia, NotiziaStatus } from "@/src/types";
 import { cn } from "@/src/lib/utils";
-import { diagnoseSheetsConnection } from '@/src/lib/googleSheets';
 
 export const NotiziePage: React.FC = () => {
   const { notizie, isLoading, updateNotizia, deleteNotizia } = useNotizie();
@@ -67,10 +66,13 @@ export const NotiziePage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 pb-6 w-full">
+    <div className="flex flex-col gap-4 pb-6 w-full">
       {/* Breadcrumb & Title */}
-      <div className="flex flex-col gap-1 mb-[10px]">
-        <h1 className="font-outfit font-semibold text-[22px] tracking-tight text-[var(--text-primary)]">
+      <div className="flex flex-col">
+        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+          Leadomancy / Notizie
+        </p>
+        <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
           Notizie
         </h1>
       </div>
@@ -167,18 +169,6 @@ export const NotiziePage: React.FC = () => {
           >
             <Download size={16} />
             Esporta
-          </button>
-          <button
-            onClick={() => {
-              try {
-                diagnoseSheetsConnection().catch(e => alert('Error: ' + e.message));
-              } catch(e: any) {
-                alert('Sync error: ' + e.message);
-              }
-            }}
-            style={{ padding: '6px 12px', background: '#ef4444', color: 'white', borderRadius: 8, fontSize: 12, cursor: 'pointer', marginLeft: 8 }}
-          >
-            🔍 Test Sheets
           </button>
           <button
             onClick={() => {

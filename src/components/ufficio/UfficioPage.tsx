@@ -30,7 +30,7 @@ import {
   Legend
 } from "recharts";
 import { cn, formatCurrency } from "@/src/lib/utils";
-import { PersonalDashboard } from "../dashboard/PersonalDashboard";
+import { OfficeDashboard } from "./OfficeDashboard";
 
 type SubTab = 'UFFICIO' | 'RIUNIONI' | 'ANALISI';
 
@@ -47,6 +47,7 @@ interface Meeting {
 export const UfficioPage: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<SubTab>('UFFICIO');
+  const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
   const isAdmin = user?.role === 'admin' || user?.role === 'coordinatore';
 
   // RIUNIONI State
@@ -139,28 +140,50 @@ export const UfficioPage: React.FC = () => {
   }, [allData, user, isAdmin]);
 
   return (
-    <div className="flex flex-col gap-8 pb-6 w-full">
-      {/* Header */}
-      <div className="flex flex-col gap-1 mb-[10px]">
-        <h1 className="font-outfit font-semibold text-[22px] tracking-tight text-[var(--text-primary)]">
+    <div className="flex flex-col gap-4 pb-6 w-full">
+      {/* Header Section */}
+      <div className="flex flex-col">
+        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+          Leadomancy / Ufficio
+        </p>
+        <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
           Ufficio {user?.sede}
         </h1>
       </div>
 
-      {/* Sub-tabs */}
-      <div className="bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)] flex w-fit">
-        {(['UFFICIO', 'RIUNIONI', 'ANALISI'] as SubTab[]).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={cn(
-              "px-6 py-2 rounded-full font-outfit text-[12px] font-bold uppercase transition-all",
-              activeTab === tab ? "bg-white text-black shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-            )}
-          >
-            {tab}
-          </button>
-        ))}
+      {/* Sub-tabs & Period Selector */}
+      <div className="flex items-center justify-between">
+        <div className="bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)] flex w-fit">
+          {(['UFFICIO', 'RIUNIONI', 'ANALISI'] as SubTab[]).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "px-6 py-2 rounded-full font-outfit text-[12px] font-bold uppercase transition-all",
+                activeTab === tab ? "bg-white text-black shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              )}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'UFFICIO' && (
+          <div className="bg-white p-1 rounded-full border border-[var(--border-light)] flex shadow-sm">
+            {(['week', 'month', 'year'] as const).map(p => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={cn(
+                  "px-4 py-1.5 rounded-full font-outfit text-[11px] font-semibold uppercase transition-all",
+                  period === p ? "bg-[var(--text-primary)] text-white" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                )}
+              >
+                {p === 'week' ? 'Settimana' : p === 'month' ? 'Mese' : 'Anno'}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <AnimatePresence mode="wait">
@@ -171,7 +194,7 @@ export const UfficioPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
           >
-            <PersonalDashboard isOfficeView={true} />
+            <OfficeDashboard period={period} />
           </motion.div>
         )}
 

@@ -63,9 +63,12 @@ export const ClientiPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full w-full">
       {/* Header Section */}
-      <div className="flex flex-col gap-6 pb-0">
-        <div className="flex flex-col gap-1 mb-[10px]">
-          <h1 className="font-outfit font-semibold text-[22px] tracking-tight text-[var(--text-primary)]">
+      <div className="flex flex-col gap-4 pb-0">
+        <div className="flex flex-col">
+          <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+            Leadomancy / Buyers
+          </p>
+          <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
             Luxury Buyers
           </h1>
         </div>

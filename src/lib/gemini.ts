@@ -46,13 +46,24 @@ export async function callGemini(
         errorMessage.includes("service unavailable");
 
       if (isRetryable && retryCount < 3) {
-        // Exponential backoff: 2s, 4s, 8s + jitter
-        const delay = Math.pow(2, retryCount + 1) * 1000 + Math.random() * 1000;
-        console.warn(`Gemini high demand, retrying in ${Math.round(delay)}ms... (Attempt ${retryCount + 1}/3)`);
+        // For 429 (Quota Exceeded), we might want a slightly longer delay
+        const isQuotaExceeded = errorMessage.includes("429") || errorMessage.includes("quota");
+        const baseDelay = isQuotaExceeded ? 5000 : 2000;
+        
+        // Exponential backoff: 5s/10s/20s for quota, 2s/4s/8s for others + jitter
+        const delay = Math.pow(2, retryCount) * baseDelay + Math.random() * 1000;
+        
+        console.warn(`Gemini ${isQuotaExceeded ? 'quota exceeded' : 'high demand'}, retrying in ${Math.round(delay)}ms... (Attempt ${retryCount + 1}/3)`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return fetchWithRetry(retryCount + 1);
       }
       
+      if (errorMessage.includes("429") || errorMessage.includes("quota")) {
+        const quotaError = new Error("Quota API Gemini esaurita. Riprova più tardi o domani.");
+        (quotaError as any).status = 429;
+        throw quotaError;
+      }
+
       console.error("Gemini API Error after retries:", error);
       throw error;
     }
@@ -83,7 +94,12 @@ Fornisci un'analisi in formato markdown con queste sezioni esatte:
 ## 💡 Consigli per l'agente
 ## ⚠️ Possibili obiezioni`;
 
-  return callGemini([{ role: 'user', parts: [{ text: prompt }] }], system);
+  try {
+    return await callGemini([{ role: 'user', parts: [{ text: prompt }] }], system);
+  } catch (error: any) {
+    console.error("Gemini analyzeCliente error:", error);
+    return `## 🎯 Profilo\nAnalisi non disponibile (Quota AI esaurita).\n\n## ⏱️ Urgenza\nMedia\n\n## 💡 Consigli per l'agente\nContatta il cliente per approfondire le sue necessità.\n\n## ⚠️ Possibili obiezioni\nBudget da verificare.`;
+  }
 }
 
 /**
@@ -131,11 +147,21 @@ Ritorna SOLO il JSON.`;
 }
 
 /**
- * Genera una breve citazione motivazionale giornaliera in inglese.
+ * Genera una breve citazione motivazionale giornaliera in italiano.
  */
-export async function generateDailyQuote(): Promise<string> {
-  const prompt = "Generate a short motivational quote in English for a real estate professional. Format: 'quote — Author'. Max 15 words total. No other text.";
-  return callGemini([{ role: 'user', parts: [{ text: prompt }] }]);
+export async function generateDailyQuote(): Promise<{ quote: string; author: string }> {
+  const prompt = "Genera una citazione breve (massimo 15 parole) sulla crescita personale o il successo nel real estate. Rispondi esclusivamente in formato JSON: {\"quote\": \"...\", \"author\": \"...\"}. Lingua: italiano.";
+  try {
+    const response = await callGemini(
+      [{ role: 'user', parts: [{ text: prompt }] }],
+      "Sei un assistente AI che genera citazioni ispiratrici.",
+      true
+    );
+    return JSON.parse(response);
+  } catch (error) {
+    console.error("Gemini generateDailyQuote error:", error);
+    return { quote: "L'eccellenza non è un atto, ma un'abitudine.", author: "Aristotele" };
+  }
 }
 
 /**

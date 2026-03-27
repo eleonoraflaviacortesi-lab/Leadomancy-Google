@@ -17,14 +17,17 @@ export function useDailyData() {
   const queryKey = ['daily_reports', user?.id];
 
   const { data: allData = [], isLoading } = useQuery({
-    queryKey: ['daily_reports'],
+    queryKey: ['daily_reports', user?.sede],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user?.sede) return [];
       const data = await getSheetData<DailyReport>(SHEETS.daily_reports);
-      return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      // Filter by office to ensure "Ufficio" view is office-specific
+      return data
+        .filter(r => r.sede === user.sede)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     },
     staleTime: 1000 * 60 * 5,
-    enabled: !!user,
+    enabled: !!user?.sede,
   });
 
   const myData = useMemo(() => {
@@ -49,6 +52,7 @@ export function useDailyData() {
         if (rowIndex) {
           await updateRow(SHEETS.daily_reports, rowIndex, {
             ...data,
+            sede: user.sede, // Ensure sede is updated/present
             updated_at: new Date().toISOString()
           });
         }
@@ -59,6 +63,7 @@ export function useDailyData() {
           ...data,
           id,
           user_id: user.id,
+          sede: user.sede,
           date,
           created_at: now,
           updated_at: now,

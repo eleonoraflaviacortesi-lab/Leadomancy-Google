@@ -20,16 +20,16 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { columns } = useClientKanbanColumns();
-  const queryKey = ['clienti', user?.user_id || user?.sede];
+  const queryKey = ['clienti', user?.user_id];
 
   const { data: clienti = [], isLoading } = useQuery({
     queryKey,
     queryFn: async () => {
-      if (!user?.sede) return [];
+      if (!user?.user_id) return [];
       const data = await getSheetData<Cliente>(SHEETS.clienti);
       
       return data
-        .filter(c => c.sede === user.sede)
+        .filter(c => c.user_id === user.user_id)
         .map(c => ({
           ...c,
           regioni: Array.isArray(c.regioni) ? c.regioni : [],

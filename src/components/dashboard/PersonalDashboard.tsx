@@ -37,7 +37,7 @@ import { KPICard } from "./KPICard";
 import { GeminiAdviceCard } from "./GeminiAdviceCard";
 
 type WidgetId = 
-  | 'oggi' | 'pipeline' | 'upcoming' | 'trend' | 'gemini' | 'ranking'
+  | 'oggi' | 'pipeline' | 'upcoming' | 'trend' | 'gemini'
   | 'kpi-contatti' | 'kpi-notizie' | 'kpi-clienti' | 'kpi-appuntamenti' 
   | 'kpi-acquisizioni' | 'kpi-incarichi' | 'kpi-vendite' | 'kpi-fatturato';
 
@@ -53,7 +53,7 @@ const DEFAULT_LAYOUT: DashboardLayout = {
     'oggi', 
     'kpi-contatti', 'kpi-notizie', 'kpi-clienti', 'kpi-appuntamenti',
     'kpi-acquisizioni', 'kpi-incarichi', 'kpi-vendite', 'kpi-fatturato',
-    'pipeline', 'ranking'
+    'pipeline'
   ],
   side: ['gemini', 'upcoming', 'trend']
 };
@@ -242,7 +242,7 @@ export const PersonalDashboard: React.FC<{ isOfficeView?: boolean }> = ({ isOffi
 
             <Link 
               to="/inserisci"
-              className="mt-auto w-full bg-[var(--text-primary)] text-white py-3 rounded-[12px] font-outfit font-bold text-[13px] uppercase tracking-[0.05em] flex items-center justify-center gap-2 hover:opacity-90 transition-all"
+              className="mt-auto w-full bg-[var(--text-primary)] text-white py-2 rounded-[10px] font-outfit font-medium text-[12px] uppercase tracking-[0.08em] flex items-center justify-center gap-2 hover:opacity-90 transition-all"
             >
               <FileText size={16} />
               Inserisci Report
@@ -358,76 +358,29 @@ export const PersonalDashboard: React.FC<{ isOfficeView?: boolean }> = ({ isOffi
         );
       case 'gemini':
         return <GeminiAdviceCard kpis={geminiKPIs} />;
-      case 'ranking':
-        if (user?.role !== 'coordinatore' && user?.role !== 'admin') return null;
-        return (
-          <div className="bg-white border border-[var(--border-light)] rounded-[14px] p-6 shadow-sm overflow-hidden h-full">
-            <div className="flex items-center gap-2 mb-6">
-              <Award size={16} className="text-[var(--amber-fg)]" />
-              <h3 className="font-outfit font-bold text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
-                RANKING AGENTI (SEDE {user.sede})
-              </h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-[var(--border-light)]">
-                    <th className="pb-4 font-outfit font-semibold text-[11px] uppercase text-[var(--text-muted)] w-16">Pos.</th>
-                    <th className="pb-4 font-outfit font-semibold text-[11px] uppercase text-[var(--text-muted)]">Agente</th>
-                    <th className="pb-4 font-outfit font-semibold text-[11px] uppercase text-[var(--text-muted)] text-right">Contatti</th>
-                    <th className="pb-4 font-outfit font-semibold text-[11px] uppercase text-[var(--text-muted)] text-right">Notizie</th>
-                    <th className="pb-4 font-outfit font-semibold text-[11px] uppercase text-[var(--text-muted)] text-right">Vendite</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-light)]">
-                  {profiles
-                    .filter(p => p.sede === user.sede)
-                    .map((p, i) => (
-                      <tr key={p.id} className="group hover:bg-[var(--bg-subtle)] transition-colors">
-                        <td className="py-4 font-outfit font-bold text-[14px]">
-                          {i === 0 ? (
-                            <div className="w-8 h-8 rounded-full bg-[var(--amber-bg)] text-[var(--amber-fg)] flex items-center justify-center text-[11px] font-bold">
-                              #1
-                            </div>
-                          ) : (
-                            <span className="pl-3 text-[var(--text-muted)]">{i + 1}</span>
-                          )}
-                        </td>
-                        <td className="py-4">
-                          <div className="flex items-center gap-3">
-                            <span className="text-xl">{p.avatar_emoji || '👤'}</span>
-                            <span className="font-outfit font-medium text-[14px] text-[var(--text-primary)]">{p.full_name || `${p.nome} ${p.cognome}`}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 text-right font-outfit font-medium text-[14px] text-[var(--text-primary)]">12</td>
-                        <td className="py-4 text-right font-outfit font-medium text-[14px] text-[var(--text-primary)]">8</td>
-                        <td className="py-4 text-right font-outfit font-medium text-[14px] text-[var(--text-primary)]">2</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
       default:
         return null;
     }
   };
 
   return (
-    <div className="flex flex-col gap-8 pb-10 max-w-7xl mx-auto w-full bg-[var(--bg-page)] min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-1">
-          <h1 className="font-outfit font-semibold text-[14px] mt-[12px] tracking-tight text-[var(--text-primary)]">
-            Buongiorno, {user?.nome?.split(' ')[0] || ''}
-          </h1>
-          <p className="font-outfit text-[13px] text-[var(--text-secondary)] capitalize">
-            {formattedDate}
-          </p>
-        </div>
+    <div className="flex flex-col gap-4 pb-10 w-full">
+      {/* Header Section */}
+      <div className="flex flex-col">
+        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+          Leadomancy / Dashboard
+        </p>
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col">
+            <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
+              Buongiorno, {user?.full_name?.split(' ')[0] || user?.nome?.split(' ')[0] || ''}
+            </h1>
+            <p className="font-outfit text-[13px] text-[var(--text-secondary)] capitalize mb-0">
+              {formattedDate}
+            </p>
+          </div>
 
-        <div className="flex items-center gap-4 ml-0 mt-[-19px]">
+          <div className="flex items-center gap-4">
           {isEditMode && (
             <div className="pt-[4px]">
               <button
@@ -482,6 +435,7 @@ export const PersonalDashboard: React.FC<{ isOfficeView?: boolean }> = ({ isOffi
             ))}
           </div>
         </div>
+      </div>
       </div>
 
       {/* Main Grid with Drag and Drop */}

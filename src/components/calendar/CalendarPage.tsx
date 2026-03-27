@@ -302,51 +302,13 @@ export const CalendarPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-[var(--bg-page)] overflow-hidden rounded-t-2xl">
       {/* Header */}
-      <div className="flex flex-col gap-6 border-b border-[var(--border-light)]">
-        {showSchemaWarning && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 flex items-center justify-between gap-3 mb-2" role="alert">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-yellow-700">
-                <AlertCircle size={16} />
-                <span className="text-[12px] font-outfit font-medium">
-                  ⚠️ Aggiorna gli header del foglio 'appointments' su Google Sheets — aggiungi le colonne: type, notizia_id, calendar_id
-                </span>
-              </div>
-            </div>
-            <button onClick={() => setShowSchemaWarning(false)} className="text-yellow-700 font-bold text-[12px]">Dismiss</button>
-          </div>
-        )}
-        {calendarError && !isErrorDismissed && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            className="bg-red-50 border border-red-100 rounded-xl p-3 flex items-center justify-between gap-3 mb-2"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-red-600">
-                <AlertCircle size={16} />
-                <span className="text-[12px] font-outfit font-medium">{calendarError}</span>
-              </div>
-              <a 
-                href="https://console.cloud.google.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-[11px] font-outfit font-bold text-red-700 uppercase tracking-tight flex items-center gap-1 hover:underline"
-              >
-                Vai alla console <ExternalLink size={12} />
-              </a>
-            </div>
-            <button 
-              onClick={handleDismissError}
-              className="p-1 hover:bg-red-100 rounded-full text-red-400 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </motion.div>
-        )}
-        <div className="flex items-center justify-between mb-[10px]">
+      <div className="flex flex-col border-b border-[var(--border-light)] p-4 pb-0">
+        <div className="flex items-center justify-between mb-0">
           <div className="flex flex-col">
-            <h1 className="font-outfit font-semibold text-[22px] tracking-tight text-[var(--text-primary)] capitalize">
+            <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+              Leadomancy / Attività
+            </p>
+            <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', margin: 0, textTransform: 'capitalize' }}>
               {format(currentDate, 'MMMM yyyy', { locale: it })}
             </h1>
           </div>

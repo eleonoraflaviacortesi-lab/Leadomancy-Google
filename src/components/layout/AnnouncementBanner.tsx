@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useBannerSettings } from '@/src/hooks/useBannerSettings';
 import { useKPIs } from '@/src/hooks/useKPIs';
 import { formatCurrency } from '@/src/lib/utils';
-import { generateDailyQuote } from '@/src/services/gemini';
+import { generateDailyQuote } from '@/src/lib/gemini';
 
 const Star8 = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="h-2.5 w-2.5 mx-3 opacity-80">

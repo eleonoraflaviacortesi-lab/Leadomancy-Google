@@ -10,7 +10,7 @@ import {
 import Markdown from "react-markdown";
 import { Cliente } from "@/src/types";
 import { CLIENTE_STATUS_CONFIG } from "./clienteFormOptions";
-import { analyzeCliente } from "@/src/services/gemini";
+import { analyzeCliente } from "@/src/lib/gemini";
 import { cn, formatCurrency } from "@/src/lib/utils";
 import { useClienteActivities, ClienteActivity } from "@/src/hooks/useClienteActivities";
 import { usePropertyMatches, PropertyMatch } from "@/src/hooks/usePropertyMatches";

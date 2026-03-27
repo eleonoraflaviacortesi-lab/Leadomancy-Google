@@ -14,28 +14,28 @@ const CounterField = ({ label, field, formData, onCounterChange, onNumberInputCh
   onCounterChange: any; 
   onNumberInputChange: any 
 }) => (
-  <div className="flex flex-col gap-3 p-5 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[20px] group hover:border-[var(--border-medium)] transition-all shadow-sm">
-    <span className="text-[13px] font-outfit font-bold text-[var(--text-primary)] uppercase tracking-wide">{label}</span>
-    <div className="flex items-center gap-3">
+  <div className="flex flex-col gap-1.5 p-3 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[12px] group hover:border-[var(--border-medium)] transition-all shadow-sm">
+    <span className="text-[9px] font-outfit font-bold text-[var(--text-primary)] uppercase tracking-[0.1em]">{label}</span>
+    <div className="flex items-center gap-2">
       <button
         type="button"
         onClick={() => onCounterChange(field, -1)}
-        className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[var(--border-light)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] active:scale-95 transition-all shadow-sm"
+        className="w-5 h-5 flex items-center justify-center rounded-lg bg-white border border-[var(--border-light)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] active:scale-95 transition-all shadow-sm"
       >
-        <Minus size={16} />
+        <Minus size={10} />
       </button>
       <input
         type="number"
         value={formData[field] as number}
         onChange={(e) => onNumberInputChange(field, e.target.value)}
-        className="flex-1 min-w-0 bg-white border border-[var(--border-light)] rounded-xl h-10 text-center font-outfit font-bold text-[15px] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all shadow-sm"
+        className="w-12 bg-white border border-[var(--border-light)] rounded-lg h-7 text-center font-outfit font-bold text-[12px] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all shadow-sm"
       />
       <button
         type="button"
         onClick={() => onCounterChange(field, 1)}
-        className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[var(--border-light)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] active:scale-95 transition-all shadow-sm"
+        className="w-5 h-5 flex items-center justify-center rounded-lg bg-white border border-[var(--border-light)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] active:scale-95 transition-all shadow-sm"
       >
-        <Plus size={16} />
+        <Plus size={10} />
       </button>
     </div>
   </div>
@@ -47,16 +47,16 @@ const CurrencyField = ({ label, field, formData, onNumberInputChange }: {
   formData: any; 
   onNumberInputChange: any 
 }) => (
-  <div className="flex flex-col gap-3 p-5 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[20px] group hover:border-[var(--border-medium)] transition-all shadow-sm">
-    <span className="text-[13px] font-outfit font-bold text-[var(--text-primary)] uppercase tracking-wide">{label}</span>
+  <div className="flex flex-col gap-1.5 p-3 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[12px] group hover:border-[var(--border-medium)] transition-all shadow-sm">
+    <span className="text-[9px] font-outfit font-bold text-[var(--text-primary)] uppercase tracking-[0.1em]">{label}</span>
     <div className="relative">
-      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[14px] font-outfit font-bold text-[var(--text-muted)]">€</span>
+      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-outfit font-bold text-[var(--text-muted)]">€</span>
       <input
         type="number"
         value={formData[field] as number}
         onChange={(e) => onNumberInputChange(field, e.target.value)}
         placeholder="0.00"
-        className="w-full pl-8 pr-4 h-10 bg-white border border-[var(--border-light)] rounded-xl font-outfit font-bold text-[15px] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all shadow-sm"
+        className="w-full pl-6 pr-3 h-7 bg-white border border-[var(--border-light)] rounded-lg font-outfit font-bold text-[12px] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all shadow-sm"
       />
     </div>
   </div>

@@ -73,7 +73,7 @@ export function useKPIs(period: 'week' | 'month' | 'year' = 'month', isOfficeVie
       trattativeChiuse: getKPI('trattativeChiuse', (targets?.trattative_chiuse_target || 0) * targetMultiplier),
       fatturatoCredito: getKPI('fatturatoCredito', 10000 * targetMultiplier),
     };
-  }, [myData, targets, period]);
+  }, [myData, allData, targets, period, isOfficeView]);
 
   return {
     kpis,

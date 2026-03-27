@@ -25,7 +25,7 @@ export const KPICard: React.FC<KPICardProps> = ({
   };
 
   return (
-    <div className="bg-white border border-[var(--border-light)] rounded-[14px] p-4 flex flex-col gap-2 shadow-sm">
+    <div className="bg-white border border-[var(--border-light)] rounded-[14px] p-3 flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <span className="font-outfit font-medium text-[10px] uppercase tracking-[0.08em] text-[var(--text-muted)]">
           {label}
@@ -41,11 +41,11 @@ export const KPICard: React.FC<KPICardProps> = ({
         </div>
       </div>
       
-      <div className="font-outfit font-semibold text-[24px] text-[var(--text-primary)] tracking-tight leading-none">
+      <div className="font-outfit font-semibold text-[20px] text-[var(--text-primary)] tracking-tight leading-none">
         {isCurrency ? formatCurrency(value) : value}
       </div>
 
-      <div className="w-full h-[4px] bg-[var(--bg-subtle)] rounded-full overflow-hidden mt-1">
+      <div className="w-full h-[4px] bg-[var(--bg-subtle)] rounded-full overflow-hidden mt-0.5">
         <motion.div 
           initial={{ width: 0 }}
           animate={{ width: `${Math.min(percent, 100)}%` }}

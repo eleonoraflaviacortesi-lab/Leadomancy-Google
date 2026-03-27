@@ -20,9 +20,27 @@ interface GeminiAdviceCardProps {
 }
 
 export const GeminiAdviceCard: React.FC<GeminiAdviceCardProps> = ({ kpis }) => {
-  const [advices, setAdvices] = useState<Advice[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [advices, setAdvices] = useState<Advice[]>(() => {
+    const cached = localStorage.getItem('gemini-advice-cache');
+    if (cached) {
+      try {
+        const { data, timestamp } = JSON.parse(cached);
+        // Cache for 24 hours to save quota
+        if (Date.now() - timestamp < 1000 * 60 * 60 * 24) {
+          return data;
+        }
+      } catch (e) {}
+    }
+    return [];
+  });
+  const [isLoading, setIsLoading] = useState(advices.length === 0);
   const [error, setError] = useState<string | null>(null);
+
+  const fallbackAdvices: Advice[] = [
+    { icon: "📈", titolo: "Focus sui Lead", testo: "Analizza i lead con budget elevato che non hanno ricevuto contatti negli ultimi 3 giorni." },
+    { icon: "🏠", titolo: "Qualità Notizie", testo: "Assicurati che tutte le nuove notizie abbiano foto professionali e descrizioni emozionali." },
+    { icon: "🤝", titolo: "Follow-up", testo: "Pianifica una chiamata di cortesia per i clienti che hanno visitato un immobile la scorsa settimana." }
+  ];
 
   const fetchAdvice = useCallback(async () => {
     setIsLoading(true);
@@ -46,23 +64,50 @@ Usa un tono professionale ed elegante.`;
       );
 
       const data = JSON.parse(response);
-      setAdvices(Array.isArray(data) ? data : []);
+      const adviceList = Array.isArray(data) ? data : fallbackAdvices;
+      setAdvices(adviceList);
+      
+      // Cache the successful response
+      localStorage.setItem('gemini-advice-cache', JSON.stringify({
+        data: adviceList,
+        timestamp: Date.now()
+      }));
     } catch (err: any) {
       console.error("Gemini Advice Error:", err);
       const msg = err?.message?.toLowerCase() || "";
-      if (msg.includes("high demand") || msg.includes("overloaded") || msg.includes("503")) {
-        setError("Gemini è molto richiesto al momento. Riprova tra poco.");
+      
+      // If we have cached data, keep using it even if expired
+      const cached = localStorage.getItem('gemini-advice-cache');
+      if (cached) {
+        try {
+          const { data } = JSON.parse(cached);
+          setAdvices(data);
+          return;
+        } catch (e) {}
+      }
+
+      // If no cache, use fallback instead of showing error
+      setAdvices(fallbackAdvices);
+      
+      if (err?.status === 429 || msg.includes("quota") || msg.includes("429")) {
+        // Silently use fallback, maybe log it
+        console.warn("Gemini Quota exceeded, using fallback advice.");
+      } else if (msg.includes("high demand") || msg.includes("overloaded") || msg.includes("503")) {
+        console.warn("Gemini overloaded, using fallback advice.");
       } else {
-        setError("Impossibile caricare i consigli.");
+        setError("Impossibile caricare i consigli personalizzati.");
       }
     } finally {
       setIsLoading(false);
     }
-  }, [kpis]);
+  }, [kpis, fallbackAdvices]);
 
   useEffect(() => {
-    fetchAdvice();
-  }, [fetchAdvice]);
+    // Only fetch if we don't have cached data or if explicitly requested
+    if (advices.length === 0) {
+      fetchAdvice();
+    }
+  }, [fetchAdvice, advices.length]);
 
   return (
     <div className="bg-white border border-[var(--border-light)] rounded-[14px] p-5 flex flex-col gap-4 shadow-sm h-full">

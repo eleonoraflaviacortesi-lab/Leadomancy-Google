@@ -117,6 +117,7 @@ export interface Appointment {
 export interface DailyReport {
   id: string;
   user_id: string;
+  sede: string;
   date: string;
   contatti_reali: number;
   notizie_reali: number;
