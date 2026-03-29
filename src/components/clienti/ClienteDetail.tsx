@@ -10,7 +10,7 @@ import {
 import Markdown from "react-markdown";
 import { Cliente } from "@/src/types";
 import { CLIENTE_STATUS_CONFIG } from "./clienteFormOptions";
-import { analyzeCliente } from "@/src/lib/gemini";
+import { analyzeCliente, searchPropertiesOnline } from "@/src/lib/gemini";
 import { cn, formatCurrency } from "@/src/lib/utils";
 import { useClienteActivities, ClienteActivity } from "@/src/hooks/useClienteActivities";
 import { usePropertyMatches, PropertyMatch } from "@/src/hooks/usePropertyMatches";
@@ -182,10 +182,225 @@ const EditableTextarea = ({
 };
 
 const Section = ({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) => (
-  <div className={cn("flex flex-col gap-2.5 py-6 border-b border-[var(--border-light)] last:border-0", className)}>
-    <span className="font-outfit font-semibold text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">{title}</span>
-    <div className="flex flex-col gap-4">
+  <div className={cn("flex flex-col gap-2 py-4 border-b border-[var(--border-light)] last:border-0", className)}>
+    <span style={{
+      fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
+      textTransform: 'uppercase', letterSpacing: '0.12em',
+      marginBottom: 6, paddingBottom: 4,
+      borderBottom: '1px solid var(--border-light)'
+    }}>{title}</span>
+    <div className="flex flex-col gap-2">
       {children}
+    </div>
+  </div>
+);
+
+const USO_LABELS: Record<string, string> = {
+  'primary_residence': 'Residenza Principale',
+  'second_home': 'Seconda Casa',
+  'investment': 'Investimento',
+  'holiday': 'Casa Vacanze',
+  'rental': 'Affitto',
+};
+
+const AFFITTO_LABELS: Record<string, string> = {
+  'yes': 'Sì',
+  'no': 'No',
+  'not_sure': 'Non sicuro',
+  'maybe': 'Forse',
+};
+
+const MUTUO_LABELS: Record<string, string> = {
+  'yes': 'Sì',
+  'no': 'No',
+  'not_sure': 'Non sicuro',
+  'maybe': 'Forse',
+};
+
+interface SearchResultProperty {
+  titolo: string;
+  rif: string;
+  zona: string;
+  prezzo: string;
+  mq: string;
+  camere: string;
+  bagni: string;
+  url: string;
+  motivazione: string;
+  compatibilita: number; // 1-10
+  immagine?: string; // URL of cover image
+}
+
+// ── PropertyMatchCard ──────────────────────────────
+const PropertyMatchCard = ({ 
+  match, 
+  onReaction, 
+  onStatusChange, 
+  onDelete,
+  onWhatsApp 
+}: { 
+  match: PropertyMatch;
+  onReaction: (id: string, r: 'like' | 'dislike' | null) => void;
+  onStatusChange: (id: string, s: 'new' | 'sent') => void;
+  onDelete: (id: string) => void;
+  onWhatsApp: (match: PropertyMatch) => void;
+}) => (
+  <div style={{
+    background: 'white',
+    borderRadius: 12,
+    border: match.reaction === 'like' 
+      ? '1.5px solid #1D9E75' 
+      : match.reaction === 'dislike' 
+        ? '1.5px solid #E24B4A' 
+        : '1px solid var(--border-light)',
+    overflow: 'hidden',
+    marginBottom: 8,
+  }}>
+    {/* Cover image */}
+    {match.immagine && (
+      <img
+        src={match.immagine}
+        alt={match.titolo}
+        style={{ width: '100%', height: 130, objectFit: 'cover', display: 'block' }}
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+      />
+    )}
+
+    {/* Content */}
+    <div style={{ padding: '12px 14px' }}>
+      
+      {/* Header row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <a 
+            href={match.url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ 
+              fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+              fontFamily: 'Outfit', textDecoration: 'none', lineHeight: 1.3,
+              display: 'block', marginBottom: 2
+            }}
+          >
+            {match.titolo} ↗
+          </a>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'Outfit' }}>
+            {match.rif} · {match.zona}
+          </span>
+        </div>
+        {match.compatibilita && (
+          <span style={{
+            background: match.compatibilita >= 8 ? '#F0FDF4' : match.compatibilita >= 6 ? '#FEF9C3' : '#FEF2F2',
+            color: match.compatibilita >= 8 ? '#166534' : match.compatibilita >= 6 ? '#854D0E' : '#991B1B',
+            borderRadius: 999, padding: '2px 8px',
+            fontSize: 10, fontWeight: 700, fontFamily: 'Outfit', flexShrink: 0, marginLeft: 6
+          }}>
+            {match.compatibilita}/10
+          </span>
+        )}
+      </div>
+
+      {/* Price + details */}
+      {match.prezzo && (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#1A1A18', fontFamily: 'Outfit' }}>
+            {match.prezzo}
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'Outfit' }}>
+            {[match.mq, match.camere && `${match.camere} cam`, match.bagni && `${match.bagni} bagni`]
+              .filter(Boolean).join(' · ')}
+          </span>
+        </div>
+      )}
+
+      {/* Motivation */}
+      {match.motivazione && (
+        <p style={{ 
+          fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'Outfit',
+          margin: '0 0 10px', lineHeight: 1.4, fontStyle: 'italic'
+        }}>
+          💡 {match.motivazione}
+        </p>
+      )}
+
+      {/* Action bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderTop: '1px solid var(--border-light)', paddingTop: 10 }}>
+        
+        {/* Like */}
+        <button
+          onClick={() => onReaction(match.id, match.reaction === 'like' ? null : 'like')}
+          title="Interessante"
+          style={{
+            width: 30, height: 30, borderRadius: 8, border: 'none', cursor: 'pointer',
+            background: match.reaction === 'like' ? '#DCFCE7' : 'var(--bg-subtle)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 14, transition: 'all 150ms'
+          }}
+        >
+          👍
+        </button>
+
+        {/* Dislike */}
+        <button
+          onClick={() => onReaction(match.id, match.reaction === 'dislike' ? null : 'dislike')}
+          title="Non adatta"
+          style={{
+            width: 30, height: 30, borderRadius: 8, border: 'none', cursor: 'pointer',
+            background: match.reaction === 'dislike' ? '#FEE2E2' : 'var(--bg-subtle)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 14, transition: 'all 150ms'
+          }}
+        >
+          👎
+        </button>
+
+        {/* Sent badge / toggle */}
+        <button
+          onClick={() => onStatusChange(match.id, match.status === 'sent' ? 'new' : 'sent')}
+          title={match.status === 'sent' ? 'Inviata' : 'Segna come inviata'}
+          style={{
+            height: 30, borderRadius: 8, border: 'none', cursor: 'pointer',
+            padding: '0 10px',
+            background: match.status === 'sent' ? '#1A1A18' : 'var(--bg-subtle)',
+            color: match.status === 'sent' ? 'white' : 'var(--text-muted)',
+            fontSize: 10, fontWeight: 600, fontFamily: 'Outfit',
+            textTransform: 'uppercase', letterSpacing: '0.08em',
+            transition: 'all 150ms'
+          }}
+        >
+          {match.status === 'sent' ? '✓ Inviata' : 'Segna inviata'}
+        </button>
+
+        <div style={{ flex: 1 }} />
+
+        {/* WhatsApp */}
+        <button
+          onClick={() => onWhatsApp(match)}
+          title="Invia su WhatsApp"
+          style={{
+            width: 30, height: 30, borderRadius: 8, border: 'none', cursor: 'pointer',
+            background: '#25D366', color: 'white',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 14, transition: 'all 150ms'
+          }}
+        >
+          📱
+        </button>
+
+        {/* Delete */}
+        <button
+          onClick={() => onDelete(match.id)}
+          title="Rimuovi"
+          style={{
+            width: 30, height: 30, borderRadius: 8, border: 'none', cursor: 'pointer',
+            background: 'var(--bg-subtle)', color: '#E24B4A',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 12, transition: 'all 150ms'
+          }}
+        >
+          ✕
+        </button>
+      </div>
     </div>
   </div>
 );
@@ -197,9 +412,105 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
   const [showAddMatch, setShowAddMatch] = useState(false);
   const [newMatch, setNewMatch] = useState({ property_name: '', property_url: '', match_score: 80, notes: '' });
   
+  const [matches, setMatches] = useState<SearchResultProperty[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [matchError, setMatchError] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
+  
   const { activities, addActivity } = useClienteActivities(cliente?.id || '');
-  const { matches, addMatch, updateMatch, deleteMatch } = usePropertyMatches(cliente?.id || '');
-  const { profiles } = useProfiles();
+  const { matches: propertyMatches, addMatch, updateMatch, deleteMatch } = usePropertyMatches(cliente?.id || '');
+  const searchPropertyMatches = async () => {
+    setIsSearching(true);
+    setMatchError(null);
+    setHasSearched(true);
+    
+    try {
+      const budgetStr = cliente.budget_max 
+        ? `€${Number(cliente.budget_max).toLocaleString('it-IT')}` 
+        : 'non specificato';
+      
+      const regioniStr = Array.isArray(cliente.regioni) 
+        ? cliente.regioni.join(', ') 
+        : (cliente.regioni || 'non specificate');
+      
+      const tipologiaStr = Array.isArray(cliente.tipologia)
+        ? cliente.tipologia.join(', ')
+        : (cliente.tipologia || 'non specificata');
+
+      const prompt = `Cerca su cortesiluxuryrealestate.com/ricerca le proprietà 
+disponibili più adatte a questo cliente. 
+Usa Google Search per trovare proprietà REALI con URL REALI.
+NON inventare URL — usa solo URL che trovi realmente sul sito.
+
+PROFILO CLIENTE:
+- Budget massimo: ${budgetStr}
+- Regioni: ${regioniStr}  
+- Tipologia: ${tipologiaStr}
+- Camere minime: ${cliente.camere || 'non specificato'}
+- Bagni minimi: ${cliente.bagni || 'non specificato'}
+- Piscina: ${cliente.piscina || 'non specificato'}
+- Uso: ${cliente.uso || 'non specificato'}
+
+Cerca le proprietà reali sul sito e restituisci le TOP 3 più compatibili.
+Per ogni proprietà usa SOLO l'URL reale trovato sul sito.
+Includi l'URL dell'immagine di copertina se disponibile.
+
+Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
+[
+  {
+    "titolo": "titolo reale della proprietà",
+    "rif": "Rif. XXXX",
+    "zona": "Città (Regione)",
+    "prezzo": "€ X.XXX.XXX",
+    "mq": "XXX mq",
+    "camere": "X",
+    "bagni": "X",
+    "url": "https://cortesiluxuryrealestate.com/immobile/SLUG-REALE/",
+    "immagine": "https://cortesiluxuryrealestate.com/wp-content/uploads/...",
+    "motivazione": "Perché è adatta (1 frase)",
+    "compatibilita": 8
+  }
+]`;
+
+      const response = await searchPropertiesOnline(prompt);
+      
+      const jsonMatch = response.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) throw new Error('Nessuna proprietà trovata');
+      
+      const results: PropertyMatch[] = JSON.parse(jsonMatch[0]);
+      if (!Array.isArray(results) || results.length === 0) {
+        throw new Error('Nessuna proprietà trovata');
+      }
+      
+      results.forEach(r => {
+        const exists = propertyMatches.some(m => m.url === r.url);
+        if (!exists) {
+          addMatch({
+            titolo: r.titolo,
+            url: r.url,
+            immagine: r.immagine || '',
+            rif: r.rif || '',
+            zona: r.zona || '',
+            prezzo: r.prezzo || '',
+            mq: r.mq || '',
+            camere: r.camere || '',
+            bagni: r.bagni || '',
+            motivazione: r.motivazione || '',
+            compatibilita: r.compatibilita || 0,
+            reaction: null,
+            status: 'new',
+            notes: '',
+          });
+        }
+      });
+      
+    } catch (err: any) {
+      console.error('Property match error:', err);
+      setMatchError('Impossibile trovare proprietà. Riprova tra qualche secondo.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const [isStatusEditing, setIsStatusEditing] = useState(false);
   const [isAssignedEditing, setIsAssignedEditing] = useState(false);
@@ -258,9 +569,12 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
   const handleAddPropertyMatch = () => {
     if (!newMatch.property_name) return;
     addMatch({
-      ...newMatch,
+      titolo: newMatch.property_name,
+      url: newMatch.property_url,
+      compatibilita: newMatch.match_score,
+      notes: newMatch.notes,
       reaction: null,
-      suggested: false
+      status: 'new'
     });
     setNewMatch({ property_name: '', property_url: '', match_score: 80, notes: '' });
     setShowAddMatch(false);
@@ -273,8 +587,9 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
   };
 
   const handleWhatsAppShare = (match: PropertyMatch) => {
-    const text = `Ciao! Ho trovato questa proprietà che potrebbe interessarti: ${match.property_name}${match.property_url ? `\nLink: ${match.property_url}` : ''}`;
-    const url = `https://wa.me/${cliente.telefono?.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
+    const phoneClean = cliente.telefono?.replace(/\D/g, '') || '';
+    const text = `Ciao ${cliente.nome}! Ho trovato questa proprietà che potrebbe interessarti:\n\n🏠 *${match.titolo}*\n📍 ${match.zona || ''}\n💰 ${match.prezzo || ''}\n\n🔗 ${match.url}`;
+    const url = `https://wa.me/${phoneClean}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
 
@@ -307,21 +622,23 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
             style={{
               position: 'fixed',
               right: 0,
-              top: 34,
+              top: '34px',
               bottom: 0,
-              width: 'min(880px, 100vw)',
+              left: '220px', // Corrisponde alla larghezza della sidebar espansa
               zIndex: 70,
-              backgroundColor: 'white',
+              backgroundColor: '#F5F5F0', // Colore caldo dell'app
               display: 'flex',
               flexDirection: 'column',
               overflowY: 'auto',
               overflowX: 'hidden',
               boxShadow: '-4px 0 24px rgba(0,0,0,0.08)',
+              borderTopLeftRadius: '24px',
+              borderBottomLeftRadius: '24px',
               borderLeft: '1px solid var(--border-light)'
             }}
           >
             {/* Header */}
-            <div className="flex items-center h-[64px] px-6 border-b border-[var(--border-light)] bg-white sticky top-0 z-10">
+            <div className="flex items-center h-[64px] px-6 border-b border-[var(--border-light)] bg-[#F5F5F0] sticky top-0 z-10">
               <button 
                 onClick={onClose}
                 className="p-2 -ml-2 hover:bg-black/5 rounded-full transition-colors"
@@ -329,15 +646,64 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
                 <ChevronLeft size={20} />
               </button>
               
-              <div className="flex-1 px-4 truncate">
+              <div className="flex-1 px-4 truncate flex items-center gap-3">
+                <button 
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="w-8 h-8 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[16px] hover:bg-black/5 transition-colors"
+                >
+                  {cliente.emoji || '👤'}
+                </button>
+                {showEmojiPicker && (
+                  <div className="absolute z-[80] top-[64px] left-[100px] mt-2">
+                    <EmojiPicker onEmojiClick={(e) => { onUpdate?.(cliente.id, { emoji: e.emoji }); setShowEmojiPicker(false); }} />
+                  </div>
+                )}
                 <h2 className="font-outfit font-semibold text-[15px] text-[var(--text-primary)] truncate">
                   {cliente.nome} {cliente.cognome}
                 </h2>
+                <div className="flex items-center gap-1">
+                  {!isStatusEditing ? (
+                    <Badge 
+                      bg={statusConfig.bg} 
+                      fg={statusConfig.fg} 
+                      onClick={() => setIsStatusEditing(true)}
+                    >
+                      {statusConfig.label}
+                    </Badge>
+                  ) : (
+                    <select
+                      autoFocus
+                      value={cliente.status}
+                      onChange={(e) => {
+                        onUpdate?.(cliente.id, { status: e.target.value as any });
+                        setIsStatusEditing(false);
+                      }}
+                      onBlur={() => setIsStatusEditing(false)}
+                      className="text-[10px] font-outfit font-medium uppercase tracking-wider bg-[var(--bg-subtle)] border-b border-black outline-none"
+                    >
+                      {Object.entries(CLIENTE_STATUS_CONFIG).map(([key, config]) => (
+                        <option key={key} value={key}>{config.label}</option>
+                      ))}
+                    </select>
+                  )}
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button 
+                      key={star}
+                      onClick={() => onUpdate?.(cliente.id, { rating: star })}
+                      className={cn(
+                        "transition-colors",
+                        star <= (cliente.rating || 0) ? "text-amber-400" : "text-gray-200"
+                      )}
+                    >
+                      <Star size={14} fill={star <= (cliente.rating || 0) ? "currentColor" : "none"} />
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex items-center gap-1">
                 <button 
-                  onClick={() => generateClientePDF(cliente, activities, matches)}
+                  onClick={() => generateClientePDF(cliente, activities, propertyMatches)}
                   className="p-2 hover:bg-black/5 rounded-full transition-colors text-[var(--text-muted)]"
                   title="Scarica PDF"
                 >
@@ -363,84 +729,24 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
               flex: 1,
               overflowY: 'auto',
               overflowX: 'hidden',
-              padding: '24px',
+              padding: '16px',
               boxSizing: 'border-box',
               width: '100%'
             }}>
               <div 
-                className="grid gap-6"
+                className="grid gap-4"
                 style={{ 
                   display: 'grid', 
-                  gridTemplateColumns: window.innerWidth > 768 ? 'repeat(3, 1fr)' : '1fr',
-                  gap: 24
+                  gridTemplateColumns: window.innerWidth > 768 ? '1fr 350px' : '1fr',
+                  gap: 16
                 }}
               >
                 
-                {/* COLUMN 1 */}
-                <div className="flex flex-col gap-6">
-                  <div className="flex flex-col items-center text-center gap-3">
-                    <div className="relative">
-                      <button 
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        className="w-[48px] h-[48px] rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[24px] hover:bg-black/5 transition-colors"
-                      >
-                        {cliente.emoji || '👤'}
-                      </button>
-                      {showEmojiPicker && (
-                        <div className="absolute z-[80] top-full left-0 mt-2">
-                          <EmojiPicker onEmojiClick={(e) => { onUpdate?.(cliente.id, { emoji: e.emoji }); setShowEmojiPicker(false); }} />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <h1 className="font-outfit font-semibold text-[20px] text-[var(--text-primary)]">
-                        {cliente.nome} {cliente.cognome}
-                      </h1>
-                      <div className="flex justify-center">
-                        {!isStatusEditing ? (
-                          <Badge 
-                            bg={statusConfig.bg} 
-                            fg={statusConfig.fg} 
-                            onClick={() => setIsStatusEditing(true)}
-                          >
-                            {statusConfig.label}
-                          </Badge>
-                        ) : (
-                          <select
-                            autoFocus
-                            value={cliente.status}
-                            onChange={(e) => {
-                              onUpdate?.(cliente.id, { status: e.target.value as any });
-                              setIsStatusEditing(false);
-                            }}
-                            onBlur={() => setIsStatusEditing(false)}
-                            className="text-[10px] font-outfit font-medium uppercase tracking-wider bg-[var(--bg-subtle)] border-b border-black outline-none"
-                          >
-                            {Object.entries(CLIENTE_STATUS_CONFIG).map(([key, config]) => (
-                              <option key={key} value={key}>{config.label}</option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%', flexWrap: 'wrap' }}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button 
-                          key={star}
-                          onClick={() => onUpdate?.(cliente.id, { rating: star })}
-                          className={cn(
-                            "transition-colors",
-                            star <= (cliente.rating || 0) ? "text-amber-400" : "text-gray-200"
-                          )}
-                        >
-                          <Star size={14} fill={star <= (cliente.rating || 0) ? "currentColor" : "none"} />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-4 pt-4 border-t border-[var(--border-light)]">
+                {/* COLUMN 1 (Preferences) */}
+                <div className="flex flex-col gap-4">
+                  <div className="grid grid-cols-2 gap-4 bg-white p-4 rounded-xl">
                     <EditableField label="Budget" value={cliente.budget_max} type="number" prefix="€" onSave={(v) => onUpdate?.(cliente.id, { budget_max: parseFloat(v) })} />
+                    <EditableField label="Mutuo" value={MUTUO_LABELS[cliente.mutuo || ''] || cliente.mutuo} onSave={(v) => onUpdate?.(cliente.id, { mutuo: v })} />
                     <EditableField label="Tempo Ricerca" value={cliente.tempo_ricerca} onSave={(v) => onUpdate?.(cliente.id, { tempo_ricerca: v })} />
                     <EditableField label="Ha Visitato" value={cliente.ha_visitato} onSave={(v) => onUpdate?.(cliente.id, { ha_visitato: v })} />
                     
@@ -454,118 +760,70 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
                       <span className="text-[13px] font-outfit font-normal text-[var(--text-primary)] group-hover:text-indigo-600 transition-colors truncate">{cliente.email || '-'}</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <EditableField label="Paese" value={cliente.paese} onSave={(v) => onUpdate?.(cliente.id, { paese: v })} />
-                      <EditableField label="Lingua" value={cliente.lingua} onSave={(v) => onUpdate?.(cliente.id, { lingua: v })} />
-                    </div>
+                    <EditableField label="Paese" value={cliente.paese} onSave={(v) => onUpdate?.(cliente.id, { paese: v })} />
+                    <EditableField label="Lingua" value={cliente.lingua} onSave={(v) => onUpdate?.(cliente.id, { lingua: v })} />
+                  </div>
+                  
+                  {/* Preferences (moved from Column 2) */}
+                  <div className="bg-white p-4 rounded-xl">
+                    <Section title="PREFERENZE ZONA">
+                      <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Regioni</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {cliente.regioni?.map(r => (
+                              <Badge key={r} bg="var(--bg-subtle)" fg="var(--text-primary)">{r}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <EditableField label="Vicinanza città" value={cliente.vicinanza_citta} onSave={(v) => onUpdate?.(cliente.id, { vicinanza_citta: v })} />
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Motivo zona</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {cliente.motivo_zona?.map(m => (
+                              <Badge key={m} bg="var(--bg-subtle)" fg="var(--text-primary)">{m}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </Section>
+
+                    <Section title="PREFERENZE IMMOBILE">
+                      <div className="flex flex-col gap-6">
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Tipologia</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {cliente.tipologia?.map(t => <Badge key={t}>{t}</Badge>)}
+                            </div>
+                          </div>
+                          <EditableField label="Stile" value={cliente.stile} onSave={(v) => onUpdate?.(cliente.id, { stile: v })} />
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Contesto</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {cliente.contesto?.map(c => <Badge key={c}>{c}</Badge>)}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <EditableField label="Dim. Min" value={cliente.dimensione_min} type="number" onSave={(v) => onUpdate?.(cliente.id, { dimensione_min: parseInt(v) })} />
+                            <EditableField label="Dim. Max" value={cliente.dimensione_max} type="number" onSave={(v) => onUpdate?.(cliente.id, { dimensione_max: parseInt(v) })} />
+                          </div>
+                          <EditableField label="Camere" value={cliente.camere} onSave={(v) => onUpdate?.(cliente.id, { camere: v })} />
+                          <EditableField label="Bagni" value={cliente.bagni} onSave={(v) => onUpdate?.(cliente.id, { bagni: v })} />
+                          <EditableField label="Layout" value={cliente.layout} onSave={(v) => onUpdate?.(cliente.id, { layout: v })} />
+                          <EditableField label="Dependance" value={cliente.dependance} onSave={(v) => onUpdate?.(cliente.id, { dependance: v })} />
+                          <EditableField label="Terreno" value={cliente.terreno} onSave={(v) => onUpdate?.(cliente.id, { terreno: v })} />
+                          <EditableField label="Piscina" value={cliente.piscina} onSave={(v) => onUpdate?.(cliente.id, { piscina: v })} />
+                          <EditableField label="Uso" value={USO_LABELS[cliente.uso || ''] || cliente.uso} onSave={(v) => onUpdate?.(cliente.id, { uso: v })} />
+                          <EditableField label="Interesse affitto" value={AFFITTO_LABELS[cliente.interesse_affitto || ''] || cliente.interesse_affitto} onSave={(v) => onUpdate?.(cliente.id, { interesse_affitto: v })} />
+                        </div>
+                      </div>
+                    </Section>
                   </div>
                 </div>
 
-                {/* COLUMN 2 */}
-                <div className="flex flex-col gap-0">
-                  <Section title="PREFERENZE ZONA">
-                    <div className="flex flex-col gap-4">
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Regioni</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {cliente.regioni?.map(r => (
-                            <Badge key={r} bg="var(--bg-subtle)" fg="var(--text-primary)">{r}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                      <EditableField label="Vicinanza città" value={cliente.vicinanza_citta} onSave={(v) => onUpdate?.(cliente.id, { vicinanza_citta: v })} />
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Motivo zona</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {cliente.motivo_zona?.map(m => (
-                            <Badge key={m} bg="var(--bg-subtle)" fg="var(--text-primary)">{m}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </Section>
-
-                  <Section title="PREFERENZE IMMOBILE">
-                    <div className="flex flex-col gap-6">
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-                        <div className="flex flex-col gap-1.5">
-                          <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Tipologia</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {cliente.tipologia?.map(t => <Badge key={t}>{t}</Badge>)}
-                          </div>
-                        </div>
-                        <EditableField label="Stile" value={cliente.stile} onSave={(v) => onUpdate?.(cliente.id, { stile: v })} />
-                        <div className="flex flex-col gap-1.5">
-                          <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Contesto</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {cliente.contesto?.map(c => <Badge key={c}>{c}</Badge>)}
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <EditableField label="Dim. Min" value={cliente.dimensione_min} type="number" onSave={(v) => onUpdate?.(cliente.id, { dimensione_min: parseInt(v) })} />
-                          <EditableField label="Dim. Max" value={cliente.dimensione_max} type="number" onSave={(v) => onUpdate?.(cliente.id, { dimensione_max: parseInt(v) })} />
-                        </div>
-                        <EditableField label="Camere" value={cliente.camere} onSave={(v) => onUpdate?.(cliente.id, { camere: v })} />
-                        <EditableField label="Bagni" value={cliente.bagni} onSave={(v) => onUpdate?.(cliente.id, { bagni: v })} />
-                        <EditableField label="Layout" value={cliente.layout} onSave={(v) => onUpdate?.(cliente.id, { layout: v })} />
-                        <EditableField label="Dependance" value={cliente.dependance} onSave={(v) => onUpdate?.(cliente.id, { dependance: v })} />
-                        <EditableField label="Terreno" value={cliente.terreno} onSave={(v) => onUpdate?.(cliente.id, { terreno: v })} />
-                        <EditableField label="Piscina" value={cliente.piscina} onSave={(v) => onUpdate?.(cliente.id, { piscina: v })} />
-                        <EditableField label="Uso" value={cliente.uso} onSave={(v) => onUpdate?.(cliente.id, { uso: v })} />
-                        <EditableField label="Interesse affitto" value={cliente.interesse_affitto} onSave={(v) => onUpdate?.(cliente.id, { interesse_affitto: v })} />
-                      </div>
-                    </div>
-                  </Section>
-                </div>
-
-                {/* COLUMN 3 */}
-                <div className="flex flex-col gap-0">
-                  <Section title="PROVENIENZA">
-                    <div className="flex flex-col gap-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Portale</span>
-                        <Badge bg="var(--bg-subtle)" fg="var(--text-primary)" className="w-fit">{cliente.portale || '-'}</Badge>
-                      </div>
-                      <EditableField label="Proprietà visitata" value={cliente.proprieta_visitata} onSave={(v) => onUpdate?.(cliente.id, { proprieta_visitata: v })} />
-                      <EditableField label="Ref Number" value={cliente.ref_number} onSave={(v) => onUpdate?.(cliente.id, { ref_number: v })} />
-                      <EditableField label="Contattato da" value={cliente.contattato_da} onSave={(v) => onUpdate?.(cliente.id, { contattato_da: v })} />
-                      <EditableField label="Tipo contatto" value={cliente.tipo_contatto} onSave={(v) => onUpdate?.(cliente.id, { tipo_contatto: v })} />
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Data Inserimento</span>
-                        <span className="text-[13px] font-outfit font-normal text-[var(--text-primary)]">
-                          {safeFormatDate(cliente.created_at)}
-                        </span>
-                      </div>
-                    </div>
-                  </Section>
-
-                  <Section title="NOTE">
-                    <div className="flex flex-col gap-6">
-                      <EditableTextarea label="Descrizione" value={cliente.descrizione} onSave={(v) => onUpdate?.(cliente.id, { descrizione: v })} />
-                      <EditableTextarea label="Note Extra" value={cliente.note_extra} onSave={(v) => onUpdate?.(cliente.id, { note_extra: v })} />
-                    </div>
-                  </Section>
-
-                  <Section title="REMINDER">
-                    <div className="flex flex-col gap-4">
-                      <EditableField 
-                        label="Data Reminder" 
-                        value={cliente.reminder_date} 
-                        type="datetime-local"
-                        onSave={(v) => onUpdate?.(cliente.id, { reminder_date: v })} 
-                      />
-                      <a 
-                        href={cliente.reminder_date && !isNaN(new Date(cliente.reminder_date).getTime()) ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=Follow-up+${cliente.nome}+${cliente.cognome}&dates=${new Date(cliente.reminder_date).toISOString().replace(/-|:|\.\d\d\d/g, "")}/${new Date(new Date(cliente.reminder_date).getTime() + 3600000).toISOString().replace(/-|:|\.\d\d\d/g, "")}` : '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[11px] font-outfit font-bold text-black uppercase tracking-wider hover:underline flex items-center gap-1.5"
-                      >
-                        Apri in Calendar
-                        <ExternalLink size={12} />
-                      </a>
-                    </div>
-                  </Section>
-
+                {/* COLUMN 2 (Sidebar) */}
+                <div className="flex flex-col gap-4">
                   <Section title="ANALISI AI">
                     <div className="flex flex-col gap-4">
                       <button
@@ -574,7 +832,7 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
                         className="w-full py-2.5 bg-black text-white rounded-full font-outfit font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50"
                       >
                         {isAnalyzing ? <Clock size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                        ANALIZZA CON GEMINI
+                        {analysis ? 'RI-ANALIZZA CON GEMINI' : 'ANALIZZA CON GEMINI'}
                       </button>
                       {analysis && (
                         <div className="bg-[var(--bg-subtle)] rounded-xl p-4">
@@ -624,8 +882,98 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
                       </div>
                     </div>
                   </Section>
-                </div>
 
+                  <Section title="PROPRIETÀ COMPATIBILI">
+                    <div className="flex flex-col gap-4">
+                      {!hasSearched && (
+                        <button
+                          onClick={searchPropertyMatches}
+                          disabled={isSearching}
+                          className="w-full py-2.5 bg-black text-white rounded-full font-outfit font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50"
+                        >
+                          {isSearching ? <Clock size={14} className="animate-spin" /> : <Home size={14} />}
+                          🏠 Trova Proprietà Compatibili
+                        </button>
+                      )}
+                      
+                      {!hasSearched && (
+                        <p style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'Outfit',
+                          textAlign: 'center', marginBottom: 12, marginTop: -8 }}>
+                          Powered by Gemini AI · Cerca in tempo reale su cortesiluxuryrealestate.com
+                        </p>
+                      )}
+                      
+                      {isSearching && <p className="text-[12px] text-[var(--text-muted)] font-outfit">Ricerca in corso su cortesiluxuryrealestate.com...</p>}
+                      {matchError && <p className="text-[12px] text-[#991B1B] font-outfit">{matchError}</p>}
+                      
+                      {hasSearched && !isSearching && !matchError && matches.length === 0 && (
+                        <p className="text-[12px] text-[var(--text-muted)] font-outfit">Nessuna proprietà compatibile trovata.</p>
+                      )}
+                      
+                      {propertyMatches.sort((a, b) => {
+                        const scoreA = a.reaction === 'like' ? 3 : a.reaction === 'dislike' ? 1 : 2;
+                        const scoreB = b.reaction === 'like' ? 3 : b.reaction === 'dislike' ? 1 : 2;
+                        if (scoreA !== scoreB) return scoreB - scoreA;
+                        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                      }).map((m) => (
+                        <PropertyMatchCard 
+                          key={m.id} 
+                          match={m} 
+                          onReaction={(id, r) => updateMatch(id, { reaction: r })}
+                          onStatusChange={(id, s) => updateMatch(id, { status: s })}
+                          onDelete={deleteMatch}
+                          onWhatsApp={handleWhatsAppShare}
+                        />
+                      ))}
+                    </div>
+                  </Section>
+
+                  <Section title="PROVENIENZA">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Portale</span>
+                        <Badge bg="var(--bg-subtle)" fg="var(--text-primary)" className="w-fit">{cliente.portale || '-'}</Badge>
+                      </div>
+                      <EditableField label="Proprietà visitata" value={cliente.proprieta_visitata} onSave={(v) => onUpdate?.(cliente.id, { proprieta_visitata: v })} />
+                      <EditableField label="Ref Number" value={cliente.ref_number} onSave={(v) => onUpdate?.(cliente.id, { ref_number: v })} />
+                      <EditableField label="Contattato da" value={cliente.contattato_da} onSave={(v) => onUpdate?.(cliente.id, { contattato_da: v })} />
+                      <EditableField label="Tipo contatto" value={cliente.tipo_contatto} onSave={(v) => onUpdate?.(cliente.id, { tipo_contatto: v })} />
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Data Inserimento</span>
+                        <span className="text-[13px] font-outfit font-normal text-[var(--text-primary)]">
+                          {safeFormatDate(cliente.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                  </Section>
+
+                  <Section title="NOTE">
+                    <div className="flex flex-col gap-6">
+                      <EditableTextarea label="Descrizione" value={cliente.descrizione} onSave={(v) => onUpdate?.(cliente.id, { descrizione: v })} />
+                      <EditableTextarea label="Note Extra" value={cliente.note_extra} onSave={(v) => onUpdate?.(cliente.id, { note_extra: v })} />
+                    </div>
+                  </Section>
+
+                  <Section title="REMINDER">
+                    <div className="flex flex-col gap-4">
+                      <EditableField 
+                        label="Data Reminder" 
+                        value={cliente.reminder_date} 
+                        type="datetime-local"
+                        onSave={(v) => onUpdate?.(cliente.id, { reminder_date: v })} 
+                      />
+                      <a 
+                        href={cliente.reminder_date && !isNaN(new Date(cliente.reminder_date).getTime()) ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=Follow-up+${cliente.nome}+${cliente.cognome}&dates=${new Date(cliente.reminder_date).toISOString().replace(/-|:|\.\d\d\d/g, "")}/${new Date(new Date(cliente.reminder_date).getTime() + 3600000).toISOString().replace(/-|:|\.\d\d\d/g, "")}` : '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-outfit font-bold text-black uppercase tracking-wider hover:underline flex items-center gap-1.5"
+                      >
+                        Apri in Calendar
+                        <ExternalLink size={12} />
+                      </a>
+                    </div>
+                  </Section>
+                </div>
               </div>
 
               <div className="py-10 text-center border-t border-[var(--border-light)]">

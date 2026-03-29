@@ -3,12 +3,20 @@ import { useState, useEffect, useCallback } from 'react';
 export interface PropertyMatch {
   id: string;
   cliente_id: string;
-  property_name: string;
-  property_url: string;
-  match_score: number;
+  titolo: string;           // renamed from property_name
+  url: string;              // renamed from property_url  
+  immagine?: string;        // cover image URL
+  rif?: string;             // reference number
+  zona?: string;            // location
+  prezzo?: string;          // price
+  mq?: string;              // sqm
+  camere?: string;          // bedrooms
+  bagni?: string;           // bathrooms
+  motivazione?: string;     // AI explanation
+  compatibilita?: number;   // 1-10
+  reaction: 'like' | 'dislike' | null;
+  status: 'new' | 'sent';   // sent = link inviato al cliente
   notes: string;
-  reaction: 'positive' | 'negative' | null;
-  suggested: boolean;
   created_at: string;
 }
 

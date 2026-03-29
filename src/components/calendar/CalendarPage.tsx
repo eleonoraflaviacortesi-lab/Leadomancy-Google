@@ -473,10 +473,10 @@ const MonthView: React.FC<{
   const getEventsForDay = (day: Date) => events.filter(e => isSameDay(e.start, day));
 
   return (
-    <div className="grid grid-cols-7 h-full border-b border-[var(--border-light)] bg-white">
+    <div className="grid grid-cols-7 h-full border-b border-[var(--border-calendar)] bg-white">
       {/* Weekday headers */}
       {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(day => (
-        <div key={day} className="h-10 flex items-center justify-center border-b border-[var(--border-light)]">
+        <div key={day} className="h-10 flex items-center justify-center border-b border-[var(--border-calendar)]">
           <span className="text-[11px] font-outfit font-semibold uppercase tracking-wider text-[var(--text-muted)]">
             {day}
           </span>
@@ -494,7 +494,7 @@ const MonthView: React.FC<{
             key={day.toISOString()}
             onClick={() => onDayClick(day)}
             className={cn(
-              "min-h-[100px] border-r border-b border-[var(--border-light)] p-2 flex flex-col gap-1 transition-colors hover:bg-black/[0.02] cursor-pointer",
+              "min-h-[100px] border-r border-b border-[var(--border-calendar)] p-2 flex flex-col gap-1 transition-colors hover:bg-black/[0.02] cursor-pointer",
               !isSameMonth(day, monthStart) && "opacity-35 bg-[var(--bg-subtle)]",
               i % 7 === 6 && "border-r-0"
             )}
@@ -558,6 +558,7 @@ const TimeGridView: React.FC<{
 
   const [selection, setSelection] = useState<{ day: Date; startHour: number; endHour: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isDraggingEvent, setIsDraggingEvent] = useState(false);
 
   const days = useMemo(() => {
     if (viewMode === 'day') return [currentDate];
@@ -619,6 +620,11 @@ const TimeGridView: React.FC<{
   const handleDragStart = (e: React.DragEvent, eventId: string) => {
     e.dataTransfer.setData('eventId', eventId);
     e.dataTransfer.effectAllowed = 'move';
+    setIsDraggingEvent(true);
+  };
+
+  const handleDragEnd = () => {
+    setIsDraggingEvent(false);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -628,6 +634,7 @@ const TimeGridView: React.FC<{
 
   const handleDrop = (e: React.DragEvent, day: Date, hour: number) => {
     e.preventDefault();
+    setIsDraggingEvent(false);
     const eventId = e.dataTransfer.getData('eventId');
     const event = events.find(ev => ev.id === eventId);
     
@@ -650,11 +657,11 @@ const TimeGridView: React.FC<{
       }}
     >
       {/* All-day reminders section */}
-      <div className="flex border-b border-[var(--border-light)] bg-[var(--bg-subtle)]">
-        <div className="w-16 border-r border-[var(--border-light)] flex items-center justify-center">
+      <div className="flex border-b border-[var(--border-calendar)] bg-[var(--bg-subtle)]">
+        <div className="w-16 border-r border-[var(--border-calendar)] flex items-center justify-center">
           <Bell size={14} className="text-[var(--text-muted)]" />
         </div>
-        <div className="flex-1 flex divide-x divide-[var(--border-light)]">
+        <div className="flex-1 flex divide-x divide-[var(--border-calendar)]">
           {days.map(day => {
             const dayReminders = events.filter(e => e.allDay && e.type !== 'task' && isSameDay(e.start, day));
             return (
@@ -722,9 +729,9 @@ const TimeGridView: React.FC<{
       </div>
 
       {/* Day headers */}
-      <div className="flex border-b border-[var(--border-light)]">
-        <div className="w-16 border-r border-[var(--border-light)]" />
-        <div className="flex-1 flex divide-x divide-[var(--border-light)]">
+      <div className="flex border-b border-[var(--border-calendar)]">
+        <div className="w-16 border-r border-[var(--border-calendar)]" />
+        <div className="flex-1 flex divide-x divide-[var(--border-calendar)]">
           {days.map(day => (
             <div key={day.toISOString()} className="flex-1 py-3 flex flex-col items-center gap-1">
               <span className="text-[11px] font-outfit font-semibold uppercase tracking-wider text-[var(--text-muted)]">
@@ -745,7 +752,7 @@ const TimeGridView: React.FC<{
       <div className="flex-1 overflow-y-auto relative scrollbar-hide">
         <div className="flex min-h-full">
           {/* Time labels */}
-          <div className="w-16 border-r border-[var(--border-light)] bg-white sticky left-0 z-10">
+          <div className="w-16 border-r border-[var(--border-calendar)] bg-white sticky left-0 z-10">
             {hours.map(hour => (
               <div key={hour} className="h-[64px] flex items-start justify-center pt-1">
                 <span className="text-[11px] font-outfit font-medium text-[var(--text-muted)]">
@@ -756,11 +763,11 @@ const TimeGridView: React.FC<{
           </div>
 
           {/* Grid columns */}
-          <div className="flex-1 flex divide-x divide-[var(--border-light)] relative bg-white">
+          <div className="flex-1 flex divide-x divide-[var(--border-calendar)] relative bg-white">
             {/* Horizontal grid lines */}
             <div className="absolute inset-0 pointer-events-none">
               {hours.map(hour => (
-                <div key={hour} className="h-[64px] border-b border-[var(--border-light)] last:border-0" />
+                <div key={hour} className="h-[64px] border-b border-[var(--border-calendar)] last:border-0" />
               ))}
             </div>
 
@@ -859,12 +866,14 @@ const TimeGridView: React.FC<{
                         key={event.id}
                         draggable={event.type === 'appointment'}
                         onDragStart={(e) => handleDragStart(e, event.id)}
+                        onDragEnd={handleDragEnd}
                         onClick={(e) => {
                           e.stopPropagation();
                           onEventClick(event);
                         }}
                         className={cn(
                           "absolute left-1 right-1 rounded-[6px] p-1 px-2 shadow-sm border-l-[3px] overflow-hidden transition-transform active:scale-[0.98] cursor-pointer z-10",
+                          isDraggingEvent && "pointer-events-none",
                           event.type === 'appointment' && "text-white border-white/20",
                           event.type === 'google_calendar' && "text-white border-white/20"
                         )}

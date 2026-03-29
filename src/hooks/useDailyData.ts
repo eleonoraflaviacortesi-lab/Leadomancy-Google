@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/src/hooks/useAuth";
-import { DailyReport } from "@/src/types";
+import { CicloProduttivo } from "@/src/types";
 import { 
   getSheetData, 
   appendRow, 
@@ -20,7 +20,7 @@ export function useDailyData() {
     queryKey: ['daily_reports', user?.sede],
     queryFn: async () => {
       if (!user?.sede) return [];
-      const data = await getSheetData<DailyReport>(SHEETS.daily_reports);
+      const data = await getSheetData<CicloProduttivo>(SHEETS.daily_reports);
       // Filter by office to ensure "Ufficio" view is office-specific
       return data
         .filter(r => r.sede === user.sede)
@@ -40,11 +40,11 @@ export function useDailyData() {
   }, [myData]);
 
   const saveDailyDataMutation = useMutation({
-    mutationFn: async ({ data, date }: { data: Partial<DailyReport>, date: string }) => {
+    mutationFn: async ({ data, date }: { data: Partial<CicloProduttivo>, date: string }) => {
       if (!user) throw new Error("User not authenticated");
       
       // Check if record exists for user_id + date
-      const allReports = await getSheetData<DailyReport>(SHEETS.daily_reports);
+      const allReports = await getSheetData<CicloProduttivo>(SHEETS.daily_reports);
       const existingReport = allReports.find(r => r.user_id === user.id && r.date === date);
 
       if (existingReport) {
@@ -59,7 +59,7 @@ export function useDailyData() {
       } else {
         const id = crypto.randomUUID();
         const now = new Date().toISOString();
-        const newReport: DailyReport = {
+        const newReport: CicloProduttivo = {
           ...data,
           id,
           user_id: user.id,
@@ -67,7 +67,7 @@ export function useDailyData() {
           date,
           created_at: now,
           updated_at: now,
-        } as DailyReport;
+        } as CicloProduttivo;
         await appendRow(SHEETS.daily_reports, newReport);
       }
     },

@@ -3,6 +3,33 @@ import { Cliente, Notizia } from "@/src/types";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
 
+export async function searchPropertiesOnline(
+  clienteProfile: string
+): Promise<string> {
+  if (!GEMINI_API_KEY) throw new Error('Gemini API Key missing');
+  
+  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+  
+  // Use Google Search Grounding to actually search the web
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: [{ 
+      role: 'user', 
+      parts: [{ text: clienteProfile }] 
+    }],
+    config: {
+      tools: [{ googleSearch: {} }],
+      systemInstruction: `Sei un consulente immobiliare. 
+Cerca su cortesiluxuryrealestate.com le proprietà reali disponibili.
+Usa Google Search per trovare proprietà REALI con URL REALI dal sito.
+Non inventare mai URL o proprietà che non esistono sul sito.
+Rispondi SOLO con un array JSON valido.`,
+    },
+  });
+  
+  return response.text || '';
+}
+
 interface GeminiMessage {
   role: 'user' | 'model';
   parts: [{ text: string }];
@@ -88,11 +115,11 @@ Tempo ricerca: ${cliente.tempo_ricerca}
 Mutuo: ${cliente.mutuo ? 'Sì' : 'No'}
 Descrizione: ${cliente.descrizione}
 
-Fornisci un'analisi in formato markdown con queste sezioni esatte:
-## 🎯 Profilo
-## ⏱️ Urgenza
-## 💡 Consigli per l'agente
-## ⚠️ Possibili obiezioni`;
+Fornisci un'analisi MOLTO BREVE in formato markdown con queste sezioni esatte:
+## 🎯 Profilo (max 2 righe)
+## ⏱️ Urgenza (max 1 riga)
+## 💡 Consigli pratici (3 punti brevi)
+## ⚠️ Possibili obiezioni (max 2 righe)`;
 
   try {
     return await callGemini([{ role: 'user', parts: [{ text: prompt }] }], system);

@@ -114,7 +114,7 @@ export interface Appointment {
   _rowIndex?: number;
 }
 
-export interface DailyReport {
+export interface CicloProduttivo {
   id: string;
   user_id: string;
   sede: string;

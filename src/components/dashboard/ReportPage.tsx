@@ -21,7 +21,7 @@ export const ReportPage: React.FC = () => {
           Leadomancy / Produzione
         </p>
         <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
-          Report di Produzione
+          Ciclo Produttivo
         </h1>
       </div>
 
@@ -35,7 +35,7 @@ export const ReportPage: React.FC = () => {
           )}
         >
           <Plus size={16} />
-          Nuovo Report
+          Nuovo Ciclo
         </button>
         <button
           onClick={() => setActiveTab('history')}
@@ -45,7 +45,7 @@ export const ReportPage: React.FC = () => {
           )}
         >
           <List size={16} />
-          I Miei Report
+          I Miei Cicli
         </button>
       </div>
 
@@ -125,7 +125,7 @@ export const ReportPage: React.FC = () => {
             ) : (
               <div className="flex flex-col items-center justify-center py-20 bg-[var(--bg-subtle)] rounded-[20px] border border-dashed border-[var(--border-light)]">
                 <FileText size={48} className="text-[var(--border-medium)] mb-4" />
-                <p className="font-outfit text-[14px] text-[var(--text-muted)]">Nessun report salvato</p>
+                <p className="font-outfit text-[14px] text-[var(--text-muted)]">Nessun ciclo salvato</p>
               </div>
             )}
           </motion.div>

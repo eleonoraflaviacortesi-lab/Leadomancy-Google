@@ -163,7 +163,7 @@ export function generateClientePDF(
         </div>
         <div class="header-meta">
           Leadomancy CRM<br>
-          Report generato il ${new Date().toLocaleDateString('it-IT')}
+          Ciclo generato il ${new Date().toLocaleDateString('it-IT')}
         </div>
       </div>
 
@@ -239,11 +239,11 @@ export function generateClientePDF(
         ${matches.length > 0 ? matches.map(m => `
           <div class="match-item">
             <div class="match-info">
-              <h4>${m.property_name}</h4>
-              <div style="font-size: 11px; color: #999;">${m.property_url || ''}</div>
+              <h4>${m.titolo}</h4>
+              <div style="font-size: 11px; color: #999;">${m.url || ''}</div>
               ${m.notes ? `<div style="font-size: 12px; margin-top: 5px;">${m.notes}</div>` : ''}
             </div>
-            <div class="match-score">${m.match_score}%</div>
+            <div class="match-score">${m.compatibilita || 0}/10</div>
           </div>
         `).join('') : '<div class="activity-desc">Nessuna proprietà abbinata.</div>'}
       </div>

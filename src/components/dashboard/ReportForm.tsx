@@ -2,48 +2,33 @@ import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Plus, Minus, Save, Calendar, AlertCircle, TrendingUp, DollarSign, Users, FileText, ShoppingBag, CreditCard } from "lucide-react";
 import { useDailyData } from "@/src/hooks/useDailyData";
-import { DailyReport } from "@/src/types";
+import { CicloProduttivo } from "@/src/types";
 import { cn, formatCurrency } from "@/src/lib/utils";
 import { format, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
 
-const CounterField = ({ label, field, formData, onCounterChange, onNumberInputChange }: { 
+const CounterField = ({ label, field, formData, onNumberInputChange }: { 
   label: string; 
-  field: keyof DailyReport; 
+  field: keyof CicloProduttivo; 
   formData: any; 
-  onCounterChange: any; 
   onNumberInputChange: any 
 }) => (
   <div className="flex flex-col gap-1.5 p-3 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[12px] group hover:border-[var(--border-medium)] transition-all shadow-sm">
     <span className="text-[9px] font-outfit font-bold text-[var(--text-primary)] uppercase tracking-[0.1em]">{label}</span>
     <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={() => onCounterChange(field, -1)}
-        className="w-5 h-5 flex items-center justify-center rounded-lg bg-white border border-[var(--border-light)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] active:scale-95 transition-all shadow-sm"
-      >
-        <Minus size={10} />
-      </button>
       <input
         type="number"
         value={formData[field] as number}
         onChange={(e) => onNumberInputChange(field, e.target.value)}
-        className="w-12 bg-white border border-[var(--border-light)] rounded-lg h-7 text-center font-outfit font-bold text-[12px] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all shadow-sm"
+        className="w-full bg-white border border-[var(--border-light)] rounded-lg h-7 text-center font-outfit font-bold text-[12px] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all shadow-sm"
       />
-      <button
-        type="button"
-        onClick={() => onCounterChange(field, 1)}
-        className="w-5 h-5 flex items-center justify-center rounded-lg bg-white border border-[var(--border-light)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] active:scale-95 transition-all shadow-sm"
-      >
-        <Plus size={10} />
-      </button>
     </div>
   </div>
 );
 
 const CurrencyField = ({ label, field, formData, onNumberInputChange }: { 
   label: string; 
-  field: keyof DailyReport; 
+  field: keyof CicloProduttivo; 
   formData: any; 
   onNumberInputChange: any 
 }) => (
@@ -68,7 +53,7 @@ export const ReportForm: React.FC = () => {
   
   const existingReport = myData.find(r => r.date === selectedDate);
 
-  const [formData, setFormData] = useState<Partial<DailyReport>>({
+  const [formData, setFormData] = useState<Partial<CicloProduttivo>>({
     contatti_reali: 0,
     notizie_reali: 0,
     appuntamenti_vendita: 0,
@@ -117,16 +102,16 @@ export const ReportForm: React.FC = () => {
     }
   }, [existingReport, selectedDate]);
 
-  const handleCounterChange = (field: keyof DailyReport, delta: number) => {
+  const handleCounterChange = (field: keyof CicloProduttivo, delta: number) => {
     const currentValue = Number(formData[field]) || 0;
     setFormData({ ...formData, [field]: Math.max(0, currentValue + delta) });
   };
 
-  const handleInputChange = (field: keyof DailyReport, value: string) => {
+  const handleInputChange = (field: keyof CicloProduttivo, value: string) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleNumberInputChange = (field: keyof DailyReport, value: string) => {
+  const handleNumberInputChange = (field: keyof CicloProduttivo, value: string) => {
     const num = parseFloat(value) || 0;
     setFormData({ ...formData, [field]: num });
   };
@@ -143,7 +128,7 @@ export const ReportForm: React.FC = () => {
         <div className="flex flex-col gap-2">
           <label className="text-[11px] font-outfit font-bold text-[var(--text-muted)] uppercase tracking-[0.1em] flex items-center gap-2 px-1">
             <Calendar size={12} />
-            Data del Report
+            Data del Ciclo
           </label>
           <input
             type="date"
@@ -161,7 +146,7 @@ export const ReportForm: React.FC = () => {
           >
             <AlertCircle size={18} className="text-[#5C3800]" />
             <span className="text-[13px] font-outfit font-bold text-[#5C3800]">
-              Stai modificando il report del {format(parseISO(selectedDate), 'd MMMM yyyy', { locale: it })}
+              Stai modificando il ciclo del {format(parseISO(selectedDate), 'd MMMM yyyy', { locale: it })}
             </span>
           </motion.div>
         )}
@@ -176,11 +161,11 @@ export const ReportForm: React.FC = () => {
           </h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          <CounterField label="Contatti Reali" field="contatti_reali" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
-          <CounterField label="Notizie Reali" field="notizie_reali" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
-          <CounterField label="App. Vendita" field="appuntamenti_vendita" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
-          <CounterField label="Incarichi Vendita" field="incarichi_vendita" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
-          <CounterField label="Valutazioni Fatte" field="valutazioni_fatte" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Contatti Reali" field="contatti_reali" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Notizie Reali" field="notizie_reali" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="App. Vendita" field="appuntamenti_vendita" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Incarichi Vendita" field="incarichi_vendita" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Valutazioni Fatte" field="valutazioni_fatte" formData={formData} onNumberInputChange={handleNumberInputChange} />
         </div>
       </div>
 
@@ -193,10 +178,10 @@ export const ReportForm: React.FC = () => {
           </h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          <CounterField label="Vendite (Numero)" field="vendite_numero" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Vendite (Numero)" field="vendite_numero" formData={formData} onNumberInputChange={handleNumberInputChange} />
           <CurrencyField label="Valore Vendite" field="vendite_valore" formData={formData} onNumberInputChange={handleNumberInputChange} />
-          <CounterField label="Nuove Trattative" field="nuove_trattative" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
-          <CounterField label="Trattative Chiuse" field="trattative_chiuse" formData={formData} onCounterChange={handleCounterChange} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Nuove Trattative" field="nuove_trattative" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Trattative Chiuse" field="trattative_chiuse" formData={formData} onNumberInputChange={handleNumberInputChange} />
           <CurrencyField label="Fatturato a Credito" field="fatturato_a_credito" formData={formData} onNumberInputChange={handleNumberInputChange} />
         </div>
       </div>
@@ -221,7 +206,7 @@ export const ReportForm: React.FC = () => {
           className="w-full bg-[var(--text-primary)] text-white h-14 rounded-full font-outfit font-bold text-[14px] uppercase tracking-[0.2em] hover:opacity-90 transition-all shadow-lg shadow-[var(--text-primary)]/10 flex items-center justify-center gap-3 active:scale-[0.98]"
         >
           <Save size={20} />
-          SALVA REPORT
+          SALVA CICLO
         </button>
       </div>
     </form>

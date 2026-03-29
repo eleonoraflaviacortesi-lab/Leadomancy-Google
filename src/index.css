@@ -10,8 +10,9 @@
   --text-primary: #1A1A18;
   --text-secondary: #6B6B66;
   --text-muted: #9B9B95;
-  --border-light: #E4E3DE;
+  --border-light: transparent;
   --border-medium: #D1D0CB;
+  --border-calendar: #E4E3DE;
   --accent: #1A1A18;
   --accent-fg: #FFFFFF;
 
@@ -60,7 +61,7 @@ aside {
   --text-primary: #FFFFFF;
   --text-secondary: #A0A0A0;
   --text-muted: #666666;
-  --border-light: #333333;
+  --border-light: transparent;
   --border-medium: #444444;
   --accent: #FFFFFF;
   --accent-fg: #000000;

@@ -54,7 +54,7 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
   const menuItems = [
     { icon: Building2, label: "Nuova Notizia", action: () => { window.dispatchEvent(new CustomEvent('leadomancy:open-add-notizia')); setIsDropdownOpen(false); } },
     { icon: Users, label: "Nuovo Buyer", action: () => { window.dispatchEvent(new CustomEvent('leadomancy:open-add-cliente')); setIsDropdownOpen(false); } },
-    { icon: ClipboardList, label: "Nuovo Report", action: () => { navigate('/inserisci'); setIsDropdownOpen(false); } },
+    { icon: ClipboardList, label: "Nuovo Ciclo", action: () => { navigate('/inserisci'); setIsDropdownOpen(false); } },
     { icon: Calendar, label: "Nuova Riunione", action: () => { navigate('/office'); setIsDropdownOpen(false); } },
   ];
 

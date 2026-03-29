@@ -166,7 +166,7 @@ export const ClienteCard: React.FC<ClienteCardProps> = ({
         <div className="flex items-center justify-between mt-auto pt-1">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-6 h-6 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[10px] font-outfit font-semibold flex-shrink-0">
-              {cliente.assigned_to?.split(' ').map(n => n[0]).join('') || 'A'}
+              {(cliente.assigned_to && typeof cliente.assigned_to === 'string' ? cliente.assigned_to.split(' ') : []).map(n => n[0]).join('') || 'A'}
             </div>
             <span className="font-outfit font-medium text-[11px] text-[var(--text-secondary)] truncate">
               {cliente.assigned_to || 'Agente'}

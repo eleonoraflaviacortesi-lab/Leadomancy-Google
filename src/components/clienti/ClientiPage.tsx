@@ -178,9 +178,9 @@ export const ClientiPage: React.FC = () => {
               initial={{ width: 0, opacity: 0, marginRight: 0 }}
               animate={{ width: 240, opacity: 1, marginRight: 24 }}
               exit={{ width: 0, opacity: 0, marginRight: 0 }}
-              className="flex flex-col gap-6 overflow-hidden"
+              className="flex flex-col gap-6 overflow-hidden rounded-[55px] p-8"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-[35px] pr-8 pt-4 pb-4">
                 <span className="font-outfit font-bold text-[12px] uppercase tracking-widest">Filtri</span>
                 <button onClick={() => setFilters({})} className="text-[11px] font-outfit text-indigo-600 hover:underline">Reset</button>
               </div>
@@ -231,7 +231,7 @@ export const ClientiPage: React.FC = () => {
         </AnimatePresence>
 
         {/* Content View */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 bg-[#f5f4f0]">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="w-8 h-8 border-2 border-black/10 border-t-black rounded-full animate-spin" />

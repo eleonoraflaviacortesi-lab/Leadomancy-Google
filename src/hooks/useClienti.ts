@@ -25,11 +25,15 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
   const { data: clienti = [], isLoading } = useQuery({
     queryKey,
     queryFn: async () => {
-      if (!user?.user_id) return [];
+      if (!user) return [];
       const data = await getSheetData<Cliente>(SHEETS.clienti);
       
       return data
-        .filter(c => c.user_id === user.user_id)
+        .filter(c => {
+          const clienteSede = (c.sede || '').trim().toLowerCase();
+          const userSede = (user.sede || '').trim().toLowerCase();
+          return clienteSede === userSede;
+        })
         .map(c => ({
           ...c,
           regioni: Array.isArray(c.regioni) ? c.regioni : [],
@@ -47,7 +51,7 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchInterval: 30000, // 30 seconds
-    enabled: !!user?.sede,
+    enabled: !!user,
   });
 
   const filteredClienti = useMemo(() => {
@@ -123,6 +127,8 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
         ...newCliente,
         id: crypto.randomUUID(),
         user_id: user?.user_id || user?.id,
+        sede: user?.sede || '',
+        assigned_to: user?.user_id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         comments: [],
@@ -144,7 +150,7 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
       toast.success("Cliente aggiunto");
     },
     onSettled: () => {
-      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 2000);
+      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 3500);
     },
   });
 
@@ -209,7 +215,7 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
       toast.success("Buyer eliminato");
     },
     onSettled: () => {
-      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 2000);
+      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 3500);
     },
   });
 

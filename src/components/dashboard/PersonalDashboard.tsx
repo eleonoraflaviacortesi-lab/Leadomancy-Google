@@ -172,7 +172,7 @@ export const PersonalDashboard: React.FC = () => {
             ))}
           </div>
           <Link to="/inserisci" className="bg-[var(--text-primary)] text-white px-5 py-2 rounded-full font-semibold text-[12px] uppercase tracking-wider flex items-center gap-2">
-            <FileText size={14} /> Inserisci Report
+            <FileText size={14} /> Inserisci Ciclo
           </Link>
         </div>
       </div>
