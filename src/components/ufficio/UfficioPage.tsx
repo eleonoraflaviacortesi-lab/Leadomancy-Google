@@ -146,15 +146,13 @@ export const UfficioPage: React.FC = () => {
         <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
           Leadomancy / Ufficio
         </p>
-        <div className="mt-[-16px]">
-          <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
-            Ufficio {user?.sede}
-          </h1>
-        </div>
+        <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
+          Ufficio {user?.sede}
+        </h1>
       </div>
 
       {/* Sub-tabs & Period Selector */}
-      <div className="flex items-center justify-between mt-[-12px]">
+      <div className="flex items-center justify-between">
         <div className="bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)] flex w-fit">
           {(['UFFICIO', 'RIUNIONI', 'ANALISI'] as SubTab[]).map(tab => (
             <button

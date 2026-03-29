@@ -20,15 +20,13 @@ export const ReportPage: React.FC = () => {
         <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
           Leadomancy / Produzione
         </p>
-        <div className="mt-[-16px]">
-          <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
-            Report di Produzione
-          </h1>
-        </div>
+        <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
+          Report di Produzione
+        </h1>
       </div>
 
       {/* Tab Switcher */}
-      <div className="bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)] flex max-w-md mt-[-12px]">
+      <div className="bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)] flex max-w-md">
         <button
           onClick={() => setActiveTab('new')}
           className={cn(

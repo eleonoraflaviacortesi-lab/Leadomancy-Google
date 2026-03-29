@@ -6,10 +6,12 @@ import { cn } from "@/src/lib/utils";
 import { useAppointments } from "@/src/hooks/useAppointments";
 import { useClienti } from "@/src/hooks/useClienti";
 import { useNotizie } from "@/src/hooks/useNotizie";
-import { GoogleCalendar } from "@/src/hooks/useGoogleCalendar";
+import { GoogleCalendar, useGoogleCalendar } from "@/src/hooks/useGoogleCalendar";
+import { updateCalendarEvent } from "@/src/lib/googleCalendar";
 import { format, isValid } from "date-fns";
 import { it } from "date-fns/locale";
 import { toast } from "sonner";
+import { Appointment } from "@/src/types";
 
 interface EventDetailsDialogProps {
   event: {
@@ -61,7 +63,7 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
       setEditLocation(event.originalData?.location || '');
       setEditClienteId(event.originalData?.cliente_id || '');
       setEditNotiziaId(event.originalData?.notizia_id || '');
-      setIsEditing(false);
+      if (isEditing) setIsEditing(false);
     }
   }, [event?.id]);
 
@@ -84,16 +86,26 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
         ? new Date(`${editDate}T${editStartTime || '00:00'}:00`)
         : new Date(`${editDate}T${editEndTime || '00:00'}:00`);
       
-      await updateAppointment({
-        id: event.id,
-        title: editTitle,
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        description: editDescription,
-        location: editLocation,
-        cliente_id: editClienteId || null,
-        notizia_id: editNotiziaId || null,
-      });
+      if (isGoogle) {
+          await updateCalendarEvent(event.id, {
+              title: editTitle,
+              start_time: start.toISOString(),
+              end_time: end.toISOString(),
+              description: editDescription,
+              location: editLocation,
+          } as Appointment);
+      } else {
+          await updateAppointment({
+            id: event.id,
+            title: editTitle,
+            start_time: start.toISOString(),
+            end_time: end.toISOString(),
+            description: editDescription,
+            location: editLocation,
+            cliente_id: editClienteId || null,
+            notizia_id: editNotiziaId || null,
+          });
+      }
       toast.success('Salvato');
       setIsEditing(false);
       onClose();
@@ -149,7 +161,7 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {isLocal && !isEditing && (
+                {(isLocal || isGoogle) && !isEditing && (
                   <button 
                     onClick={() => setIsEditing(true)} 
                     className="w-9 h-9 flex items-center justify-center bg-[var(--bg-subtle)] hover:bg-[var(--border-light)] rounded-full transition-colors"
@@ -157,7 +169,7 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
                     <Edit2 size={16} className="text-[var(--text-secondary)]" />
                   </button>
                 )}
-                {isLocal && isEditing && (
+                {(isLocal || isGoogle) && isEditing && (
                   <button 
                     onClick={handleSave} 
                     disabled={isSaving}

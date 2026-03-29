@@ -1,12 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { Plus } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 import { Notizia, NotiziaStatus } from "@/src/types";
 import { useNotizie } from "@/src/hooks/useNotizie";
 import { useUndoRedo } from "@/src/hooks/useUndoRedo";
 import { NotiziaCard } from "./NotiziaCard";
 import { useKanbanColumns, KanbanColumn as ColumnType } from "@/src/hooks/useKanbanColumns";
 import { cn } from "@/src/lib/utils";
+import { EditColumnDialog } from "../dashboard/EditColumnDialog";
 
 interface KanbanBoardProps {
   onNotiziaClick: (notizia: Notizia) => void;
@@ -15,8 +16,9 @@ interface KanbanBoardProps {
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({ onNotiziaClick, onQuickAdd }) => {
   const { notizieByStatus, updateNotizia, deleteNotizia, reorderNotizie } = useNotizie();
-  const { columns } = useKanbanColumns();
+  const { columns, updateColumn } = useKanbanColumns();
   const { pushAction } = useUndoRedo();
+  const [editingColumn, setEditingColumn] = useState<ColumnType | null>(null);
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -69,21 +71,32 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ onNotiziaClick, onQuic
   };
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex gap-3 overflow-x-auto pb-4 h-full min-h-[500px]">
-        {columns.map((col) => (
-          <KanbanColumn
-            key={col.id}
-            column={col}
-            notizie={notizieByStatus[col.key] || []}
-            onNotiziaClick={onNotiziaClick}
-            onQuickAdd={() => onQuickAdd(col.key)}
-            updateNotizia={updateNotizia}
-            deleteNotizia={deleteNotizia}
-          />
-        ))}
-      </div>
-    </DragDropContext>
+    <>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="flex gap-3 overflow-x-auto pb-4 h-full min-h-[500px]">
+          {columns.map((col) => (
+            <KanbanColumn
+              key={col.id}
+              column={col}
+              notizie={notizieByStatus[col.key] || []}
+              onNotiziaClick={onNotiziaClick}
+              onQuickAdd={() => onQuickAdd(col.key)}
+              updateNotizia={updateNotizia}
+              deleteNotizia={deleteNotizia}
+              onEdit={() => setEditingColumn(col)}
+            />
+          ))}
+        </div>
+      </DragDropContext>
+      {editingColumn && (
+        <EditColumnDialog
+          isOpen={!!editingColumn}
+          onClose={() => setEditingColumn(null)}
+          column={editingColumn}
+          onSave={(id, label, color) => updateColumn({ id, label, color })}
+        />
+      )}
+    </>
   );
 };
 
@@ -94,6 +107,7 @@ interface KanbanColumnProps {
   onQuickAdd: () => void;
   updateNotizia: any;
   deleteNotizia: any;
+  onEdit: () => void;
 }
 
 const KanbanColumn: React.FC<KanbanColumnProps> = ({ 
@@ -102,7 +116,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
   onNotiziaClick, 
   onQuickAdd,
   updateNotizia,
-  deleteNotizia
+  deleteNotizia,
+  onEdit
 }) => {
   const statusColor = column.color;
 
@@ -110,7 +125,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
     <div className="flex flex-col w-[238px] flex-shrink-0 h-full">
       {/* Header */}
       <div 
-        className="h-[40px] flex items-center justify-between gap-2 px-1 pb-3 mb-3 border-b-2"
+        className="h-[40px] flex items-center justify-between gap-2 px-1 pb-3 mb-3 border-b-2 group"
         style={{ borderBottomColor: statusColor }}
       >
         <div className="flex items-center gap-2 overflow-hidden">
@@ -118,6 +133,9 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
           <span className="font-outfit font-bold text-[11px] uppercase tracking-[0.12em] text-[var(--text-primary)] truncate">
             {column.label}
           </span>
+          <button onClick={onEdit} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/5 rounded">
+            <Pencil size={10} className="text-[var(--text-muted)]" />
+          </button>
           <div className="bg-[var(--bg-subtle)] px-[7px] py-[1px] rounded-full flex items-center justify-center font-outfit font-semibold text-[11px] text-[var(--text-muted)]">
             {notizie.length}
           </div>

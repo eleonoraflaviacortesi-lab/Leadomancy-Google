@@ -346,14 +346,12 @@ export const SettingsPage: React.FC = () => {
         <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
           Leadomancy / Impostazioni
         </p>
-        <div className="mt-[-16px]">
-          <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
-            Impostazioni
-          </h1>
-        </div>
+        <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
+          Impostazioni
+        </h1>
       </div>
 
-      <div className="flex flex-col gap-6 mt-[-12px]">
+      <div className="flex flex-col gap-6">
         {/* PREFERENZE */}
         <Section title="PREFERENZE">
           <SettingRow 

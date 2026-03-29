@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, RefreshCw } from "lucide-react";
 import { callGemini } from "@/src/lib/gemini";
@@ -11,24 +11,29 @@ interface Advice {
 }
 
 interface GeminiAdviceCardProps {
-  kpis: {
-    contatti: number;
-    vendite: number;
-    notizieAttive: number;
-    taskPending: number;
-  };
+  notizieFreddhe: number;
+  buyerSenzaContatto: number;
+  pipelineValore: number;
+  taskScadute: number;
+  appuntamentiSettimana: number;
 }
 
-export const GeminiAdviceCard: React.FC<GeminiAdviceCardProps> = ({ kpis }) => {
+export const GeminiAdviceCard: React.FC<GeminiAdviceCardProps> = ({ 
+  notizieFreddhe, 
+  buyerSenzaContatto, 
+  pipelineValore, 
+  taskScadute, 
+  appuntamentiSettimana 
+}) => {
   const [advices, setAdvices] = useState<Advice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fallbackAdvices: Advice[] = [
+  const fallbackAdvices = useMemo(() => [
     { icon: "📈", titolo: "Focus sui Lead", testo: "Analizza i lead con budget elevato che non hanno ricevuto contatti negli ultimi 3 giorni." },
     { icon: "🏠", titolo: "Qualità Notizie", testo: "Assicurati che tutte le nuove notizie abbiano foto professionali e descrizioni emozionali." },
     { icon: "🤝", titolo: "Follow-up", testo: "Pianifica una chiamata di cortesia per i clienti che hanno visitato un immobile la scorsa settimana." }
-  ];
+  ], []);
 
   const fetchAdvice = useCallback(async (force = false) => {
     setIsLoading(true);
@@ -53,16 +58,17 @@ export const GeminiAdviceCard: React.FC<GeminiAdviceCardProps> = ({ kpis }) => {
     }
 
     try {
-      const system = "Sei un consulente strategico per agenti immobiliari di lusso in Italia. Rispondi sempre in italiano in formato JSON.";
-      const prompt = `Analizza questi KPI dell'agente:
-- Contatti: ${kpis.contatti}
-- Vendite: ${kpis.vendite}
-- Notizie Attive: ${kpis.notizieAttive}
-- Task in sospeso: ${kpis.taskPending}
+      const system = "Sei un coach per agenti immobiliari di lusso. Rispondi sempre in italiano in formato JSON.";
+      const prompt = `Sei un coach per agenti immobiliari di lusso. Dati dell'agente:
+- Notizie "fredde" (>14gg senza aggiornamento): ${notizieFreddhe}
+- Buyer senza contatto da >14gg: ${buyerSenzaContatto}
+- Valore pipeline attiva: €${pipelineValore}
+- Task scadute: ${taskScadute}
+- Appuntamenti questa settimana: ${appuntamentiSettimana}
 
-Fornisci 3 consigli brevi e azionabili per migliorare le performance.
-Ritorna un array JSON di oggetti con questa struttura: [{ "icon": "emoji", "titolo": "string", "testo": "string" }].
-Usa un tono professionale ed elegante.`;
+Dai 3 consigli SPECIFICI e PRATICI in italiano. 
+Ogni consiglio max 2 frasi. Sii diretto, come un coach sportivo.
+Formato JSON: [{"icon":"emoji","titolo":"string","testo":"string"}]`;
 
       const response = await callGemini(
         [{ role: 'user', parts: [{ text: prompt }] }],
@@ -106,7 +112,7 @@ Usa un tono professionale ed elegante.`;
     } finally {
       setIsLoading(false);
     }
-  }, [kpis, fallbackAdvices]);
+  }, [notizieFreddhe, buyerSenzaContatto, pipelineValore, taskScadute, appuntamentiSettimana, fallbackAdvices]);
 
   useEffect(() => {
     fetchAdvice();

@@ -99,7 +99,7 @@ export default function AppLayout() {
               "transition-all duration-200 ease-in-out",
               isCollapsed ? "ml-[52px]" : "ml-[220px]"
             )}
-            style={{ padding: '15px 32px 40px 28px', minHeight: '100vh' }}
+            style={{ padding: '16px 24px 40px 50px', minHeight: '100vh' }}
           >
             <Outlet />
           </main>
