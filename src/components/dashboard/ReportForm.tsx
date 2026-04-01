@@ -153,14 +153,14 @@ export const ReportForm: React.FC = () => {
       </div>
 
       {/* ATTIVITÀ Section */}
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:gap-6">
         <div className="flex items-center gap-2 px-1">
           <TrendingUp size={14} className="text-[var(--text-muted)]" />
           <h3 className="font-outfit font-bold text-[11px] uppercase tracking-[0.15em] text-[var(--text-muted)]">
             ATTIVITÀ DEL GIORNO
           </h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
           <CounterField label="Contatti Reali" field="contatti_reali" formData={formData} onNumberInputChange={handleNumberInputChange} />
           <CounterField label="Notizie Reali" field="notizie_reali" formData={formData} onNumberInputChange={handleNumberInputChange} />
           <CounterField label="App. Vendita" field="appuntamenti_vendita" formData={formData} onNumberInputChange={handleNumberInputChange} />
@@ -170,14 +170,14 @@ export const ReportForm: React.FC = () => {
       </div>
 
       {/* VENDITE & TRATTATIVE Section */}
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:gap-6">
         <div className="flex items-center gap-2 px-1">
           <DollarSign size={14} className="text-[var(--text-muted)]" />
           <h3 className="font-outfit font-bold text-[11px] uppercase tracking-[0.15em] text-[var(--text-muted)]">
             VENDITE & TRATTATIVE
           </h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
           <CounterField label="Vendite (Numero)" field="vendite_numero" formData={formData} onNumberInputChange={handleNumberInputChange} />
           <CurrencyField label="Valore Vendite" field="vendite_valore" formData={formData} onNumberInputChange={handleNumberInputChange} />
           <CounterField label="Nuove Trattative" field="nuove_trattative" formData={formData} onNumberInputChange={handleNumberInputChange} />

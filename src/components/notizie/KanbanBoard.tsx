@@ -42,10 +42,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ onNotiziaClick, onQuic
 
     const [movedItem] = sourceItems.splice(source.index, 1);
     
+    // Create a new object for the moved item to avoid in-place modification
+    const updatedMovedItem = { ...movedItem };
+    
     // If moving to a different column
     if (source.droppableId !== destination.droppableId) {
-      const oldStatus = movedItem.status;
-      movedItem.status = destStatus;
+      const oldStatus = updatedMovedItem.status;
+      updatedMovedItem.status = destStatus;
       
       // Persist status change
       updateNotizia({ id: draggableId, status: destStatus, silent: true });
@@ -57,17 +60,29 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ onNotiziaClick, onQuic
         undo: async () => updateNotizia({ id: draggableId, status: oldStatus as NotiziaStatus }),
         redo: async () => updateNotizia({ id: draggableId, status: destStatus })
       });
+
+      destItems.splice(destination.index, 0, updatedMovedItem);
+      
+      const updatedSourceItems = sourceItems.map((item, index) => ({
+        ...item,
+        display_order: index + 1
+      }));
+      const updatedDestItems = destItems.map((item, index) => ({
+        ...item,
+        display_order: index + 1
+      }));
+      
+      reorderNotizie([...updatedSourceItems, ...updatedDestItems]);
+    } else {
+      destItems.splice(destination.index, 0, updatedMovedItem);
+      
+      const updatedItems = destItems.map((item, index) => ({
+        ...item,
+        display_order: index + 1
+      }));
+      
+      reorderNotizie(updatedItems);
     }
-
-    destItems.splice(destination.index, 0, movedItem);
-
-    // Update display_order for all items in affected columns
-    const updatedItems = destItems.map((item, index) => ({
-      ...item,
-      display_order: index + 1
-    }));
-
-    reorderNotizie(updatedItems);
   };
 
   return (
@@ -149,7 +164,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
       </div>
 
       {/* Droppable Area */}
-      <Droppable droppableId={column.key}>
+      <Droppable droppableId={column.key} type="NOTIZIA">
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
@@ -160,7 +175,6 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
             )}
           >
             {notizie.map((notizia, index) => (
-              /* @ts-ignore */
               <Draggable key={notizia.id} draggableId={notizia.id} index={index}>
                 {(provided, snapshot) => (
                   <div

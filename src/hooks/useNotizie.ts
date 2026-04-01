@@ -30,16 +30,36 @@ export function useNotizie() {
       const data = await getSheetData<Notizia>(SHEETS.notizie);
       console.log('All notizie from sheet after refetch:', data.map(n => n.user_id));
       
-      return data
-        .filter(n => {
-          const match = n.user_id === user.user_id;
-          return match;
-        })
-        .map(n => ({
-          ...n,
-          comments: Array.isArray(n.comments) ? n.comments : [],
-          is_online: Boolean(n.is_online),
-        }))
+      const uniqueNotizie: Notizia[] = [];
+      const seenIds = new Set<string>();
+      
+      data.forEach(n => {
+        const mapped: any = { ...n };
+        const id = String(mapped.id || mapped.ID || '');
+        if (id && !seenIds.has(id)) {
+          seenIds.add(id);
+          
+          if (mapped.Nome !== undefined) mapped.nome = mapped.Nome;
+          if (mapped.Cognome !== undefined) mapped.cognome = mapped.Cognome;
+          if (mapped.Email !== undefined) mapped.email = mapped.Email;
+          if (mapped.Telefono !== undefined) mapped.telefono = mapped.Telefono;
+          if (mapped.Citta !== undefined) mapped.citta = mapped.Citta;
+          if (mapped.Indirizzo !== undefined) mapped.indirizzo = mapped.Indirizzo;
+          if (mapped.Zona !== undefined) mapped.zona = mapped.Zona;
+          if (mapped.Provincia !== undefined) mapped.provincia = mapped.Provincia;
+          if (mapped.Prezzo !== undefined) mapped.prezzo_richiesto = mapped.Prezzo;
+          
+          uniqueNotizie.push({
+            ...mapped,
+            id,
+            comments: Array.isArray(mapped.comments) ? mapped.comments : [],
+            is_online: Boolean(mapped.is_online),
+          } as Notizia);
+        }
+      });
+
+      return uniqueNotizie
+        .filter(n => n.user_id === user.user_id)
         .sort((a, b) => {
           if (a.display_order !== b.display_order) {
             return (a.display_order || 0) - (b.display_order || 0);
@@ -126,13 +146,51 @@ export function useNotizie() {
 
   const updateNotiziaMutation = useMutation({
     mutationFn: async ({ id, silent, ...updates }: Partial<Notizia> & { id: string; silent?: boolean }) => {
+      console.log("[useNotizie] Updating notizia:", id, updates);
       const rowIndex = await findRowIndex(SHEETS.notizie, id);
+      console.log("[useNotizie] Row index found:", rowIndex);
       if (!rowIndex) throw new Error("Notizia non trovata");
       
-      const finalUpdates = {
+      const finalUpdates: any = {
         ...updates,
         updated_at: new Date().toISOString(),
       };
+      
+      // Compatibility mapping
+      if (finalUpdates.name !== undefined) {
+        finalUpdates.nome = finalUpdates.name;
+        finalUpdates.Nome = finalUpdates.name;
+      }
+      if (finalUpdates.nome !== undefined) {
+        finalUpdates.Nome = finalUpdates.nome;
+      }
+      if (finalUpdates.prezzo_richiesto !== undefined) {
+        finalUpdates.prezzo = finalUpdates.prezzo_richiesto;
+        finalUpdates.Prezzo = finalUpdates.prezzo_richiesto;
+      }
+      if (finalUpdates.prezzo !== undefined) {
+        finalUpdates.Prezzo = finalUpdates.prezzo;
+      }
+      if (finalUpdates.telefono !== undefined) {
+        finalUpdates.Telefono = finalUpdates.telefono;
+      }
+      if (finalUpdates.email !== undefined) {
+        finalUpdates.Email = finalUpdates.email;
+      }
+      if (finalUpdates.citta !== undefined) {
+        finalUpdates.Citta = finalUpdates.citta;
+      }
+      if (finalUpdates.indirizzo !== undefined) {
+        finalUpdates.Indirizzo = finalUpdates.indirizzo;
+      }
+      if (finalUpdates.zona !== undefined) {
+        finalUpdates.Zona = finalUpdates.zona;
+      }
+      if (finalUpdates.provincia !== undefined) {
+        finalUpdates.Provincia = finalUpdates.provincia;
+      }
+      
+      console.log("[useNotizie] Final updates:", finalUpdates);
       
       await updateRow(SHEETS.notizie, rowIndex, finalUpdates);
       return { id, silent };
@@ -195,18 +253,36 @@ export function useNotizie() {
 
   const reorderNotizieMutation = useMutation({
     mutationFn: async (reordered: Notizia[]) => {
-      // Background updates for each changed display_order
-      reordered.forEach(async (n) => {
-        const rowIndex = await findRowIndex(SHEETS.notizie, n.id);
-        if (rowIndex) {
-          updateRow(SHEETS.notizie, rowIndex, { display_order: n.display_order });
+      // Only update items that actually changed their display_order
+      // We fetch the current state to compare
+      const currentData = await getSheetData<Notizia>(SHEETS.notizie);
+      const currentMap = new Map(currentData.map(n => [String(n.id), n.display_order]));
+
+      await Promise.all(reordered.map(async (n) => {
+        const currentOrder = currentMap.get(String(n.id));
+        if (currentOrder !== n.display_order) {
+          const rowIndex = await findRowIndex(SHEETS.notizie, n.id);
+          if (rowIndex) {
+            await updateRow(SHEETS.notizie, rowIndex, { display_order: n.display_order });
+          }
         }
-      });
+      }));
     },
     onMutate: async (reordered) => {
       await queryClient.cancelQueries({ queryKey });
       const previousNotizie = queryClient.getQueryData<Notizia[]>(queryKey);
-      queryClient.setQueryData<Notizia[]>(queryKey, reordered);
+      
+      queryClient.setQueryData<Notizia[]>(queryKey, (old = []) => {
+        const reorderedIds = new Set(reordered.map(n => n.id));
+        const otherNotizie = old.filter(n => !reorderedIds.has(n.id));
+        return [...otherNotizie, ...reordered].sort((a, b) => {
+          if (a.display_order !== b.display_order) {
+            return (a.display_order || 0) - (b.display_order || 0);
+          }
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+      });
+      
       return { previousNotizie };
     },
     onError: (err, reordered, context) => {

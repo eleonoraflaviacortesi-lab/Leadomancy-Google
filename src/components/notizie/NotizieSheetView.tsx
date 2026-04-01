@@ -79,6 +79,7 @@ const CellInput = React.memo(({
   className?: string;
 }) => {
   const [value, setValue] = useState(initialValue);
+  const savedRef = useRef(false);
   
   return (
     <input
@@ -87,10 +88,23 @@ const CellInput = React.memo(({
       className={cn("w-full bg-transparent outline-none font-outfit text-[13px]", className)}
       value={value ?? ""}
       onChange={(e) => setValue(type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
-      onBlur={() => onSave(value)}
+      onBlur={() => {
+        if (!savedRef.current) {
+          savedRef.current = true;
+          onSave(value);
+        }
+      }}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') onSave(value);
-        if (e.key === 'Escape') onCancel();
+        if (e.key === 'Enter') {
+          if (!savedRef.current) {
+            savedRef.current = true;
+            onSave(value);
+          }
+        }
+        if (e.key === 'Escape') {
+          savedRef.current = true;
+          onCancel();
+        }
       }}
     />
   );
@@ -341,6 +355,26 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
       return sortDir === 'asc' ? comparison : -comparison;
     });
   }, [filteredData, sortCol, sortDir]);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+        if (selectedRowId && selectedColKey) {
+          const notizia = sortedData.find(n => n.id === selectedRowId);
+          if (notizia) {
+            setCopiedValue((notizia as any)[selectedColKey]);
+          }
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        if (selectedRowId && selectedColKey && copiedValue !== null) {
+          onUpdate(selectedRowId, { [selectedColKey]: copiedValue });
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedRowId, selectedColKey, sortedData, copiedValue, onUpdate]);
 
   const toggleSort = (key: string) => {
     if (sortCol === key) {
@@ -799,6 +833,16 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
           />
         )}
       </AnimatePresence>
+
+      {/* Footer */}
+      <div className="border-t p-2 flex items-center justify-between text-[12px] text-gray-500 bg-white">
+        <span>{sortedData.length} notizie</span>
+        {Object.keys(colFilters).length > 0 && (
+          <button onClick={() => setColFilters({})} className="text-primary hover:underline">
+            Rimuovi tutti i filtri
+          </button>
+        )}
+      </div>
     </div>
   );
 };
@@ -918,8 +962,11 @@ const RowContextMenu: React.FC<{
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="fixed z-[101] w-72 bg-white border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto"
-        style={{ left: Math.min(x, window.innerWidth - 300), top: Math.min(y, window.innerHeight - 500) }}
+        className="fixed z-[101] w-[90vw] sm:w-72 bg-white border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto"
+        style={{ 
+          left: window.innerWidth < 640 ? '5vw' : Math.min(x, window.innerWidth - 300), 
+          top: Math.min(y, window.innerHeight - 500) 
+        }}
       >
         {/* Status Section */}
         <div className="p-3 border-b bg-gray-50/50">

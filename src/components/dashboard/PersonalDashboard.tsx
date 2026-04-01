@@ -8,6 +8,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useAuth } from "@/src/hooks/useAuth";
 import { useKPIs } from "@/src/hooks/useKPIs";
 import { useDailyData } from "@/src/hooks/useDailyData";
+import { useTodayReportStatus } from "@/src/hooks/useTodayReportStatus";
 import { useAppointments } from "@/src/hooks/useAppointments";
 import { useClienti } from "@/src/hooks/useClienti";
 import { useNotizie } from "@/src/hooks/useNotizie";
@@ -103,6 +104,7 @@ export const PersonalDashboard: React.FC = () => {
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
   const { kpis } = useKPIs(period);
   const { myData } = useDailyData();
+  const { hasReportedToday } = useTodayReportStatus();
   const { appointments } = useAppointments();
   const { events } = useGoogleCalendar();
   const { clienti } = useClienti();
@@ -157,21 +159,41 @@ export const PersonalDashboard: React.FC = () => {
   return (
     <div className="flex flex-col gap-8 pb-10 w-full font-outfit">
       {/* 1. Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Leadomancy / Dashboard</p>
           <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)' }}>Buongiorno, {user?.nome}</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', textTransform: 'capitalize' }}>{format(today, 'EEEE d MMMM yyyy', { locale: it })}</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="bg-white p-1 rounded-full border border-[var(--border-light)] flex shadow-sm">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="bg-white p-1 rounded-full border border-[var(--border-light)] flex shadow-sm overflow-x-auto hide-scrollbar">
             {(['week', 'month', 'year'] as const).map(p => (
-              <button key={p} onClick={() => setPeriod(p)} className={cn("px-4 py-1.5 rounded-full font-semibold text-[11px] uppercase transition-all", period === p ? "bg-[var(--text-primary)] text-white" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]")}>
+              <button key={p} onClick={() => setPeriod(p)} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-full font-semibold text-[11px] uppercase transition-all whitespace-nowrap", period === p ? "bg-[var(--text-primary)] text-white" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]")}>
                 {p === 'week' ? 'Settimana' : p === 'month' ? 'Mese' : 'Anno'}
               </button>
             ))}
           </div>
-          <Link to="/inserisci" className="bg-[var(--text-primary)] text-white px-5 py-2 rounded-full font-semibold text-[12px] uppercase tracking-wider flex items-center gap-2">
+          {!hasReportedToday && (
+            <div className="flex items-center gap-2 bg-[#FEF9C3] rounded-[10px] px-3.5 py-2 border border-[#FDE047] justify-center">
+              <span className="text-[16px]">⚠️</span>
+              <span className="text-[12px] font-medium text-[#854D0E] font-outfit">
+                Non hai ancora inserito il report di oggi
+              </span>
+              <Link to="/inserisci" className="text-[11px] font-bold text-[#854D0E] font-outfit underline ml-1 whitespace-nowrap">
+                Inserisci ora →
+              </Link>
+            </div>
+          )}
+
+          {hasReportedToday && (
+            <div className="flex items-center gap-2 bg-[#F0FDF4] rounded-[10px] px-3.5 py-2 border border-[#BBF7D0] justify-center">
+              <span className="text-[16px]">✅</span>
+              <span className="text-[12px] font-medium text-[#166534] font-outfit">
+                Report di oggi inserito
+              </span>
+            </div>
+          )}
+          <Link to="/inserisci" className="w-full sm:w-auto bg-[var(--text-primary)] text-white px-5 py-2.5 sm:py-2 rounded-full font-semibold text-[12px] uppercase tracking-wider flex items-center justify-center gap-2 whitespace-nowrap">
             <FileText size={14} /> Inserisci Ciclo
           </Link>
         </div>
@@ -179,25 +201,31 @@ export const PersonalDashboard: React.FC = () => {
 
       {/* 2. Cosa fare adesso */}
       <div>
-        <h3 style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>COSA FARE ADESSO</h3>
-        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+        <h3 className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-3">COSA FARE ADESSO</h3>
+        <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar">
           {actionItems.length === 0 ? (
-            <div style={{ padding: '16px 20px', background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0', color: '#166534', fontSize: 13, fontWeight: 500 }}>✓ Tutto in ordine — nessuna azione urgente oggi!</div>
+            <div className="px-5 py-4 bg-[#F0FDF4] rounded-xl border border-[#BBF7D0] text-[#166534] text-[13px] font-medium w-full">✓ Tutto in ordine — nessuna azione urgente oggi!</div>
           ) : actionItems.map(item => <ActionCard key={item.id} item={item} />)}
         </div>
       </div>
 
       {/* 3. Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3 bg-white border border-[var(--border-light)] rounded-[14px] p-5 shadow-sm">
+        <div className="lg:col-span-3 bg-white border border-[var(--border-light)] rounded-[14px] p-4 sm:p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>PIPELINE ATTIVA</h3>
+            <h3 className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">PIPELINE ATTIVA</h3>
             <Link to="/properties" className="text-[11px] font-semibold text-[var(--text-primary)] hover:underline">Vedi tutte →</Link>
           </div>
-          {pipelineNotizie.map(n => <PipelineRow key={n.id} n={n} />)}
+          <div className="flex flex-col gap-1">
+            {pipelineNotizie.length === 0 ? (
+              <p className="text-[13px] text-[var(--text-muted)] py-4 text-center">Nessuna notizia in pipeline.</p>
+            ) : (
+              pipelineNotizie.map(n => <PipelineRow key={n.id} n={n} />)
+            )}
+          </div>
         </div>
-        <div className="lg:col-span-2 bg-white border border-[var(--border-light)] rounded-[14px] p-5 shadow-sm">
-          <h3 style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>I TUOI NUMERI</h3>
+        <div className="lg:col-span-2 bg-white border border-[var(--border-light)] rounded-[14px] p-4 sm:p-5 shadow-sm">
+          <h3 className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-4">I TUOI NUMERI</h3>
           <KPIProgressRow label="Contatti" value={kpiValues.contatti} target={kpiValues.contattiTarget} />
           <KPIProgressRow label="Notizie" value={kpiValues.notizie} target={kpiValues.notizieTarget} />
           <KPIProgressRow label="App. Vendita" value={kpiValues.appVendita} target={kpiValues.appVenditaTarget} />
@@ -216,15 +244,15 @@ export const PersonalDashboard: React.FC = () => {
           taskScadute={appointments.filter(a => a.type === 'task' && !a.completed && isAfter(today, parseISO(a.start_time))).length}
           appuntamentiSettimana={appointments.filter(a => a.type !== 'task' && isAfter(parseISO(a.start_time), today) && isAfter(endOfDay(new Date(today.getTime() + 7 * 86400000)), parseISO(a.start_time))).length}
         />
-        <div className="bg-white border border-[var(--border-light)] rounded-[14px] p-5 shadow-sm">
+        <div className="bg-white border border-[var(--border-light)] rounded-[14px] p-4 sm:p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>TREND 30 GIORNI</h3>
+            <h3 className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">TREND 30 GIORNI</h3>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[var(--text-primary)]" /><span className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Contatti</span></div>
               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full border border-[var(--text-muted)] border-dashed" /><span className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Notizie</span></div>
             </div>
           </div>
-          <div className="h-[160px] w-full">
+          <div className="h-[160px] w-full -ml-2 sm:ml-0">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <XAxis dataKey="date" hide />

@@ -303,9 +303,9 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
 );
 
 const SettingRow = ({ icon: Icon, label, description, action }: any) => (
-  <div className="flex items-center justify-between p-4 bg-white border border-[var(--border-light)] rounded-[14px] shadow-sm">
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white border border-[var(--border-light)] rounded-[14px] shadow-sm">
     <div className="flex items-center gap-4">
-      <div className="w-10 h-10 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-primary)]">
+      <div className="w-10 h-10 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-primary)] shrink-0">
         <Icon size={20} />
       </div>
       <div className="flex flex-col">
@@ -313,7 +313,9 @@ const SettingRow = ({ icon: Icon, label, description, action }: any) => (
         {description && <span className="text-[11px] text-[var(--text-muted)] font-medium">{description}</span>}
       </div>
     </div>
-    {action}
+    <div className="flex justify-end sm:block">
+      {action}
+    </div>
   </div>
 );
 
@@ -340,13 +342,13 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-4 pb-6 w-full">
+    <div className="flex flex-col gap-4 pb-6 w-full px-4 sm:px-0">
       {/* Header Section */}
       <div className="flex flex-col">
-        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
+        <p className="text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-4 sm:mt-6">
           Leadomancy / Impostazioni
         </p>
-        <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
+        <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
           Impostazioni
         </h1>
       </div>

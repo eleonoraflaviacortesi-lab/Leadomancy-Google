@@ -119,18 +119,18 @@ Formato JSON: [{"icon":"emoji","titolo":"string","testo":"string"}]`;
   }, [fetchAdvice]);
 
   return (
-    <div className="bg-white border border-[var(--border-light)] rounded-[14px] p-5 flex flex-col gap-4 shadow-sm h-full">
+    <div className="bg-white border border-[var(--border-light)] rounded-[14px] p-4 sm:p-5 flex flex-col gap-4 shadow-sm h-full">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-[var(--lavender-fg)]" />
-          <h3 className="font-outfit font-bold text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
+          <Sparkles size={16} className="text-[var(--lavender-fg)] shrink-0" />
+          <h3 className="font-outfit font-bold text-[10px] sm:text-[11px] uppercase tracking-widest text-[var(--text-muted)] truncate">
             CONSIGLI GEMINI
           </h3>
         </div>
         <button 
           onClick={() => fetchAdvice(true)}
           disabled={isLoading}
-          className="p-1.5 hover:bg-[var(--bg-subtle)] rounded-full transition-colors disabled:opacity-50"
+          className="p-1.5 hover:bg-[var(--bg-subtle)] rounded-full transition-colors disabled:opacity-50 shrink-0"
           title="Rigenera"
         >
           <RefreshCw size={14} className={cn("text-[var(--text-muted)]", isLoading && "animate-spin")} />

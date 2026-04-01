@@ -34,14 +34,25 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
           const userSede = (user.sede || '').trim().toLowerCase();
           return clienteSede === userSede;
         })
-        .map(c => ({
-          ...c,
-          regioni: Array.isArray(c.regioni) ? c.regioni : [],
-          motivo_zona: Array.isArray(c.motivo_zona) ? c.motivo_zona : [],
-          tipologia: Array.isArray(c.tipologia) ? c.tipologia : [],
-          contesto: Array.isArray(c.contesto) ? c.contesto : [],
-          comments: Array.isArray(c.comments) ? c.comments : [],
-        }))
+        .map(c => {
+          const mapped: any = { ...c };
+          if (mapped.Portale !== undefined) mapped.portale = mapped.Portale;
+          if (mapped.Lingua !== undefined) mapped.lingua = mapped.Lingua;
+          if (mapped.Paese !== undefined) mapped.paese = mapped.Paese;
+          if (mapped.Nome !== undefined) mapped.nome = mapped.Nome;
+          if (mapped.Cognome !== undefined) mapped.cognome = mapped.Cognome;
+          if (mapped.Email !== undefined) mapped.email = mapped.Email;
+          if (mapped.Telefono !== undefined) mapped.telefono = mapped.Telefono;
+          
+          return {
+            ...mapped,
+            regioni: Array.isArray(mapped.regioni) ? mapped.regioni : [],
+            motivo_zona: Array.isArray(mapped.motivo_zona) ? mapped.motivo_zona : [],
+            tipologia: Array.isArray(mapped.tipologia) ? mapped.tipologia : [],
+            contesto: Array.isArray(mapped.contesto) ? mapped.contesto : [],
+            comments: Array.isArray(mapped.comments) ? mapped.comments : [],
+          };
+        })
         .sort((a, b) => {
           if (a.display_order !== b.display_order) {
             return (a.display_order || 0) - (b.display_order || 0);
@@ -159,10 +170,33 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
       const rowIndex = await findRowIndex(SHEETS.clienti, id);
       if (!rowIndex) throw new Error("Cliente non trovato");
       
-      const finalUpdates = {
+      const finalUpdates: any = {
         ...updates,
         updated_at: new Date().toISOString(),
       };
+      
+      // Compatibility mapping for Google Sheets headers
+      if (finalUpdates.portale !== undefined) {
+        finalUpdates.Portale = finalUpdates.portale;
+      }
+      if (finalUpdates.lingua !== undefined) {
+        finalUpdates.Lingua = finalUpdates.lingua;
+      }
+      if (finalUpdates.paese !== undefined) {
+        finalUpdates.Paese = finalUpdates.paese;
+      }
+      if (finalUpdates.nome !== undefined) {
+        finalUpdates.Nome = finalUpdates.nome;
+      }
+      if (finalUpdates.cognome !== undefined) {
+        finalUpdates.Cognome = finalUpdates.cognome;
+      }
+      if (finalUpdates.email !== undefined) {
+        finalUpdates.Email = finalUpdates.email;
+      }
+      if (finalUpdates.telefono !== undefined) {
+        finalUpdates.Telefono = finalUpdates.telefono;
+      }
       
       await updateRow(SHEETS.clienti, rowIndex, finalUpdates);
       return { id, silent };

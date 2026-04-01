@@ -46,7 +46,7 @@ interface ClientiSheetViewProps {
   isLoading?: boolean;
 }
 
-const DEFAULT_COLUMNS = [
+const DEFAULT_COLUMNS: Array<{ key: string; label: string; width: number; minWidth: number; editable: boolean; type: string; isCustom?: boolean }> = [
   { key: 'paese', label: 'Country', width: 100, minWidth: 70, editable: true, type: 'text' },
   { key: 'lingua', label: 'Language', width: 90, minWidth: 70, editable: true, type: 'lingua' },
   { key: 'cognome', label: 'Surname', width: 130, minWidth: 80, editable: true, type: 'text' },
@@ -79,6 +79,8 @@ const DEFAULT_TIPO_CONTATTO_COLORS: Record<string, string> = {
   Mail: '#ef4444', WhatsApp: '#22c55e', Call: '#f59e0b'
 };
 
+const EMOJIS = ["📋", "🏠", "🏡", "🏰", "🏛", "🌳", "🌊", "⭐", "🔥", "💎", "🎯", "📞"];
+
 const COLOR_PALETTE = [
   null, '#f0eeec', '#e0ddda', '#c8c4c0', '#a8a4a0', '#808080', '#585858', '#303030',
   '#fef9e7', '#fef3c7', '#fde68a', '#f5c842', '#e8a317', '#c47f17', '#8b5e14', '#6b3f0d',
@@ -101,6 +103,7 @@ const CellInput = React.memo(({
   className?: string;
 }) => {
   const [value, setValue] = useState(initialValue);
+  const savedRef = useRef(false);
   
   return (
     <input
@@ -109,10 +112,23 @@ const CellInput = React.memo(({
       className={cn("w-full bg-transparent outline-none font-outfit text-[13px]", className)}
       value={value ?? ""}
       onChange={(e) => setValue(type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
-      onBlur={() => onSave(value)}
+      onBlur={() => {
+        if (!savedRef.current) {
+          savedRef.current = true;
+          onSave(value);
+        }
+      }}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') onSave(value);
-        if (e.key === 'Escape') onCancel();
+        if (e.key === 'Enter') {
+          if (!savedRef.current) {
+            savedRef.current = true;
+            onSave(value);
+          }
+        }
+        if (e.key === 'Escape') {
+          savedRef.current = true;
+          onCancel();
+        }
       }}
     />
   );
@@ -315,14 +331,48 @@ export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({
   const sortedData = useMemo(() => {
     const { col, dir } = sortState;
     return [...filteredData].sort((a, b) => {
-      const valA = (a as any)[col] || (a.custom_fields as any)?.[col] || "";
-      const valB = (b as any)[col] || (b.custom_fields as any)?.[col] || "";
-      let res = 0;
-      if (typeof valA === 'number' && typeof valB === 'number') res = valA - valB;
-      else res = String(valA).localeCompare(String(valB));
-      return dir === 'asc' ? res : -res;
+      const valA = String((a as any)[col] || (a.custom_fields as any)?.[col] || "");
+      const valB = String((b as any)[col] || (b.custom_fields as any)?.[col] || "");
+      
+      if (!isNaN(Number(valA)) && !isNaN(Number(valB)) && valA !== '' && valB !== '') {
+        return dir === 'asc' ? Number(valA) - Number(valB) : Number(valB) - Number(valA);
+      }
+      return dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
     });
   }, [filteredData, sortState]);
+
+  // --- Keyboard Shortcuts ---
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!selectedRowId || !selectedColKey) return;
+      const isCtrl = e.ctrlKey || e.metaKey;
+      if (isCtrl && e.key === 'c') {
+        const cliente = clienti.find(c => c.id === selectedRowId);
+        if (cliente) {
+          const isCustom = allColumns.find(c => c.key === selectedColKey)?.isCustom;
+          const val = String(isCustom ? (cliente.custom_fields as any)?.[selectedColKey] ?? '' : (cliente as any)[selectedColKey] ?? '');
+          navigator.clipboard.writeText(val).catch(() => {});
+          setCopiedValue(val);
+        }
+      }
+      if (isCtrl && e.key === 'v') {
+        navigator.clipboard.readText().then(text => {
+          if (text && selectedRowId && selectedColKey) {
+            const isCustom = allColumns.find(c => c.key === selectedColKey)?.isCustom;
+            if (isCustom) {
+              const cliente = clienti.find(c => c.id === selectedRowId);
+              const custom = { ...(cliente?.custom_fields || {}), [selectedColKey]: text };
+              onUpdate(selectedRowId, { custom_fields: custom });
+            } else {
+              onUpdate(selectedRowId, { [selectedColKey]: text });
+            }
+          }
+        }).catch(() => {});
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedRowId, selectedColKey, clienti, onUpdate, allColumns]);
 
   // --- Render Cell ---
   const renderCell = (cliente: Cliente, col: typeof allColumns[0]) => {
@@ -382,6 +432,21 @@ export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({
           }}
         >
           {value || "---"}
+        </div>
+      );
+    } else if (col.key === 'telefono') {
+      content = (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between', width: '100%' }}>
+          <span className="truncate">{value}</span>
+          {value && (
+            <a href={`https://wa.me/${String(value).replace(/[\s\-\(\)\+]/g, '')}`}
+              target="_blank" rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              style={{ flexShrink: 0, padding: 2, color: '#25D366', display: 'flex', alignItems: 'center' }}
+              title="WhatsApp">
+              <MessageCircle size={13} />
+            </a>
+          )}
         </div>
       );
     }
@@ -456,9 +521,29 @@ export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({
                 return (
                   <th 
                     key={key} 
+                    draggable
+                    onDragStart={e => { e.dataTransfer.setData('col-key', key); e.dataTransfer.effectAllowed = 'move'; }}
+                    onDragOver={e => { e.preventDefault(); setDragOverColKey(key); }}
+                    onDragLeave={() => setDragOverColKey(null)}
+                    onDrop={e => {
+                      e.preventDefault();
+                      const srcKey = e.dataTransfer.getData('col-key');
+                      setDragOverColKey(null);
+                      if (!srcKey || srcKey === key) return;
+                      setColOrder(prev => {
+                        const arr = [...prev];
+                        const from = arr.indexOf(srcKey);
+                        const to = arr.indexOf(key);
+                        if (from === -1 || to === -1) return prev;
+                        arr.splice(from, 1);
+                        arr.splice(to, 0, srcKey);
+                        return arr;
+                      });
+                    }}
                     className={cn(
                       "relative border-r border-b h-10 px-2 text-left font-outfit text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] select-none group",
-                      selectedColKey === key && "bg-primary/5"
+                      selectedColKey === key && "bg-primary/5",
+                      dragOverColKey === key && "border-l-2 border-l-[#1A1A18]"
                     )}
                     style={{ width: colWidths[key] }}
                   >
@@ -467,9 +552,9 @@ export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({
                         {col.label}
                         {isSorted && (sortState.dir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
                       </div>
-                      <button onClick={() => setActiveFilterCol(activeFilterCol === key ? null : key)} className={cn("p-1 rounded hover:bg-black/5 transition-colors", isFiltered ? "text-primary" : "text-gray-400 opacity-0 group-hover:opacity-100")}><Filter size={12} /></button>
+                      <button onClick={() => setActiveFilterCol(activeFilterCol === key ? null : key)} className={cn("p-1 rounded hover:bg-black/5 transition-colors", isFiltered ? "text-primary" : "text-gray-400 opacity-0 group-hover:opacity-100 lg:opacity-0 lg:group-hover:opacity-100")}><Filter size={12} /></button>
                     </div>
-                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10" onMouseDown={(e) => handleResizeStart(e, key)} />
+                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10" onMouseDown={(e) => handleResizeStart(e, key)} onTouchStart={(e) => handleResizeStart(e as any, key)} />
                     {activeFilterCol === key && (
                       <FilterPopover 
                         columnKey={key}
@@ -506,7 +591,25 @@ export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({
                 <tr 
                   key={cliente.id} 
                   className={cn("group border-b hover:bg-black/[0.02] transition-colors relative", selectedRowId === cliente.id && "bg-primary/5")}
-                  style={{ backgroundColor: bg !== 'transparent' ? bg : undefined, color: bg !== 'transparent' ? contrastText : undefined }}
+                  style={{ 
+                    backgroundColor: bg !== 'transparent' ? bg : undefined, 
+                    color: bg !== 'transparent' ? contrastText : undefined,
+                    borderTop: dragOverRowId === cliente.id ? '2px solid #1A1A18' : undefined
+                  }}
+                  onDragOver={e => { e.preventDefault(); if (draggedRowId && draggedRowId !== cliente.id) setDragOverRowId(cliente.id); }}
+                  onDragLeave={() => setDragOverRowId(null)}
+                  onDrop={e => {
+                    e.preventDefault();
+                    const srcId = draggedRowId;
+                    setDragOverRowId(null);
+                    setDraggedRowId(null);
+                    if (!srcId || srcId === cliente.id) return;
+                    const src = clienti.find(c => c.id === srcId);
+                    if (src) {
+                      onUpdate(srcId, { display_order: cliente.display_order });
+                      onUpdate(cliente.id, { display_order: src.display_order });
+                    }
+                  }}
                 >
                   <td className="sticky left-0 z-10 bg-[var(--bg-subtle)] border-r text-center font-outfit text-[10px] text-[var(--text-muted)] select-none flex items-center justify-center gap-1 px-1 h-full min-h-[32px]" onContextMenu={(e) => { e.preventDefault(); setRowContextMenu({ x: e.clientX, y: e.clientY, id: cliente.id }); }}>
                     <div draggable onDragStart={() => setDraggedRowId(cliente.id)} className="cursor-grab active:cursor-grabbing opacity-30 hover:opacity-70"><GripVertical size={14} /></div>
@@ -577,6 +680,24 @@ export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({
           />
         )}
       </AnimatePresence>
+
+      {/* Footer */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '6px 12px', borderTop: '1px solid var(--border-light)',
+        fontSize: 11, color: 'var(--text-muted)', fontFamily: 'Outfit'
+      }}>
+        <span style={{ flex: 1 }}>
+          {sortedData.length} buyers
+          {sortedData.length !== clienti.length && ` (${clienti.length} totali)`}
+        </span>
+        {Object.values(colFilters).some(s => s.size > 0) && (
+          <button onClick={() => setColFilters({})}
+            style={{ fontSize: 10, padding: '2px 8px', borderRadius: 999, border: '1px solid var(--border-light)', background: 'white', cursor: 'pointer', fontFamily: 'Outfit', color: 'var(--text-primary)' }}>
+            ✕ Rimuovi filtri
+          </button>
+        )}
+      </div>
     </div>
   );
 };
@@ -640,10 +761,14 @@ const RowContextMenu: React.FC<{
   x: number; y: number; id: string; onClose: () => void; onUpdate: (u: Partial<Cliente>) => void;
   onDelete?: () => void; onDuplicate?: () => void; currentStatus?: string; currentLingua?: string;
   kanbanCols: any[]; linguaColors: Record<string, string>;
-}> = ({ x, y, onClose, onUpdate, onDelete, onDuplicate, currentStatus, currentLingua, kanbanCols, linguaColors }) => (
+}> = ({ x, y, onClose, onUpdate, onDelete, onDuplicate, currentStatus, currentLingua, kanbanCols, linguaColors }) => {
+  const [customEmoji, setCustomEmoji] = useState("");
+  const colorInputRef = useRef<HTMLInputElement>(null);
+
+  return (
   <>
     <div className="fixed inset-0 z-[100]" onClick={onClose} />
-    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="fixed z-[101] w-72 bg-white border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto" style={{ left: Math.min(x, window.innerWidth - 300), top: Math.min(y, window.innerHeight - 500) }}>
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="fixed z-[101] w-72 max-w-[90vw] bg-white border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto" style={{ left: Math.min(x, window.innerWidth - (window.innerWidth < 640 ? window.innerWidth * 0.9 : 300)), top: Math.min(y, window.innerHeight - 500) }}>
       <div className="p-3 border-b bg-gray-50/50">
         <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 block">Stato</span>
         <div className="flex flex-wrap gap-1.5">
@@ -660,6 +785,63 @@ const RowContextMenu: React.FC<{
           ))}
         </div>
       </div>
+      
+      {/* Emoji Section */}
+      <div className="p-3 border-b">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 block">Emoji</span>
+        <div className="grid grid-cols-6 gap-1 mb-2">
+          {EMOJIS.map(e => (
+            <button key={e} onClick={() => { onUpdate({ emoji: e }); onClose(); }} className="text-lg hover:bg-gray-100 rounded p-1">{e}</button>
+          ))}
+        </div>
+        <div className="flex gap-1">
+          <input 
+            className="flex-1 px-2 py-1 border rounded text-[12px] outline-none"
+            placeholder="Custom emoji..."
+            value={customEmoji}
+            onChange={(e) => setCustomEmoji(e.target.value)}
+          />
+          <button 
+            onClick={() => { if(customEmoji) { onUpdate({ emoji: customEmoji }); onClose(); } }}
+            className="px-2 bg-primary text-white rounded text-[12px]"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      {/* Color Palette */}
+      <div className="p-3 border-b">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 block">Colore Card</span>
+        <div className="grid grid-cols-8 gap-1">
+          {COLOR_PALETTE.map((color, i) => (
+            <button
+              key={i}
+              onClick={() => { onUpdate({ card_color: color || undefined }); onClose(); }}
+              className="w-5 h-5 rounded-sm border border-gray-200 hover:scale-110 transition-transform"
+              style={{ backgroundColor: color || 'transparent' }}
+            />
+          ))}
+        </div>
+        <div className="flex items-center justify-between mt-2">
+          <button onClick={() => { onUpdate({ card_color: undefined }); onClose(); }} className="text-[11px] text-gray-500 hover:underline">Rimuovi colore</button>
+          <div className="flex items-center gap-1">
+            <input 
+              type="color" 
+              ref={colorInputRef} 
+              className="hidden" 
+              onChange={(e) => { onUpdate({ card_color: e.target.value }); onClose(); }} 
+            />
+            <button 
+              onClick={() => colorInputRef.current?.click()}
+              className="text-[11px] text-primary font-medium hover:underline"
+            >
+              + Personalizzato
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="p-1">
         <ContextMenuItem icon={<CopyIcon size={14} />} label="Duplica cliente" onClick={() => { onDuplicate?.(); onClose(); }} />
         <div className="h-px bg-gray-100 my-1" />
@@ -667,7 +849,8 @@ const RowContextMenu: React.FC<{
       </div>
     </motion.div>
   </>
-);
+  );
+};
 
 const CellContextMenu: React.FC<{ x: number; y: number; onClose: () => void; onCopy: () => void; onPaste: () => void; onReset: () => void; }> = ({ x, y, onClose, onCopy, onPaste, onReset }) => (
   <>
@@ -686,9 +869,12 @@ const HeaderContextMenu: React.FC<{ x: number; y: number; onClose: () => void; o
     <div className="fixed inset-0 z-[100]" onClick={onClose} />
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="fixed z-[101] w-48 bg-white border rounded-lg shadow-xl overflow-hidden py-1" style={{ left: x, top: y }}>
       <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Tipo Colonna</span>
-      <ContextMenuItem label="Testo" onClick={() => onTypeChange('text')} />
-      <ContextMenuItem label="Numero" onClick={() => onTypeChange('number')} />
-      <ContextMenuItem label="URL" onClick={() => onTypeChange('url')} />
+      <ContextMenuItem label="Testo" onClick={() => { onTypeChange('text'); onClose(); }} />
+      <ContextMenuItem label="Numero" onClick={() => { onTypeChange('number'); onClose(); }} />
+      <ContextMenuItem label="Status" onClick={() => { onTypeChange('status'); onClose(); }} />
+      <ContextMenuItem label="Checkbox" onClick={() => { onTypeChange('checkbox'); onClose(); }} />
+      <ContextMenuItem label="URL" onClick={() => { onTypeChange('url'); onClose(); }} />
+      <ContextMenuItem label="Dropdown" onClick={() => { onTypeChange('dropdown'); onClose(); }} />
       {isCustom && (
         <>
           <div className="h-px bg-gray-100 my-1" />

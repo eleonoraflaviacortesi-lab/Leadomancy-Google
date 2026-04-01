@@ -90,12 +90,12 @@ export const OfficeDashboard: React.FC<OfficeDashboardProps> = ({ period }) => {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         {/* Left: Ranking Table (2/3) */}
-        <div className="lg:col-span-2 bg-white border border-[var(--border-light)] rounded-[20px] p-8 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
+        <div className="lg:col-span-2 bg-white border border-[var(--border-light)] rounded-[20px] p-6 md:p-8 shadow-sm">
+          <div className="flex items-center justify-between mb-6 md:mb-8">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center shrink-0">
                 <Award size={20} className="text-[var(--text-primary)]" />
               </div>
               <div>
@@ -105,8 +105,8 @@ export const OfficeDashboard: React.FC<OfficeDashboardProps> = ({ period }) => {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
+          <div className="overflow-x-auto -mx-6 md:mx-0 px-6 md:px-0">
+            <table className="w-full text-left min-w-[600px]">
               <thead>
                 <tr className="border-b border-[var(--border-light)]">
                   <th className="pb-4 font-outfit font-semibold text-[11px] uppercase text-[var(--text-muted)] w-12 text-center">#</th>
@@ -130,8 +130,8 @@ export const OfficeDashboard: React.FC<OfficeDashboardProps> = ({ period }) => {
                     </td>
                     <td className="py-4">
                       <div className="flex items-center gap-3">
-                        <span className="text-xl">{agent.avatar_emoji || '👤'}</span>
-                        <span className="font-outfit font-medium text-[14px] text-[var(--text-primary)]">
+                        <span className="text-xl shrink-0">{agent.avatar_emoji || '👤'}</span>
+                        <span className="font-outfit font-medium text-[14px] text-[var(--text-primary)] truncate max-w-[120px] sm:max-w-none">
                           {agent.full_name || `${agent.nome} ${agent.cognome}`}
                         </span>
                       </div>
@@ -151,15 +151,15 @@ export const OfficeDashboard: React.FC<OfficeDashboardProps> = ({ period }) => {
 
         {/* Right: Goals & Progress (1/3) */}
         <div className="flex flex-col gap-6">
-          <div className="bg-white border border-[var(--border-light)] rounded-[20px] p-8 shadow-sm">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center">
+          <div className="bg-white border border-[var(--border-light)] rounded-[20px] p-6 md:p-8 shadow-sm">
+            <div className="flex items-center gap-3 mb-6 md:mb-8">
+              <div className="w-10 h-10 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center shrink-0">
                 <Target size={20} className="text-[var(--text-primary)]" />
               </div>
               <h3 className="font-outfit font-bold text-[16px] text-[var(--text-primary)]">Obiettivi Sede</h3>
             </div>
 
-            <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-6 md:gap-8">
               <GoalProgress 
                 label="Fatturato" 
                 current={kpis?.fatturato?.value || 0} 
@@ -185,13 +185,13 @@ export const OfficeDashboard: React.FC<OfficeDashboardProps> = ({ period }) => {
           </div>
 
           {/* Office Health Card */}
-          <div className="bg-[var(--text-primary)] text-white rounded-[20px] p-8 shadow-sm flex flex-col gap-4">
+          <div className="bg-[var(--text-primary)] text-white rounded-[20px] p-6 md:p-8 shadow-sm flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h3 className="font-outfit font-bold text-[11px] uppercase tracking-widest opacity-60">STATO SEDE</h3>
-              <Activity size={16} className="opacity-60" />
+              <Activity size={16} className="opacity-60 shrink-0" />
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-[32px] font-outfit font-bold">Ottimo</span>
+              <span className="text-[28px] md:text-[32px] font-outfit font-bold">Ottimo</span>
               <p className="text-[13px] opacity-70 leading-relaxed">
                 La sede di {user?.sede} sta performando sopra la media stagionale. 
                 Il tasso di conversione notizie/vendite è aumentato del 4% rispetto al mese scorso.
@@ -205,10 +205,10 @@ export const OfficeDashboard: React.FC<OfficeDashboardProps> = ({ period }) => {
 };
 
 const SummaryCard = ({ label, value, delta, icon, color, isCurrency }: any) => (
-  <div className="bg-white border border-[var(--border-light)] rounded-[16px] p-5 shadow-sm flex flex-col gap-3">
+  <div className="bg-white border border-[var(--border-light)] rounded-[16px] p-4 md:p-5 shadow-sm flex flex-col gap-3">
     <div className="flex items-center justify-between">
       <div className={cn(
-        "w-8 h-8 rounded-full flex items-center justify-center",
+        "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
         `bg-[var(--${color}-bg)] text-[var(--${color}-fg)]`
       )}>
         {icon}
@@ -222,8 +222,8 @@ const SummaryCard = ({ label, value, delta, icon, color, isCurrency }: any) => (
       </div>
     </div>
     <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] font-outfit font-bold text-[var(--text-muted)] uppercase tracking-wider">{label}</span>
-      <span className="text-[20px] font-outfit font-bold text-[var(--text-primary)]">
+      <span className="text-[10px] md:text-[11px] font-outfit font-bold text-[var(--text-muted)] uppercase tracking-wider truncate" title={label}>{label}</span>
+      <span className="text-[18px] md:text-[20px] font-outfit font-bold text-[var(--text-primary)] truncate">
         {isCurrency ? formatCurrency(value) : value}
       </span>
     </div>

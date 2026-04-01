@@ -22,9 +22,14 @@ export const ClientiPage: React.FC = () => {
   });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [initialStatus, setInitialStatus] = useState<ClienteStatus | undefined>();
-  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const [selectedClienteId, setSelectedClienteId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
+
+  const selectedCliente = useMemo(() => {
+    if (!selectedClienteId) return null;
+    return filteredClienti.find(c => c.id === selectedClienteId) || null;
+  }, [filteredClienti, selectedClienteId]);
 
   useEffect(() => {
     const handler = () => setIsAddDialogOpen(true);
@@ -38,7 +43,7 @@ export const ClientiPage: React.FC = () => {
   };
 
   const handleClienteClick = (cliente: Cliente) => {
-    setSelectedCliente(cliente);
+    setSelectedClienteId(cliente.id);
     setIsDetailOpen(true);
   };
 
@@ -63,24 +68,24 @@ export const ClientiPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full w-full">
       {/* Header Section */}
-      <div className="flex flex-col gap-4 pb-0">
+      <div className="flex flex-col gap-4 pb-0 px-4 sm:px-0">
         <div className="flex flex-col">
-          <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
+          <p className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-6">
             Leadomancy / Buyers
           </p>
-          <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
+          <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
             Luxury Buyers
           </h1>
         </div>
 
         {/* Controls Row */}
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3 md:gap-4">
           {/* View Toggle */}
-          <div className="flex bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)]">
+          <div className="flex bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)] w-full sm:w-auto overflow-x-auto hide-scrollbar">
             <button
               onClick={() => toggleViewMode('kanban')}
               className={cn(
-                "flex items-center gap-2 px-4 py-1.5 rounded-full font-outfit text-[13px] transition-all",
+                "flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-full font-outfit text-[13px] transition-all whitespace-nowrap",
                 viewMode === 'kanban' ? "bg-[#1A1A18] text-white shadow-sm" : "text-[var(--text-secondary)] hover:bg-black/5"
               )}
             >
@@ -90,7 +95,7 @@ export const ClientiPage: React.FC = () => {
             <button
               onClick={() => toggleViewMode('sheet')}
               className={cn(
-                "flex items-center gap-2 px-4 py-1.5 rounded-full font-outfit text-[13px] transition-all",
+                "flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-full font-outfit text-[13px] transition-all whitespace-nowrap",
                 viewMode === 'sheet' ? "bg-[#1A1A18] text-white shadow-sm" : "text-[var(--text-secondary)] hover:bg-black/5"
               )}
             >
@@ -100,7 +105,7 @@ export const ClientiPage: React.FC = () => {
           </div>
 
           {/* Search */}
-          <div className="relative flex-1 min-w-[200px] max-w-md">
+          <div className="relative flex-1 min-w-[200px] max-w-full md:max-w-md order-3 sm:order-none w-full sm:w-auto">
             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
             <input
               type="text"
@@ -111,66 +116,67 @@ export const ClientiPage: React.FC = () => {
             />
           </div>
 
-          {/* Filter Toggle */}
-          <button
-            onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
-            className={cn(
-              "p-2.5 rounded-full border border-[var(--border-light)] transition-all",
-              isFilterSidebarOpen ? "bg-[#1A1A18] text-white" : "bg-white text-[var(--text-primary)] hover:bg-black/5"
-            )}
-          >
-            <Filter size={18} />
-          </button>
-
-          {/* Undo/Redo */}
-          <div className="flex items-center gap-1">
+          {/* Actions Group */}
+          <div className="flex items-center gap-2 ml-auto sm:ml-0 order-2 sm:order-none">
+            {/* Filter Toggle */}
             <button
-              onClick={undo}
-              disabled={!canUndo}
+              onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
               className={cn(
-                "p-2 rounded-full transition-colors",
-                canUndo ? "text-[var(--text-primary)] hover:bg-black/5" : "text-[var(--text-muted)] opacity-50 cursor-not-allowed"
+                "p-2.5 rounded-full border border-[var(--border-light)] transition-all",
+                isFilterSidebarOpen ? "bg-[#1A1A18] text-white" : "bg-white text-[var(--text-primary)] hover:bg-black/5"
               )}
             >
-              <Undo2 size={18} />
+              <Filter size={18} />
             </button>
-            <button
-              onClick={redo}
-              disabled={!canRedo}
-              className={cn(
-                "p-2 rounded-full transition-colors",
-                canRedo ? "text-[var(--text-primary)] hover:bg-black/5" : "text-[var(--text-muted)] opacity-50 cursor-not-allowed"
-              )}
-            >
-              <Redo2 size={18} />
-            </button>
-          </div>
 
-          {/* Export & Add */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 rounded-full font-outfit text-[13px] text-[var(--text-primary)] hover:bg-black/5 transition-colors"
-            >
-              <Download size={16} />
-              Esporta
-            </button>
-            <button
-              onClick={() => {
-                setInitialStatus('new');
-                setIsAddDialogOpen(true);
-              }}
-              className="flex items-center gap-2 px-5 py-2 bg-[#1A1A18] text-white rounded-full font-outfit font-medium text-[13px] hover:bg-black transition-all shadow-sm"
-            >
-              <Plus size={16} />
-              Aggiungi Buyer
-            </button>
+            {/* Undo/Redo */}
+            <div className="hidden sm:flex items-center gap-1">
+              <button
+                onClick={undo}
+                disabled={!canUndo}
+                className={cn(
+                  "p-2 rounded-full transition-colors",
+                  canUndo ? "text-[var(--text-primary)] hover:bg-black/5" : "text-[var(--text-muted)] opacity-50 cursor-not-allowed"
+                )}
+              >
+                <Undo2 size={18} />
+              </button>
+              <button
+                onClick={redo}
+                disabled={!canRedo}
+                className={cn(
+                  "p-2 rounded-full transition-colors",
+                  canRedo ? "text-[var(--text-primary)] hover:bg-black/5" : "text-[var(--text-muted)] opacity-50 cursor-not-allowed"
+                )}
+              >
+                <Redo2 size={18} />
+              </button>
+            </div>
+
+            {/* Export & Add */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExport}
+                className="hidden sm:flex items-center justify-center w-[38px] h-[38px] rounded-full bg-white border border-[var(--border-light)] text-[var(--text-secondary)] hover:bg-black/5 transition-colors"
+                title="Esporta"
+              >
+                <Download size={18} />
+              </button>
+              <button
+                onClick={() => setIsAddDialogOpen(true)}
+                className="flex items-center gap-2 bg-[#1A1A18] text-white px-4 h-[38px] rounded-full font-outfit text-[13px] font-medium hover:bg-black/80 transition-colors whitespace-nowrap"
+              >
+                <Plus size={16} />
+                <span className="hidden sm:inline">Nuovo Buyer</span>
+                <span className="sm:hidden">Nuovo</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden pt-6 pb-6 gap-6">
+      <div className="flex flex-1 overflow-hidden pt-6 pb-6 gap-6 relative px-4 sm:px-0">
         {/* Filter Sidebar (Collapsible) */}
         <AnimatePresence>
           {isFilterSidebarOpen && (
@@ -178,7 +184,7 @@ export const ClientiPage: React.FC = () => {
               initial={{ width: 0, opacity: 0, marginRight: 0 }}
               animate={{ width: 240, opacity: 1, marginRight: 24 }}
               exit={{ width: 0, opacity: 0, marginRight: 0 }}
-              className="flex flex-col gap-6 overflow-hidden rounded-[55px] p-8"
+              className="flex flex-col gap-6 overflow-hidden rounded-[55px] p-8 absolute sm:relative z-10 bg-white sm:bg-transparent shadow-xl sm:shadow-none h-full sm:h-auto"
             >
               <div className="flex items-center justify-between rounded-[35px] pr-8 pt-4 pb-4">
                 <span className="font-outfit font-bold text-[12px] uppercase tracking-widest">Filtri</span>
@@ -226,12 +232,20 @@ export const ClientiPage: React.FC = () => {
                   className="bg-[var(--bg-subtle)] border-0 rounded-lg p-2 text-[13px] font-outfit outline-none"
                 />
               </div>
+              
+              {/* Close button for mobile */}
+              <button 
+                onClick={() => setIsFilterSidebarOpen(false)}
+                className="sm:hidden mt-auto bg-black text-white rounded-full py-2 font-outfit text-[13px]"
+              >
+                Chiudi Filtri
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Content View */}
-        <div className="flex-1 min-w-0 bg-[#f5f4f0]">
+        <div className="flex-1 min-w-0 bg-[#f5f4f0] rounded-xl overflow-hidden">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="w-8 h-8 border-2 border-black/10 border-t-black rounded-full animate-spin" />

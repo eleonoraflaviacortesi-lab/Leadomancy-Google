@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import EmojiPicker from 'emoji-picker-react';
+import { toast } from "sonner";
 import { 
   X, Phone, Mail, MapPin, Euro, Calendar, Clock, Sparkles, User, 
   FileText, MessageSquare, Download, Trash2, Plus, ExternalLink, 
   ThumbsUp, ThumbsDown, Send, Home, ClipboardList, GripVertical,
-  ChevronLeft, Star
+  ChevronLeft, Star, Merge, Check
 } from "lucide-react";
 import Markdown from "react-markdown";
 import { Cliente } from "@/src/types";
@@ -15,9 +16,11 @@ import { cn, formatCurrency } from "@/src/lib/utils";
 import { useClienteActivities, ClienteActivity } from "@/src/hooks/useClienteActivities";
 import { usePropertyMatches, PropertyMatch } from "@/src/hooks/usePropertyMatches";
 import { useProfiles } from "@/src/hooks/useProfiles";
+import { useAuth } from "@/src/hooks/useAuth";
 import { generateClientePDF } from "@/src/lib/generateClientePDF";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
+import MergeClienteDialog from "./MergeClienteDialog";
 
 interface ClienteDetailProps {
   cliente: Cliente | null;
@@ -103,6 +106,12 @@ const EditableField = ({
             }}
             className="flex-1 bg-transparent border-b border-black py-0 text-[13px] font-outfit font-normal outline-none"
           />
+          <button 
+            onMouseDown={(e) => { e.preventDefault(); handleSave(); }}
+            className="p-1 hover:bg-green-50 text-green-600 rounded transition-colors"
+          >
+            <Check size={14} />
+          </button>
         </div>
       ) : (
         <span className={cn("text-[13px] font-outfit font-normal text-[var(--text-primary)] group-hover:text-indigo-600 transition-colors", valueClassName)}>
@@ -155,23 +164,34 @@ const EditableTextarea = ({
     >
       <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">{label}</span>
       {editing ? (
-        <textarea
-          ref={textareaRef}
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            e.target.style.height = 'auto';
-            e.target.style.height = e.target.scrollHeight + 'px';
-          }}
-          onBlur={handleSave}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              setDraft(value || "");
-              setEditing(false);
-            }
-          }}
-          className="w-full bg-transparent border-b border-black py-0 text-[13px] font-outfit font-normal outline-none resize-none overflow-hidden"
-        />
+        <div className="flex flex-col gap-1">
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = e.target.scrollHeight + 'px';
+            }}
+            onBlur={handleSave}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setDraft(value || "");
+                setEditing(false);
+              }
+            }}
+            className="w-full bg-transparent border-b border-black py-0 text-[13px] font-outfit font-normal outline-none resize-none overflow-hidden"
+          />
+          <div className="flex justify-end">
+            <button 
+              onMouseDown={(e) => { e.preventDefault(); handleSave(); }}
+              className="flex items-center gap-1 px-3 py-1 bg-[#1A1A18] text-white text-[10px] font-bold rounded-full hover:bg-black/80 transition-colors"
+            >
+              <Check size={12} />
+              SALVA
+            </button>
+          </div>
+        </div>
       ) : (
         <p className="text-[13px] font-outfit font-normal text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap group-hover:text-indigo-600 transition-colors">
           {value || '-'}
@@ -405,6 +425,76 @@ const PropertyMatchCard = ({
   </div>
 );
 
+const QuickActionButton = ({ 
+  emoji, label, color, onClick 
+}: { 
+  emoji: string; label: string; color: string; onClick: () => void 
+}) => (
+  <button
+    onClick={onClick}
+    style={{
+      flex: 1, height: 34, borderRadius: 8, border: 'none',
+      background: color, color: 'white', cursor: 'pointer',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      gap: 5, fontFamily: 'Outfit', fontSize: 11, fontWeight: 600,
+      textTransform: 'uppercase', letterSpacing: '0.08em',
+      transition: 'opacity 150ms'
+    }}
+    onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '0.85'}
+    onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
+  >
+    <span>{emoji}</span> {label}
+  </button>
+);
+
+const ActivityDialog = ({ 
+  open, onOpenChange, title, emoji,
+  onConfirm 
+}: { 
+  open: boolean; onOpenChange: (v: boolean) => void; 
+  title: string; emoji: string;
+  onConfirm: (note: string) => void;
+}) => {
+  const [note, setNote] = useState('');
+  return open ? (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 200,
+      background: 'rgba(0,0,0,0.3)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center'
+    }} onClick={() => onOpenChange(false)}>
+      <div style={{
+        background: 'white', borderRadius: 16, padding: 24,
+        width: 320, boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
+      }} onClick={e => e.stopPropagation()}>
+        <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, fontFamily: 'Outfit' }}>
+          {emoji} {title}
+        </p>
+        <textarea
+          placeholder="Note (opzionale)..."
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          style={{
+            width: '100%', borderRadius: 10, border: '1px solid var(--border-light)',
+            padding: '10px 12px', fontFamily: 'Outfit', fontSize: 13,
+            resize: 'none', height: 80, outline: 'none'
+          }}
+        />
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <button onClick={() => onOpenChange(false)} style={{
+            flex: 1, height: 36, borderRadius: 999, border: '1px solid var(--border-light)',
+            background: 'white', cursor: 'pointer', fontFamily: 'Outfit', fontSize: 12
+          }}>Annulla</button>
+          <button onClick={() => { onConfirm(note); setNote(''); onOpenChange(false); }} style={{
+            flex: 1, height: 36, borderRadius: 999, border: 'none',
+            background: '#1A1A18', color: 'white', cursor: 'pointer',
+            fontFamily: 'Outfit', fontSize: 12, fontWeight: 600
+          }}>Salva</button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+};
+
 export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, onClose, onUpdate, onDelete }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<string | null>(null);
@@ -412,12 +502,18 @@ export const ClienteDetail: React.FC<ClienteDetailProps> = ({ cliente, isOpen, o
   const [showAddMatch, setShowAddMatch] = useState(false);
   const [newMatch, setNewMatch] = useState({ property_name: '', property_url: '', match_score: 80, notes: '' });
   
+  const [showCallDialog, setShowCallDialog] = useState(false);
+  const [showVisitDialog, setShowVisitDialog] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [activityNote, setActivityNote] = useState('');
+  
   const [matches, setMatches] = useState<SearchResultProperty[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [matchError, setMatchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   
   const { activities, addActivity } = useClienteActivities(cliente?.id || '');
+  const { user } = useAuth();
   const { matches: propertyMatches, addMatch, updateMatch, deleteMatch } = usePropertyMatches(cliente?.id || '');
   const searchPropertyMatches = async () => {
     setIsSearching(true);
@@ -619,107 +715,101 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            style={{
-              position: 'fixed',
-              right: 0,
-              top: '34px',
-              bottom: 0,
-              left: '220px', // Corrisponde alla larghezza della sidebar espansa
-              zIndex: 70,
-              backgroundColor: '#F5F5F0', // Colore caldo dell'app
-              display: 'flex',
-              flexDirection: 'column',
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              boxShadow: '-4px 0 24px rgba(0,0,0,0.08)',
-              borderTopLeftRadius: '24px',
-              borderBottomLeftRadius: '24px',
-              borderLeft: '1px solid var(--border-light)'
-            }}
+            className="fixed right-0 top-[34px] bottom-0 left-0 md:left-[220px] z-[70] bg-[#F5F5F0] flex flex-col overflow-y-auto overflow-x-hidden shadow-[-4px_0_24px_rgba(0,0,0,0.08)] md:rounded-l-[32px] border-l border-[var(--border-light)]"
           >
             {/* Header */}
-            <div className="flex items-center h-[64px] px-6 border-b border-[var(--border-light)] bg-[#F5F5F0] sticky top-0 z-10">
+            <div className="flex items-center h-[64px] px-4 md:px-6 border-b border-[var(--border-light)] bg-[#F5F5F0] sticky top-0 z-10">
               <button 
                 onClick={onClose}
-                className="p-2 -ml-2 hover:bg-black/5 rounded-full transition-colors"
+                className="p-2 -ml-2 hover:bg-black/5 rounded-full transition-colors md:hidden"
               >
                 <ChevronLeft size={20} />
               </button>
               
-              <div className="flex-1 px-4 truncate flex items-center gap-3">
+              <div className="flex-1 px-2 md:px-4 truncate flex items-center gap-2 md:gap-3">
                 <button 
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="w-8 h-8 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[16px] hover:bg-black/5 transition-colors"
+                  className="w-8 h-8 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[16px] hover:bg-black/5 transition-colors shrink-0"
                 >
                   {cliente.emoji || '👤'}
                 </button>
                 {showEmojiPicker && (
-                  <div className="absolute z-[80] top-[64px] left-[100px] mt-2">
+                  <div className="absolute z-[80] top-[64px] left-[16px] md:left-[100px] mt-2">
                     <EmojiPicker onEmojiClick={(e) => { onUpdate?.(cliente.id, { emoji: e.emoji }); setShowEmojiPicker(false); }} />
                   </div>
                 )}
-                <h2 className="font-outfit font-semibold text-[15px] text-[var(--text-primary)] truncate">
-                  {cliente.nome} {cliente.cognome}
-                </h2>
-                <div className="flex items-center gap-1">
-                  {!isStatusEditing ? (
-                    <Badge 
-                      bg={statusConfig.bg} 
-                      fg={statusConfig.fg} 
-                      onClick={() => setIsStatusEditing(true)}
-                    >
-                      {statusConfig.label}
-                    </Badge>
-                  ) : (
-                    <select
-                      autoFocus
-                      value={cliente.status}
-                      onChange={(e) => {
-                        onUpdate?.(cliente.id, { status: e.target.value as any });
-                        setIsStatusEditing(false);
-                      }}
-                      onBlur={() => setIsStatusEditing(false)}
-                      className="text-[10px] font-outfit font-medium uppercase tracking-wider bg-[var(--bg-subtle)] border-b border-black outline-none"
-                    >
-                      {Object.entries(CLIENTE_STATUS_CONFIG).map(([key, config]) => (
-                        <option key={key} value={key}>{config.label}</option>
+                <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3 truncate">
+                  <h2 className="font-outfit font-semibold text-[14px] md:text-[15px] text-[var(--text-primary)] truncate">
+                    {cliente.nome} {cliente.cognome}
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    {!isStatusEditing ? (
+                      <Badge 
+                        bg={statusConfig.bg} 
+                        fg={statusConfig.fg} 
+                        onClick={() => setIsStatusEditing(true)}
+                        className="shrink-0"
+                      >
+                        {statusConfig.label}
+                      </Badge>
+                    ) : (
+                      <select
+                        autoFocus
+                        value={cliente.status}
+                        onChange={(e) => {
+                          onUpdate?.(cliente.id, { status: e.target.value as any });
+                          setIsStatusEditing(false);
+                        }}
+                        onBlur={() => setIsStatusEditing(false)}
+                        className="text-[10px] font-outfit font-medium uppercase tracking-wider bg-[var(--bg-subtle)] border-b border-black outline-none"
+                      >
+                        {Object.entries(CLIENTE_STATUS_CONFIG).map(([key, config]) => (
+                          <option key={key} value={key}>{config.label}</option>
+                        ))}
+                      </select>
+                    )}
+                    <div className="flex items-center gap-1 md:gap-1.5 shrink-0">
+                      {[1, 2, 3, 4, 5].map((dot) => (
+                        <button
+                          key={dot}
+                          onClick={() => onUpdate?.(cliente.id, { rating: dot === cliente.rating ? dot - 1 : dot })}
+                          className={cn(
+                            "w-1.5 h-1.5 md:w-2 md:h-2 rounded-full transition-all",
+                            dot <= (cliente.rating || 0) ? "bg-[var(--text-primary)]" : "bg-black/10 hover:bg-black/20"
+                          )}
+                        />
                       ))}
-                    </select>
-                  )}
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button 
-                      key={star}
-                      onClick={() => onUpdate?.(cliente.id, { rating: star })}
-                      className={cn(
-                        "transition-colors",
-                        star <= (cliente.rating || 0) ? "text-amber-400" : "text-gray-200"
-                      )}
-                    >
-                      <Star size={14} fill={star <= (cliente.rating || 0) ? "currentColor" : "none"} />
-                    </button>
-                  ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5 md:gap-1 shrink-0">
+                <button 
+                  onClick={() => setMergeOpen(true)}
+                  className="p-1.5 md:p-2 hover:bg-black/5 rounded-full transition-colors text-[var(--text-muted)] hidden sm:block"
+                  title="Unisci duplicato"
+                >
+                  <Merge size={18} className="md:w-5 md:h-5" />
+                </button>
                 <button 
                   onClick={() => generateClientePDF(cliente, activities, propertyMatches)}
-                  className="p-2 hover:bg-black/5 rounded-full transition-colors text-[var(--text-muted)]"
+                  className="p-1.5 md:p-2 hover:bg-black/5 rounded-full transition-colors text-[var(--text-muted)] hidden sm:block"
                   title="Scarica PDF"
                 >
-                  <Download size={20} />
+                  <Download size={18} className="md:w-5 md:h-5" />
                 </button>
                 {onDelete && (
                   <button 
                     onClick={handleDelete}
-                    className="p-2 hover:bg-rose-50 rounded-full transition-colors text-rose-500"
+                    className="p-1.5 md:p-2 hover:bg-rose-50 rounded-full transition-colors text-rose-500 hidden sm:block"
                     title="Elimina"
                   >
-                    <Trash2 size={20} />
+                    <Trash2 size={18} className="md:w-5 md:h-5" />
                   </button>
                 )}
-                <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors">
-                  <X size={20} />
+                <button onClick={onClose} className="p-1.5 md:p-2 hover:bg-black/5 rounded-full transition-colors hidden md:block">
+                  <X size={18} className="md:w-5 md:h-5" />
                 </button>
               </div>
             </div>
@@ -734,17 +824,12 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
               width: '100%'
             }}>
               <div 
-                className="grid gap-4"
-                style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: window.innerWidth > 768 ? '1fr 350px' : '1fr',
-                  gap: 16
-                }}
+                className="grid gap-4 lg:grid-cols-[1fr_350px]"
               >
                 
                 {/* COLUMN 1 (Preferences) */}
                 <div className="flex flex-col gap-4">
-                  <div className="grid grid-cols-2 gap-4 bg-white p-4 rounded-xl">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-4 rounded-xl">
                     <EditableField label="Budget" value={cliente.budget_max} type="number" prefix="€" onSave={(v) => onUpdate?.(cliente.id, { budget_max: parseFloat(v) })} />
                     <EditableField label="Mutuo" value={MUTUO_LABELS[cliente.mutuo || ''] || cliente.mutuo} onSave={(v) => onUpdate?.(cliente.id, { mutuo: v })} />
                     <EditableField label="Tempo Ricerca" value={cliente.tempo_ricerca} onSave={(v) => onUpdate?.(cliente.id, { tempo_ricerca: v })} />
@@ -760,9 +845,63 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
                       <span className="text-[13px] font-outfit font-normal text-[var(--text-primary)] group-hover:text-indigo-600 transition-colors truncate">{cliente.email || '-'}</span>
                     </div>
 
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      <QuickActionButton 
+                        emoji="📞" label="Chiamata" color="#1D9E75"
+                        onClick={() => setShowCallDialog(true)} 
+                      />
+                      <QuickActionButton 
+                        emoji="🏠" label="Visita" color="#378ADD"
+                        onClick={() => setShowVisitDialog(true)} 
+                      />
+                      <QuickActionButton 
+                        emoji="📧" label="Email" color="#6B6B66"
+                        onClick={() => {
+                          addActivity({ 
+                            activity_type: 'email', 
+                            title: 'Email inviata',
+                            description: null,
+                            created_by: user?.full_name || 'Agente'
+                          });
+                          toast.success('Email registrata');
+                        }} 
+                      />
+                    </div>
+
                     <EditableField label="Paese" value={cliente.paese} onSave={(v) => onUpdate?.(cliente.id, { paese: v })} />
                     <EditableField label="Lingua" value={cliente.lingua} onSave={(v) => onUpdate?.(cliente.id, { lingua: v })} />
                   </div>
+
+                  <ActivityDialog
+                    open={showCallDialog}
+                    onOpenChange={setShowCallDialog}
+                    title="Registra Chiamata"
+                    emoji="📞"
+                    onConfirm={(note) => {
+                      addActivity({
+                        activity_type: 'call',
+                        title: 'Chiamata effettuata',
+                        description: note || null,
+                        created_by: user?.full_name || 'Agente'
+                      });
+                      toast.success('Chiamata registrata');
+                    }}
+                  />
+                  <ActivityDialog
+                    open={showVisitDialog}
+                    onOpenChange={setShowVisitDialog}
+                    title="Registra Visita"
+                    emoji="🏠"
+                    onConfirm={(note) => {
+                      addActivity({
+                        activity_type: 'visit',
+                        title: 'Visita effettuata',
+                        description: note || null,
+                        created_by: user?.full_name || 'Agente'
+                      });
+                      toast.success('Visita registrata');
+                    }}
+                  />
                   
                   {/* Preferences (moved from Column 2) */}
                   <div className="bg-white p-4 rounded-xl">
@@ -790,7 +929,7 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
 
                     <Section title="PREFERENZE IMMOBILE">
                       <div className="flex flex-col gap-6">
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
                           <div className="flex flex-col gap-1.5">
                             <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Tipologia</span>
                             <div className="flex flex-wrap gap-1.5">
@@ -928,51 +1067,50 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
                     </div>
                   </Section>
 
-                  <Section title="PROVENIENZA">
-                    <div className="flex flex-col gap-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Portale</span>
-                        <Badge bg="var(--bg-subtle)" fg="var(--text-primary)" className="w-fit">{cliente.portale || '-'}</Badge>
+                  <div className="bg-white p-4 rounded-xl flex flex-col gap-6">
+                    <Section title="PROVENIENZA">
+                      <div className="flex flex-col gap-4">
+                        <EditableField label="Portale" value={cliente.portale} onSave={(v) => onUpdate?.(cliente.id, { portale: v })} />
+                        <EditableField label="Proprietà visitata" value={cliente.proprieta_visitata} onSave={(v) => onUpdate?.(cliente.id, { proprieta_visitata: v })} />
+                        <EditableField label="Ref Number" value={cliente.ref_number} onSave={(v) => onUpdate?.(cliente.id, { ref_number: v })} />
+                        <EditableField label="Contattato da" value={cliente.contattato_da} onSave={(v) => onUpdate?.(cliente.id, { contattato_da: v })} />
+                        <EditableField label="Tipo contatto" value={cliente.tipo_contatto} onSave={(v) => onUpdate?.(cliente.id, { tipo_contatto: v })} />
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Data Inserimento</span>
+                          <span className="text-[13px] font-outfit font-normal text-[var(--text-primary)]">
+                            {safeFormatDate(cliente.created_at)}
+                          </span>
+                        </div>
                       </div>
-                      <EditableField label="Proprietà visitata" value={cliente.proprieta_visitata} onSave={(v) => onUpdate?.(cliente.id, { proprieta_visitata: v })} />
-                      <EditableField label="Ref Number" value={cliente.ref_number} onSave={(v) => onUpdate?.(cliente.id, { ref_number: v })} />
-                      <EditableField label="Contattato da" value={cliente.contattato_da} onSave={(v) => onUpdate?.(cliente.id, { contattato_da: v })} />
-                      <EditableField label="Tipo contatto" value={cliente.tipo_contatto} onSave={(v) => onUpdate?.(cliente.id, { tipo_contatto: v })} />
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] font-outfit font-medium text-[var(--text-muted)] uppercase tracking-[0.08em]">Data Inserimento</span>
-                        <span className="text-[13px] font-outfit font-normal text-[var(--text-primary)]">
-                          {safeFormatDate(cliente.created_at)}
-                        </span>
+                    </Section>
+
+                    <Section title="NOTE">
+                      <div className="flex flex-col gap-6">
+                        <EditableTextarea label="Descrizione" value={cliente.descrizione} onSave={(v) => onUpdate?.(cliente.id, { descrizione: v })} />
+                        <EditableTextarea label="Note Extra" value={cliente.note_extra} onSave={(v) => onUpdate?.(cliente.id, { note_extra: v })} />
                       </div>
-                    </div>
-                  </Section>
+                    </Section>
 
-                  <Section title="NOTE">
-                    <div className="flex flex-col gap-6">
-                      <EditableTextarea label="Descrizione" value={cliente.descrizione} onSave={(v) => onUpdate?.(cliente.id, { descrizione: v })} />
-                      <EditableTextarea label="Note Extra" value={cliente.note_extra} onSave={(v) => onUpdate?.(cliente.id, { note_extra: v })} />
-                    </div>
-                  </Section>
-
-                  <Section title="REMINDER">
-                    <div className="flex flex-col gap-4">
-                      <EditableField 
-                        label="Data Reminder" 
-                        value={cliente.reminder_date} 
-                        type="datetime-local"
-                        onSave={(v) => onUpdate?.(cliente.id, { reminder_date: v })} 
-                      />
-                      <a 
-                        href={cliente.reminder_date && !isNaN(new Date(cliente.reminder_date).getTime()) ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=Follow-up+${cliente.nome}+${cliente.cognome}&dates=${new Date(cliente.reminder_date).toISOString().replace(/-|:|\.\d\d\d/g, "")}/${new Date(new Date(cliente.reminder_date).getTime() + 3600000).toISOString().replace(/-|:|\.\d\d\d/g, "")}` : '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[11px] font-outfit font-bold text-black uppercase tracking-wider hover:underline flex items-center gap-1.5"
-                      >
-                        Apri in Calendar
-                        <ExternalLink size={12} />
-                      </a>
-                    </div>
-                  </Section>
+                    <Section title="REMINDER">
+                      <div className="flex flex-col gap-4">
+                        <EditableField 
+                          label="Data Reminder" 
+                          value={cliente.reminder_date} 
+                          type="datetime-local"
+                          onSave={(v) => onUpdate?.(cliente.id, { reminder_date: v })} 
+                        />
+                        <a 
+                          href={cliente.reminder_date && !isNaN(new Date(cliente.reminder_date).getTime()) ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=Follow-up+${cliente.nome}+${cliente.cognome}&dates=${new Date(cliente.reminder_date).toISOString().replace(/-|:|\.\d\d\d/g, "")}/${new Date(new Date(cliente.reminder_date).getTime() + 3600000).toISOString().replace(/-|:|\.\d\d\d/g, "")}` : '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] font-outfit font-bold text-black uppercase tracking-wider hover:underline flex items-center gap-1.5"
+                        >
+                          Apri in Calendar
+                          <ExternalLink size={12} />
+                        </a>
+                      </div>
+                    </Section>
+                  </div>
                 </div>
               </div>
 
@@ -982,6 +1120,12 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
                 </span>
               </div>
             </div>
+            <MergeClienteDialog
+              open={mergeOpen}
+              onOpenChange={setMergeOpen}
+              cliente={cliente}
+              onMerged={onClose}
+            />
           </motion.div>
         </>
       )}

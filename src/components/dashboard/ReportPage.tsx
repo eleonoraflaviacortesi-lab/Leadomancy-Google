@@ -16,21 +16,21 @@ export const ReportPage: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 pb-6 w-full">
       {/* Header Section */}
-      <div className="flex flex-col">
-        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
+      <div className="flex flex-col px-4 sm:px-0">
+        <p className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-6">
           Leadomancy / Produzione
         </p>
-        <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
+        <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
           Ciclo Produttivo
         </h1>
       </div>
 
       {/* Tab Switcher */}
-      <div className="bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)] flex max-w-md">
+      <div className="bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)] flex max-w-md mx-4 sm:mx-0">
         <button
           onClick={() => setActiveTab('new')}
           className={cn(
-            "flex-1 py-2.5 rounded-full font-outfit text-[12px] font-bold uppercase transition-all flex items-center justify-center gap-2",
+            "flex-1 py-2.5 rounded-full font-outfit text-[11px] sm:text-[12px] font-bold uppercase transition-all flex items-center justify-center gap-2",
             activeTab === 'new' ? "bg-white text-black shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
           )}
         >
@@ -40,7 +40,7 @@ export const ReportPage: React.FC = () => {
         <button
           onClick={() => setActiveTab('history')}
           className={cn(
-            "flex-1 py-2.5 rounded-full font-outfit text-[12px] font-bold uppercase transition-all flex items-center justify-center gap-2",
+            "flex-1 py-2.5 rounded-full font-outfit text-[11px] sm:text-[12px] font-bold uppercase transition-all flex items-center justify-center gap-2",
             activeTab === 'history' ? "bg-white text-black shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
           )}
         >
@@ -50,25 +50,26 @@ export const ReportPage: React.FC = () => {
       </div>
 
       {/* Content */}
-      <AnimatePresence mode="wait">
-        {activeTab === 'new' ? (
-          <motion.div
-            key="new-report"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="bg-white border border-[var(--border-light)] rounded-[20px] p-8 shadow-sm"
-          >
-            <ReportForm />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="history-reports"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="flex flex-col gap-4"
-          >
+      <div className="px-4 sm:px-0">
+        <AnimatePresence mode="wait">
+          {activeTab === 'new' ? (
+            <motion.div
+              key="new-report"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-white border border-[var(--border-light)] rounded-[20px] p-4 sm:p-8 shadow-sm"
+            >
+              <ReportForm />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="history-reports"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex flex-col gap-4"
+            >
             {isLoading ? (
               <div className="flex flex-col gap-4">
                 {[1, 2, 3].map(i => (
@@ -131,6 +132,7 @@ export const ReportPage: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 };

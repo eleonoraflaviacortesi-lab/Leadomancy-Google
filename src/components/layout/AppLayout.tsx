@@ -1,11 +1,26 @@
 import React from "react";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation, NavLink } from "react-router-dom";
 import { useAuth } from "@/src/hooks/useAuth";
 import AppSidebar from "./AppSidebar";
-import { Plus } from "lucide-react";
+import { Plus, LayoutDashboard, Building2, Users, CalendarDays, MessageSquare, Settings } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { useLocalStorage } from "@/src/hooks/useLocalStorage";
 import { AnnouncementBanner } from "./AnnouncementBanner";
+
+const MobileNavLink = ({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) => (
+  <NavLink
+    to={to}
+    className={({ isActive }) =>
+      cn(
+        "flex flex-col items-center justify-center w-full h-full gap-1 transition-colors",
+        isActive ? "text-[var(--accent)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+      )
+    }
+  >
+    {icon}
+    <span className="text-[10px] font-medium">{label}</span>
+  </NavLink>
+);
 
 export default function AppLayout() {
   const { isAuthenticated, isLoading: authLoading, isUsingFallback } = useAuth();
@@ -90,19 +105,31 @@ export default function AppLayout() {
             </div>
           )}
 
-          {/* Sidebar Layout */}
-          <AppSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+          {/* Sidebar Layout (Desktop) */}
+          <div className="hidden md:block">
+            <AppSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+          </div>
 
           {/* Main Content */}
           <main
             className={cn(
-              "transition-all duration-200 ease-in-out",
-              isCollapsed ? "ml-[52px]" : "ml-[220px]"
+              "transition-all duration-200 ease-in-out pb-20 md:pb-10",
+              isCollapsed ? "md:ml-[52px]" : "md:ml-[220px]"
             )}
-            style={{ padding: '16px 24px 40px 50px', minHeight: '100vh' }}
+            style={{ padding: '16px 24px 40px 24px', minHeight: '100vh' }}
           >
             <Outlet />
           </main>
+
+          {/* Mobile Bottom Navigation */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[var(--border-light)] z-50 flex items-center justify-around h-16 px-2 pb-safe">
+            <MobileNavLink to="/" icon={<LayoutDashboard size={20} />} label="Dash" />
+            <MobileNavLink to="/properties" icon={<Building2 size={20} />} label="Notizie" />
+            <MobileNavLink to="/contacts" icon={<Users size={20} />} label="Buyers" />
+            <MobileNavLink to="/activities" icon={<CalendarDays size={20} />} label="Cal" />
+            <MobileNavLink to="/chat" icon={<MessageSquare size={20} />} label="Chat" />
+            <MobileNavLink to="/profile" icon={<Settings size={20} />} label="Menu" />
+          </div>
         </div>
       </div>
     </>

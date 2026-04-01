@@ -27,7 +27,12 @@ export const NotiziePage: React.FC = () => {
   const [isFunnelOpen, setIsFunnelOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [initialStatus, setInitialStatus] = useState<NotiziaStatus | undefined>();
-  const [selectedNotizia, setSelectedNotizia] = useState<Notizia | null>(null);
+  const [selectedNotiziaId, setSelectedNotiziaId] = useState<string | null>(null);
+
+  const selectedNotizia = useMemo(() => {
+    if (!selectedNotiziaId) return null;
+    return notizie.find(n => n.id === selectedNotiziaId) || null;
+  }, [notizie, selectedNotiziaId]);
 
   useEffect(() => {
     const handler = () => setIsAddDialogOpen(true);
@@ -52,7 +57,7 @@ export const NotiziePage: React.FC = () => {
   }, [notizie, searchQuery]);
 
   const handleNotiziaClick = (notizia: Notizia) => {
-    setSelectedNotizia(notizia);
+    setSelectedNotiziaId(notizia.id);
     setDetailOpen(true);
   };
 
@@ -78,13 +83,13 @@ export const NotiziePage: React.FC = () => {
       </div>
 
       {/* Controls Row */}
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3 md:gap-4">
         {/* View Toggle */}
-        <div className="flex bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)]">
+        <div className="flex bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)] w-full sm:w-auto overflow-x-auto hide-scrollbar">
           <button
             onClick={() => toggleViewMode('kanban')}
             className={cn(
-              "flex items-center gap-2 px-4 py-1.5 rounded-full font-outfit text-[13px] transition-all",
+              "flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-full font-outfit text-[13px] transition-all whitespace-nowrap",
               viewMode === 'kanban' ? "bg-[#1A1A18] text-white shadow-sm" : "text-[var(--text-secondary)] hover:bg-black/5"
             )}
           >
@@ -94,7 +99,7 @@ export const NotiziePage: React.FC = () => {
           <button
             onClick={() => toggleViewMode('sheet')}
             className={cn(
-              "flex items-center gap-2 px-4 py-1.5 rounded-full font-outfit text-[13px] transition-all",
+              "flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-full font-outfit text-[13px] transition-all whitespace-nowrap",
               viewMode === 'sheet' ? "bg-[#1A1A18] text-white shadow-sm" : "text-[var(--text-secondary)] hover:bg-black/5"
             )}
           >
@@ -104,7 +109,7 @@ export const NotiziePage: React.FC = () => {
         </div>
 
         {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-md">
+        <div className="relative flex-1 min-w-[200px] max-w-full md:max-w-md order-3 sm:order-none w-full sm:w-auto">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input
             type="text"
@@ -115,8 +120,8 @@ export const NotiziePage: React.FC = () => {
           />
         </div>
 
-        {/* Undo/Redo */}
-        <div className="flex items-center gap-1">
+        {/* Actions Group */}
+        <div className="flex items-center gap-1 ml-auto sm:ml-0 order-2 sm:order-none">
           <button
             onClick={() => setIsStatsOpen(true)}
             className="p-2 rounded-full text-[var(--text-primary)] hover:bg-black/5 transition-colors"
@@ -138,48 +143,53 @@ export const NotiziePage: React.FC = () => {
           >
             <Upload size={18} />
           </button>
-          <div className="w-px h-4 bg-[var(--border-light)] mx-1" />
-          <button
-            onClick={undo}
-            disabled={!canUndo}
-            className={cn(
-              "p-2 rounded-full transition-colors",
-              canUndo ? "text-[var(--text-primary)] hover:bg-black/5" : "text-[var(--text-muted)] opacity-50 cursor-not-allowed"
-            )}
-          >
-            <Undo2 size={18} />
-          </button>
-          <button
-            onClick={redo}
-            disabled={!canRedo}
-            className={cn(
-              "p-2 rounded-full transition-colors",
-              canRedo ? "text-[var(--text-primary)] hover:bg-black/5" : "text-[var(--text-muted)] opacity-50 cursor-not-allowed"
-            )}
-          >
-            <Redo2 size={18} />
-          </button>
-        </div>
+          <div className="w-px h-4 bg-[var(--border-light)] mx-1 hidden sm:block" />
+          
+          {/* Undo/Redo */}
+          <div className="hidden sm:flex items-center gap-1">
+            <button
+              onClick={undo}
+              disabled={!canUndo}
+              className={cn(
+                "p-2 rounded-full transition-colors",
+                canUndo ? "text-[var(--text-primary)] hover:bg-black/5" : "text-[var(--text-muted)] opacity-50 cursor-not-allowed"
+              )}
+            >
+              <Undo2 size={18} />
+            </button>
+            <button
+              onClick={redo}
+              disabled={!canRedo}
+              className={cn(
+                "p-2 rounded-full transition-colors",
+                canRedo ? "text-[var(--text-primary)] hover:bg-black/5" : "text-[var(--text-muted)] opacity-50 cursor-not-allowed"
+              )}
+            >
+              <Redo2 size={18} />
+            </button>
+          </div>
 
-        {/* Export & Add */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-outfit text-[13px] text-[var(--text-primary)] hover:bg-black/5 transition-colors"
-          >
-            <Download size={16} />
-            Esporta
-          </button>
-          <button
-            onClick={() => {
-              setInitialStatus('new');
-              setIsAddDialogOpen(true);
-            }}
-            className="flex items-center gap-2 px-5 py-2 bg-[#1A1A18] text-white rounded-full font-outfit font-medium text-[13px] hover:bg-black transition-all shadow-sm"
-          >
-            <Plus size={16} />
-            Aggiungi Notizia
-          </button>
+          {/* Export & Add */}
+          <div className="flex items-center gap-2 ml-1">
+            <button
+              onClick={handleExport}
+              className="hidden sm:flex items-center justify-center w-[38px] h-[38px] rounded-full bg-white border border-[var(--border-light)] text-[var(--text-secondary)] hover:bg-black/5 transition-colors"
+              title="Esporta"
+            >
+              <Download size={18} />
+            </button>
+            <button
+              onClick={() => {
+                setInitialStatus('new');
+                setIsAddDialogOpen(true);
+              }}
+              className="flex items-center gap-2 bg-[#1A1A18] text-white px-4 h-[38px] rounded-full font-outfit text-[13px] font-medium hover:bg-black/80 transition-colors whitespace-nowrap"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline">Aggiungi Notizia</span>
+              <span className="sm:hidden">Nuova</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -228,7 +238,7 @@ export const NotiziePage: React.FC = () => {
           notizia={selectedNotizia}
           open={detailOpen}
           onOpenChange={setDetailOpen}
-          onUpdate={(id, updates) => updateNotizia({ id, ...updates, silent: true })}
+          onUpdate={(id, updates) => updateNotizia({ id, ...updates })}
           onDelete={(id) => { deleteNotizia(id); setDetailOpen(false); }}
         />
       )}

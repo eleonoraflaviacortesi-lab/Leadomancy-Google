@@ -60,6 +60,7 @@ export interface Cliente {
   uso: string;
   interesse_affitto: string;
   portale: string;
+  tally_submission_id?: string;
   proprieta_visitata: string;
   ref_number: string;
   contattato_da: string;

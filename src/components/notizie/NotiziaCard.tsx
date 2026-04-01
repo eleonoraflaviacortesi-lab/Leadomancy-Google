@@ -108,33 +108,37 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
     setTimeout(() => setShowCommentSuccess(false), 1500);
   };
 
+  const lastComment = notizia.comments && notizia.comments.length > 0 
+    ? notizia.comments[notizia.comments.length - 1] 
+    : null;
+
   const dark = isDarkColor(notizia.card_color);
 
   return (
     <>
       <motion.div
-        layout
         initial={false}
-        animate={{
-          rotate: isDragging ? 1 : 0,
-          scale: isDragging ? 1.02 : 1,
-          y: isDragging ? 0 : 0,
+        animate={isDragging ? {} : {
+          rotate: 0,
+          scale: 1,
+          y: 0,
         }}
         whileHover={!isDragging && !isOnShot ? { y: -2, boxShadow: 'var(--shadow-card-hover)' } : {}}
         onClick={() => onClick(notizia)}
         onContextMenu={handleContextMenu}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
         className={cn(
-          "group relative flex flex-col bg-white border border-[var(--border-light)] rounded-[14px] cursor-pointer transition-all duration-150 ease-in-out px-4 pt-3.5 pb-3",
-          isDragging && "shadow-[0_12px_40px_rgba(0,0,0,0.16)] z-50",
-          !isDragging && "shadow-[var(--shadow-card)]"
+          "group relative flex flex-col border border-[var(--border-light)] rounded-[14px] cursor-pointer px-4 pt-3.5 pb-3",
+          isDragging ? "shadow-[0_12px_40px_rgba(0,0,0,0.16)] z-50" : "shadow-[var(--shadow-card)] transition-all duration-150 ease-in-out"
         )}
+        style={{ backgroundColor: notizia.card_color || 'white' }}
       >
         {/* ROW 1: type label + menu */}
         <div className="flex items-center justify-between mb-2">
-          <div className="bg-[var(--bg-subtle)] text-[var(--text-muted)] font-outfit font-semibold text-[9px] uppercase tracking-[0.1em] px-[7px] py-[2px] rounded-full">
-            {notizia.type || 'NOTIZIA'}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[14px]">{notizia.emoji || '🏠'}</span>
+            <div className="bg-black/5 text-[var(--text-muted)] font-outfit font-semibold text-[9px] uppercase tracking-[0.1em] px-[7px] py-[2px] rounded-full">
+              {notizia.type || 'NOTIZIA'}
+            </div>
           </div>
           <button className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
             <MoreHorizontal size={16} />
@@ -146,27 +150,34 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
           {notizia.name}
         </h3>
 
-        {/* ROW 3: thin progress bar */}
-        <div className="h-[3px] w-full bg-[var(--bg-subtle)] rounded-full overflow-hidden my-2.5">
-          <div 
-            className="h-full rounded-full transition-all duration-500" 
-            style={{ 
-              backgroundColor: statusColor, 
-              width: `${(notizia.rating || 0) * 20}%` 
-            }} 
-          />
+        {/* ROW 3: dot rating */}
+        <div className="flex gap-1.5 my-2.5">
+          {[1, 2, 3, 4, 5].map((dot) => (
+            <button
+              key={dot}
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdate?.(notizia.id, { rating: dot === notizia.rating ? dot - 1 : dot });
+              }}
+              className={cn(
+                "w-2 h-2 rounded-full transition-all",
+                dot <= (notizia.rating || 0) ? "bg-[var(--text-primary)]" : "bg-black/10 hover:bg-black/20"
+              )}
+            />
+          ))}
         </div>
 
         {/* ROW 4: bottom row */}
         <div className="flex items-center justify-between mt-auto pt-1">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[10px] font-outfit font-semibold flex-shrink-0">
-              {notizia.agent_name?.split(' ').map(n => n[0]).join('') || 'A'}
+          {lastComment ? (
+            <div className="flex items-center gap-1.5 overflow-hidden">
+              <span className="text-[10px] text-[var(--text-muted)] truncate italic">
+                "{lastComment.text}"
+              </span>
             </div>
-            <span className="font-outfit font-medium text-[11px] text-[var(--text-secondary)] truncate">
-              {notizia.agent_name || 'Agente'}
-            </span>
-          </div>
+          ) : (
+            <div />
+          )}
           <span className="font-outfit font-normal text-[11px] text-[var(--text-muted)] flex-shrink-0">
             {new Date(notizia.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
           </span>
@@ -185,9 +196,9 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed z-[110] bg-white border border-[#E4E3DE] rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,0.15),0_4px_16px_rgba(0,0,0,0.08)] p-4 min-w-[260px] max-w-[300px] max-h-[80vh] overflow-y-auto flex flex-col gap-6"
+              className="fixed z-[110] bg-white border border-[#E4E3DE] rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,0.15),0_4px_16px_rgba(0,0,0,0.08)] p-4 min-w-[260px] w-[90vw] sm:w-auto sm:max-w-[300px] max-h-[80vh] overflow-y-auto flex flex-col gap-6"
               style={{
-                left: Math.min(menuPos.x, window.innerWidth - 300),
+                left: window.innerWidth < 640 ? '5vw' : Math.min(menuPos.x, window.innerWidth - 300),
                 top: Math.min(menuPos.y, window.innerHeight - 500)
               }}
             >

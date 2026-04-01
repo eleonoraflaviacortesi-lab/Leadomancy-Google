@@ -75,27 +75,27 @@ export const AddNotiziaDialog: React.FC<AddNotiziaDialogProps> = ({ isOpen, onCl
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.97, opacity: 0, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-lg bg-white rounded-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.15)] p-8 max-h-[90vh] overflow-y-auto"
+            className="relative w-full max-w-lg bg-white rounded-[24px] shadow-[0_20px_60px_rgba(0,0,0,0.15)] p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
           >
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-6 sm:mb-8">
               <div className="flex flex-col gap-1">
                 <span className="font-outfit text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">
                   Nuovo Inserimento
                 </span>
-                <h2 className="font-outfit font-bold text-[22px] tracking-[-0.5px] text-[var(--text-primary)]">
+                <h2 className="font-outfit font-bold text-[20px] sm:text-[22px] tracking-[-0.5px] text-[var(--text-primary)]">
                   Aggiungi Notizia
                 </h2>
               </div>
               <button 
                 onClick={onClose} 
-                className="w-9 h-9 flex items-center justify-center bg-[var(--bg-subtle)] hover:bg-[var(--border-light)] rounded-full transition-colors"
+                className="w-9 h-9 flex items-center justify-center bg-[var(--bg-subtle)] hover:bg-[var(--border-light)] rounded-full transition-colors shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5 sm:gap-6">
               {/* Nome */}
               <div className="flex flex-col gap-2">
                 <label className="font-outfit font-bold text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">Nome Notizia</label>
@@ -125,7 +125,7 @@ export const AddNotiziaDialog: React.FC<AddNotiziaDialogProps> = ({ isOpen, onCl
               </div>
 
               {/* Zona + Telefono */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="font-outfit font-bold text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">Zona</label>
                   <input
@@ -147,7 +147,7 @@ export const AddNotiziaDialog: React.FC<AddNotiziaDialogProps> = ({ isOpen, onCl
               </div>
 
               {/* Tipologia + Stato */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="font-outfit font-bold text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">Tipologia</label>
                   <select
@@ -175,7 +175,7 @@ export const AddNotiziaDialog: React.FC<AddNotiziaDialogProps> = ({ isOpen, onCl
               </div>
 
               {/* Prezzi */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="font-outfit font-bold text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">Prezzo Richiesto</label>
                   <div className="relative">

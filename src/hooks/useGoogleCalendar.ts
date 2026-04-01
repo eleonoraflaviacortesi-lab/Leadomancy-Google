@@ -166,6 +166,28 @@ export function useGoogleCalendar() {
     fetchEventsForIds(visibleCalendarIds, calendarsRef.current);
   }, [fetchEventsForIds, visibleCalendarIds]);
 
+  const updateEvent = useCallback(async (calendarId: string, eventId: string, updates: { start: Date; end: Date }) => {
+    if (!isAuthenticated) return;
+    const ready = await waitForCalendarApi();
+    if (!ready) return;
+
+    try {
+      await (gapi.client as any).calendar.events.patch({
+        calendarId,
+        eventId,
+        resource: {
+          start: { dateTime: updates.start.toISOString() },
+          end: { dateTime: updates.end.toISOString() },
+        },
+      });
+      refreshEvents();
+      return true;
+    } catch (err) {
+      console.error("Error updating Google Calendar event:", err);
+      throw err;
+    }
+  }, [isAuthenticated, refreshEvents]);
+
   return {
     calendars,
     visibleCalendarIds,
@@ -176,5 +198,6 @@ export function useGoogleCalendar() {
     toggleCalendar,
     toggleAll,
     refreshEvents,
+    updateEvent,
   };
 }

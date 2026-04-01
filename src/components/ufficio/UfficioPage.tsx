@@ -140,26 +140,26 @@ export const UfficioPage: React.FC = () => {
   }, [allData, user, isAdmin]);
 
   return (
-    <div className="flex flex-col gap-4 pb-6 w-full">
+    <div className="flex flex-col gap-4 pb-6 w-full px-4 sm:px-0">
       {/* Header Section */}
       <div className="flex flex-col">
-        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
+        <p className="text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-4 sm:mt-6">
           Leadomancy / Ufficio
         </p>
-        <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
+        <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
           Ufficio {user?.sede}
         </h1>
       </div>
 
       {/* Sub-tabs & Period Selector */}
-      <div className="flex items-center justify-between">
-        <div className="bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)] flex w-fit">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)] flex w-full sm:w-fit overflow-x-auto hide-scrollbar">
           {(['UFFICIO', 'RIUNIONI', 'ANALISI'] as SubTab[]).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={cn(
-                "px-6 py-2 rounded-full font-outfit text-[12px] font-bold uppercase transition-all",
+                "flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-full font-outfit text-[12px] font-bold uppercase transition-all whitespace-nowrap",
                 activeTab === tab ? "bg-white text-black shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               )}
             >
@@ -169,13 +169,13 @@ export const UfficioPage: React.FC = () => {
         </div>
 
         {activeTab === 'UFFICIO' && (
-          <div className="bg-white p-1 rounded-full border border-[var(--border-light)] flex shadow-sm">
+          <div className="bg-white p-1 rounded-full border border-[var(--border-light)] flex shadow-sm w-full sm:w-fit overflow-x-auto hide-scrollbar">
             {(['week', 'month', 'year'] as const).map(p => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
                 className={cn(
-                  "px-4 py-1.5 rounded-full font-outfit text-[11px] font-semibold uppercase transition-all",
+                  "flex-1 sm:flex-none px-4 py-1.5 rounded-full font-outfit text-[11px] font-semibold uppercase transition-all whitespace-nowrap",
                   period === p ? "bg-[var(--text-primary)] text-white" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                 )}
               >
@@ -206,27 +206,27 @@ export const UfficioPage: React.FC = () => {
             exit={{ opacity: 0, y: -10 }}
             className="bg-white border border-[var(--border-light)] rounded-[20px] p-8 shadow-sm"
           >
-            <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-6 md:gap-8">
               {/* Week Navigator */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3 md:gap-4 w-full sm:w-auto justify-between sm:justify-start">
                   <button 
                     onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}
-                    className="p-2 rounded-full hover:bg-[var(--bg-subtle)] transition-colors"
+                    className="p-2 rounded-full hover:bg-[var(--bg-subtle)] transition-colors shrink-0"
                   >
                     <ChevronLeft size={20} />
                   </button>
-                  <div className="flex flex-col">
-                    <span className="font-outfit font-bold text-[16px]">
+                  <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
+                    <span className="font-outfit font-bold text-[14px] md:text-[16px]">
                       Settimana {format(weekStart, 'd')} - {format(weekEnd, 'd MMMM yyyy', { locale: it })}
                     </span>
-                    <span className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">
+                    <span className="text-[10px] md:text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">
                       {isSameWeek(new Date(), currentWeek, { weekStartsOn: 1 }) ? "Settimana Corrente" : "Archivio Riunioni"}
                     </span>
                   </div>
                   <button 
                     onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}
-                    className="p-2 rounded-full hover:bg-[var(--bg-subtle)] transition-colors"
+                    className="p-2 rounded-full hover:bg-[var(--bg-subtle)] transition-colors shrink-0"
                   >
                     <ChevronRight size={20} />
                   </button>
@@ -235,7 +235,7 @@ export const UfficioPage: React.FC = () => {
                 {isAdmin && !isEditing && (
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="bg-black text-white px-5 py-2.5 rounded-full font-outfit text-[12px] font-bold uppercase tracking-wider flex items-center gap-2 hover:bg-black/80 transition-all"
+                    className="w-full sm:w-auto bg-black text-white px-5 py-2.5 rounded-full font-outfit text-[12px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-black/80 transition-all"
                   >
                     {meeting ? <Edit2 size={14} /> : <Plus size={14} />}
                     {meeting ? "Modifica" : "Nuova Riunione"}
@@ -244,7 +244,7 @@ export const UfficioPage: React.FC = () => {
               </div>
 
               {/* Content */}
-              <div className="min-h-[400px] relative">
+              <div className="min-h-[300px] md:min-h-[400px] relative">
                 {isLoadingMeeting ? (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Loader2 className="animate-spin text-[var(--text-muted)]" />
@@ -255,19 +255,19 @@ export const UfficioPage: React.FC = () => {
                       value={meetingContent}
                       onChange={(e) => setMeetingContent(e.target.value)}
                       placeholder="Scrivi qui i punti della riunione, obiettivi della settimana e note..."
-                      className="w-full min-h-[400px] bg-[var(--bg-subtle)] border-0 rounded-[14px] p-6 font-outfit text-[14px] leading-relaxed outline-none focus:ring-1 focus:ring-black/10 resize-none"
+                      className="w-full min-h-[300px] md:min-h-[400px] bg-[var(--bg-subtle)] border-0 rounded-[14px] p-4 md:p-6 font-outfit text-[14px] leading-relaxed outline-none focus:ring-1 focus:ring-black/10 resize-none"
                     />
-                    <div className="flex justify-end gap-3">
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
                       <button
                         onClick={() => setIsEditing(false)}
-                        className="px-6 py-2.5 rounded-full font-outfit text-[12px] font-bold uppercase text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] transition-all"
+                        className="w-full sm:w-auto px-6 py-2.5 rounded-full font-outfit text-[12px] font-bold uppercase text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] transition-all"
                       >
                         Annulla
                       </button>
                       <button
                         onClick={handleSaveMeeting}
                         disabled={isSaving}
-                        className="bg-black text-white px-8 py-2.5 rounded-full font-outfit text-[12px] font-bold uppercase tracking-wider flex items-center gap-2 hover:bg-black/80 transition-all disabled:opacity-50"
+                        className="w-full sm:w-auto bg-black text-white px-8 py-2.5 rounded-full font-outfit text-[12px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-black/80 transition-all disabled:opacity-50"
                       >
                         {isSaving ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
                         Salva Riunione
@@ -275,13 +275,13 @@ export const UfficioPage: React.FC = () => {
                     </div>
                   </div>
                 ) : meeting ? (
-                  <div className="whitespace-pre-line font-outfit text-[15px] leading-relaxed text-[var(--text-primary)] bg-[var(--bg-subtle)] p-8 rounded-[14px]">
+                  <div className="whitespace-pre-line font-outfit text-[14px] md:text-[15px] leading-relaxed text-[var(--text-primary)] bg-[var(--bg-subtle)] p-4 md:p-8 rounded-[14px]">
                     {meeting.content}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-[var(--border-light)] rounded-[14px]">
-                    <Calendar size={48} className="text-[var(--border-medium)] mb-4" />
-                    <p className="font-outfit text-[14px] text-[var(--text-muted)]">Nessun verbale per questa settimana</p>
+                  <div className="flex flex-col items-center justify-center py-12 md:py-20 border-2 border-dashed border-[var(--border-light)] rounded-[14px]">
+                    <Calendar size={40} className="text-[var(--border-medium)] mb-4 md:w-12 md:h-12" />
+                    <p className="font-outfit text-[13px] md:text-[14px] text-[var(--text-muted)] text-center px-4">Nessun verbale per questa settimana</p>
                     {isAdmin && (
                       <button
                         onClick={() => setIsEditing(true)}
@@ -305,36 +305,36 @@ export const UfficioPage: React.FC = () => {
             exit={{ opacity: 0, y: -10 }}
             className="flex flex-col gap-6"
           >
-            <div className="bg-white border border-[var(--border-light)] rounded-[20px] p-8 shadow-sm">
-              <div className="flex items-center justify-between mb-8">
+            <div className="bg-white border border-[var(--border-light)] rounded-[20px] p-6 md:p-8 shadow-sm">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-8">
                 <div className="flex flex-col gap-1">
-                  <h3 className="font-outfit font-bold text-[18px]">Trend di Produzione</h3>
-                  <p className="text-[13px] text-[var(--text-muted)]">Andamento degli ultimi 6 mesi</p>
+                  <h3 className="font-outfit font-bold text-[16px] md:text-[18px]">Trend di Produzione</h3>
+                  <p className="text-[12px] md:text-[13px] text-[var(--text-muted)]">Andamento degli ultimi 6 mesi</p>
                 </div>
                 <select 
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="bg-[var(--bg-subtle)] border-0 rounded-full px-4 py-2 text-[12px] font-bold font-outfit outline-none"
+                  className="w-full sm:w-auto bg-[var(--bg-subtle)] border-0 rounded-full px-4 py-2 text-[12px] font-bold font-outfit outline-none"
                 >
                   <option value={format(new Date(), 'yyyy-MM')}>Mese Corrente</option>
                   {/* More options could be added here */}
                 </select>
               </div>
 
-              <div className="h-[400px] w-full">
+              <div className="h-[300px] md:h-[400px] w-full -ml-4 md:ml-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <BarChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
                     <XAxis 
                       dataKey="month" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fontSize: 11, fontFamily: 'Outfit', fill: 'var(--text-muted)' }} 
+                      tick={{ fontSize: 10, fontFamily: 'Outfit', fill: 'var(--text-muted)' }} 
                     />
                     <YAxis 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fontSize: 11, fontFamily: 'Outfit', fill: 'var(--text-muted)' }} 
+                      tick={{ fontSize: 10, fontFamily: 'Outfit', fill: 'var(--text-muted)' }} 
                     />
                     <Tooltip 
                       contentStyle={{ 
@@ -349,43 +349,43 @@ export const UfficioPage: React.FC = () => {
                       verticalAlign="top" 
                       align="right" 
                       iconType="circle"
-                      wrapperStyle={{ paddingBottom: '20px', fontSize: '11px', fontFamily: 'Outfit' }}
+                      wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontFamily: 'Outfit' }}
                     />
-                    <Bar dataKey="Contatti" fill="#1A1A18" radius={[4, 4, 0, 0]} barSize={30} />
-                    <Bar dataKey="Notizie" fill="#A8A29E" radius={[4, 4, 0, 0]} barSize={30} />
-                    <Bar dataKey="Vendite" fill="#F5C842" radius={[4, 4, 0, 0]} barSize={30} />
+                    <Bar dataKey="Contatti" fill="#1A1A18" radius={[4, 4, 0, 0]} barSize={20} />
+                    <Bar dataKey="Notizie" fill="#A8A29E" radius={[4, 4, 0, 0]} barSize={20} />
+                    <Bar dataKey="Vendite" fill="#F5C842" radius={[4, 4, 0, 0]} barSize={20} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
             {/* Extra Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white border border-[var(--border-light)] rounded-[20px] p-6 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-[#F0FDF4] flex items-center justify-center text-[#166534]">
-                  <TrendingUp size={24} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+              <div className="bg-white border border-[var(--border-light)] rounded-[20px] p-5 md:p-6 flex items-center gap-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#F0FDF4] flex items-center justify-center text-[#166534] shrink-0">
+                  <TrendingUp size={20} className="md:w-6 md:h-6" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Conversione</span>
-                  <span className="text-[20px] font-bold font-outfit">12.5%</span>
+                  <span className="text-[10px] md:text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Conversione</span>
+                  <span className="text-[18px] md:text-[20px] font-bold font-outfit">12.5%</span>
                 </div>
               </div>
-              <div className="bg-white border border-[var(--border-light)] rounded-[20px] p-6 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-[#FEFCE8] flex items-center justify-center text-[#854D0E]">
-                  <Target size={24} />
+              <div className="bg-white border border-[var(--border-light)] rounded-[20px] p-5 md:p-6 flex items-center gap-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#FEFCE8] flex items-center justify-center text-[#854D0E] shrink-0">
+                  <Target size={20} className="md:w-6 md:h-6" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Obiettivo Sede</span>
-                  <span className="text-[20px] font-bold font-outfit">84%</span>
+                  <span className="text-[10px] md:text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Obiettivo Sede</span>
+                  <span className="text-[18px] md:text-[20px] font-bold font-outfit">84%</span>
                 </div>
               </div>
-              <div className="bg-white border border-[var(--border-light)] rounded-[20px] p-6 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-[#F5F3FF] flex items-center justify-center text-[#5B21B6]">
-                  <Award size={24} />
+              <div className="bg-white border border-[var(--border-light)] rounded-[20px] p-5 md:p-6 flex items-center gap-4 sm:col-span-2 md:col-span-1">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#F5F3FF] flex items-center justify-center text-[#5B21B6] shrink-0">
+                  <Award size={20} className="md:w-6 md:h-6" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Top Agent</span>
-                  <span className="text-[20px] font-bold font-outfit">M. Rossi</span>
+                  <span className="text-[10px] md:text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Top Agent</span>
+                  <span className="text-[18px] md:text-[20px] font-bold font-outfit">M. Rossi</span>
                 </div>
               </div>
             </div>

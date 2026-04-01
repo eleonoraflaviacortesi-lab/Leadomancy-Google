@@ -137,13 +137,13 @@ export const OfficeChatPage: React.FC = () => {
   const messageGroups = groupMessagesByDate(messages);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-90px)]">
+    <div className="flex flex-col h-full md:h-[calc(100vh-90px)] px-4 sm:px-0">
       {/* Header Section */}
-      <div className="flex flex-col">
-        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
+      <div className="flex flex-col mb-4">
+        <p className="text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-4 sm:mt-6">
           Leadomancy / Chat
         </p>
-        <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
+        <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
           Chat di Sede
         </h1>
       </div>
@@ -171,7 +171,7 @@ export const OfficeChatPage: React.FC = () => {
                   <div 
                     key={msg.id} 
                     className={cn(
-                      "flex flex-col max-w-[75%]",
+                      "flex flex-col max-w-[85%] sm:max-w-[75%]",
                       isOwn ? "self-end items-end" : "self-start items-start"
                     )}
                   >
@@ -254,9 +254,9 @@ export const OfficeChatPage: React.FC = () => {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-white border-t border-[var(--border-light)]">
-        <div className="max-w-4xl mx-auto relative">
-          <div className="flex items-center gap-3 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[24px] p-2 pl-4 focus-within:ring-1 focus-within:ring-black/5 transition-all">
+      <div className="p-3 md:p-4 bg-white border-t border-[var(--border-light)] mt-auto -mx-4 sm:mx-0">
+        <div className="max-w-4xl mx-auto relative px-4 sm:px-0">
+          <div className="flex items-center gap-2 md:gap-3 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[24px] p-1.5 md:p-2 pl-3 md:pl-4 focus-within:ring-1 focus-within:ring-black/5 transition-all">
             <input 
               type="text"
               value={inputValue}
@@ -268,19 +268,19 @@ export const OfficeChatPage: React.FC = () => {
                 }
               }}
               placeholder="Scrivi un messaggio..."
-              className="flex-1 bg-transparent border-0 outline-none font-outfit text-[14px] py-1"
+              className="flex-1 bg-transparent border-0 outline-none font-outfit text-[14px] py-1 min-w-0"
             />
             
-            <div className="flex items-center gap-1 pr-1">
-              <button className="p-2 rounded-full hover:bg-[var(--border-light)] text-[var(--text-muted)] transition-colors">
+            <div className="flex items-center gap-1 pr-1 shrink-0">
+              <button className="p-1.5 md:p-2 rounded-full hover:bg-[var(--border-light)] text-[var(--text-muted)] transition-colors hidden sm:block">
                 <Smile size={20} />
               </button>
               <button 
                 onClick={handleSend}
                 disabled={!inputValue.trim() || sendMessageMutation.isPending}
-                className="w-9 h-9 bg-black text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-all disabled:opacity-30"
+                className="w-8 h-8 md:w-9 md:h-9 bg-black text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-all disabled:opacity-30"
               >
-                <SendHorizontal size={18} />
+                <SendHorizontal size={16} className="md:w-[18px] md:h-[18px]" />
               </button>
             </div>
           </div>

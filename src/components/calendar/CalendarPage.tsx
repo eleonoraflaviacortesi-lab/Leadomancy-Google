@@ -105,7 +105,8 @@ export const CalendarPage: React.FC = () => {
     hasAttemptedFetch,
     toggleCalendar,
     toggleAll,
-    error: googleError
+    error: googleError,
+    updateEvent: updateGoogleEvent
   } = useGoogleCalendar();
   const { clienti } = useClienti();
   const { notizie } = useNotizie();
@@ -265,10 +266,20 @@ export const CalendarPage: React.FC = () => {
 
   const handleEventDrop = async (eventId: string, newStart: Date, newEnd: Date) => {
     const event = allEvents.find(e => e.id === eventId);
-    if (!event || event.type !== 'appointment') {
-      if (event?.type === 'google_calendar') {
-        toast.error("Gli eventi di Google Calendar possono essere modificati solo su Google");
+    if (!event) return;
+
+    if (event.type === 'google_calendar') {
+      try {
+        const calendarId = event.originalData.calendarId || 'primary';
+        await updateGoogleEvent(calendarId, eventId, { start: newStart, end: newEnd });
+        toast.success("Evento Google aggiornato");
+      } catch (error) {
+        toast.error("Errore durante l'aggiornamento dell'evento Google");
       }
+      return;
+    }
+
+    if (event.type !== 'appointment') {
       return;
     }
 
@@ -302,8 +313,8 @@ export const CalendarPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex flex-col border-b border-[var(--border-light)] pb-3">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col border-b border-[var(--border-light)] pb-3 gap-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex flex-col">
             <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
               Leadomancy / Attività
@@ -313,30 +324,30 @@ export const CalendarPage: React.FC = () => {
             </h1>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
             {isGoogleLoading && (
               <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-full border border-blue-100 animate-pulse">
                 <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce" />
-                <span className="text-[10px] font-outfit font-bold uppercase tracking-wider">Sincronizzazione...</span>
+                <span className="text-[10px] font-outfit font-bold uppercase tracking-wider hidden sm:inline">Sincronizzazione...</span>
               </div>
             )}
             <div className="flex items-center bg-[var(--bg-subtle)] rounded-full p-1 border border-[var(--border-light)]">
               <button 
                 onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                 className={cn(
-                  "p-1.5 rounded-full transition-all flex items-center gap-2 px-3",
+                  "p-1.5 rounded-full transition-all flex items-center gap-2 px-2 sm:px-3",
                   !isSidebarCollapsed ? "bg-[#1A1A18] text-white shadow-sm" : "hover:bg-black/5 text-[var(--text-secondary)]"
                 )}
                 title={isSidebarCollapsed ? "Mostra Calendari" : "Nascondi Calendari"}
               >
                 <CalendarIcon size={16} />
-                <span className="text-[12px] font-outfit font-bold uppercase tracking-tight">Calendari</span>
+                <span className="text-[12px] font-outfit font-bold uppercase tracking-tight hidden sm:inline">Calendari</span>
               </button>
               <div className="w-px h-4 bg-[var(--border-light)] mx-1" />
               <button onClick={handlePrev} className="p-1.5 hover:bg-black/5 rounded-full transition-colors">
                 <ChevronLeft size={18} />
               </button>
-              <button onClick={handleToday} className="px-3 py-1 text-[12px] font-outfit font-medium hover:bg-black/5 rounded-full transition-colors">
+              <button onClick={handleToday} className="px-2 sm:px-3 py-1 text-[12px] font-outfit font-medium hover:bg-black/5 rounded-full transition-colors">
                 Oggi
               </button>
               <button onClick={handleNext} className="p-1.5 hover:bg-black/5 rounded-full transition-colors">
@@ -344,13 +355,13 @@ export const CalendarPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="flex bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)]">
+            <div className="flex bg-[var(--bg-subtle)] p-1 rounded-full border border-[var(--border-light)] overflow-x-auto hide-scrollbar">
               {(['day', '3days', 'week', 'month'] as ViewMode[]).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
                   className={cn(
-                    "px-3 py-1 rounded-full font-outfit text-[12px] transition-all uppercase",
+                    "px-3 py-1 rounded-full font-outfit text-[12px] transition-all uppercase whitespace-nowrap",
                     viewMode === mode ? "bg-[#1A1A18] text-white shadow-sm" : "text-[var(--text-secondary)] hover:bg-black/5"
                   )}
                 >
@@ -359,27 +370,31 @@ export const CalendarPage: React.FC = () => {
               ))}
             </div>
 
-            <button
-              onClick={() => {
-                setDefaultType('task');
-                setIsAddDialogOpen(true);
-              }}
-              className="flex items-center gap-2 px-5 py-2 bg-[var(--bg-subtle)] text-[var(--text-primary)] rounded-full font-outfit font-medium text-[13px] hover:bg-black/5 transition-all shadow-sm border border-[var(--border-light)]"
-            >
-              <Plus size={16} />
-              <span className="hidden sm:inline">Task</span>
-            </button>
+            <div className="flex items-center gap-2 ml-auto md:ml-0">
+              <button
+                onClick={() => {
+                  setDefaultType('task');
+                  setIsAddDialogOpen(true);
+                }}
+                className="flex items-center justify-center w-[38px] h-[38px] sm:w-auto sm:h-auto sm:px-5 sm:py-2 bg-[var(--bg-subtle)] text-[var(--text-primary)] rounded-full font-outfit font-medium text-[13px] hover:bg-black/5 transition-all shadow-sm border border-[var(--border-light)]"
+                title="Nuovo Task"
+              >
+                <CheckCircle2 size={16} className="sm:mr-2" />
+                <span className="hidden sm:inline">Task</span>
+              </button>
 
-            <button
-              onClick={() => {
-                setDefaultType('visit');
-                setIsAddDialogOpen(true);
-              }}
-              className="flex items-center gap-2 px-5 py-2 bg-[#1A1A18] text-white rounded-full font-outfit font-medium text-[13px] hover:bg-black transition-all shadow-sm"
-            >
-              <Plus size={16} />
-              <span className="hidden sm:inline">Appuntamento</span>
-            </button>
+              <button
+                onClick={() => {
+                  setDefaultType('visit');
+                  setIsAddDialogOpen(true);
+                }}
+                className="flex items-center justify-center w-[38px] h-[38px] sm:w-auto sm:h-auto sm:px-5 sm:py-2 bg-[#1A1A18] text-white rounded-full font-outfit font-medium text-[13px] hover:bg-black transition-all shadow-sm"
+                title="Nuovo Appuntamento"
+              >
+                <Plus size={16} className="sm:mr-2" />
+                <span className="hidden sm:inline">Appuntamento</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -864,7 +879,7 @@ const TimeGridView: React.FC<{
                     return (
                       <div
                         key={event.id}
-                        draggable={event.type === 'appointment'}
+                        draggable={event.type === 'appointment' || event.type === 'google_calendar'}
                         onDragStart={(e) => handleDragStart(e, event.id)}
                         onDragEnd={handleDragEnd}
                         onClick={(e) => {

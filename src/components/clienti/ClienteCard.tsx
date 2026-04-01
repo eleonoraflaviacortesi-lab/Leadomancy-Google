@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { MoreHorizontal, Bell, Trash2, Plus, SendHorizontal } from "lucide-react";
+import { MoreHorizontal, Bell, Trash2, Plus, SendHorizontal, Sparkles } from "lucide-react";
 import { Cliente } from "@/src/types";
 import { CLIENTE_STATUS_CONFIG } from "./clienteFormOptions";
 import { cn, formatCurrency } from "@/src/lib/utils";
@@ -114,6 +114,12 @@ export const ClienteCard: React.FC<ClienteCardProps> = ({
     setTimeout(() => setShowCommentSuccess(false), 1500);
   };
 
+  const isTally = cliente.portale === 'TALLY' || !!cliente.tally_submission_id;
+
+  const lastComment = cliente.comments && cliente.comments.length > 0 
+    ? cliente.comments[cliente.comments.length - 1] 
+    : null;
+
   const dark = isDarkColor(cliente.card_color);
 
   return (
@@ -131,15 +137,20 @@ export const ClienteCard: React.FC<ClienteCardProps> = ({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         className={cn(
-          "group relative flex flex-col bg-white border border-[var(--border-light)] rounded-[14px] cursor-pointer transition-all duration-150 ease-in-out px-4 pt-3.5 pb-3",
+          "group relative flex flex-col border border-[var(--border-light)] rounded-[14px] cursor-pointer transition-all duration-150 ease-in-out px-4 pt-3.5 pb-3",
           isDragging && "shadow-[0_12px_40px_rgba(0,0,0,0.16)] z-50",
           !isDragging && "shadow-[var(--shadow-card)]"
         )}
+        style={{ backgroundColor: cliente.card_color || 'white' }}
       >
         {/* ROW 1: type label + menu */}
         <div className="flex items-center justify-between mb-2">
-          <div className="bg-[var(--bg-subtle)] text-[var(--text-muted)] font-outfit font-semibold text-[9px] uppercase tracking-[0.1em] px-[7px] py-[2px] rounded-full">
-            BUYER
+          <div className="flex items-center gap-1.5">
+            <span className="text-[14px]">{cliente.emoji || '🏠'}</span>
+            <div className="bg-[var(--bg-subtle)] text-[var(--text-muted)] font-outfit font-semibold text-[9px] uppercase tracking-[0.1em] px-[7px] py-[2px] rounded-full">
+              BUYER
+            </div>
+            {isTally && <Sparkles size={12} className="text-amber-500" />}
           </div>
           <button className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
             <MoreHorizontal size={16} />
@@ -151,19 +162,34 @@ export const ClienteCard: React.FC<ClienteCardProps> = ({
           {cliente.nome} {cliente.cognome}
         </h3>
 
-        {/* ROW 3: thin progress bar (Placeholder) */}
-        <div className="h-[3px] w-full bg-[var(--bg-subtle)] rounded-full overflow-hidden my-2.5">
-          <div 
-            className="h-full rounded-full transition-all duration-500" 
-            style={{ 
-              backgroundColor: statusConfig.color, 
-              width: `${(cliente.rating || 0) * 20}%` 
-            }} 
-          />
+        {/* ROW 3: dot rating */}
+        <div className="flex gap-1.5 my-2.5">
+          {[1, 2, 3, 4, 5].map((dot) => (
+            <button
+              key={dot}
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdate?.(cliente.id, { rating: dot === cliente.rating ? dot - 1 : dot });
+              }}
+              className={cn(
+                "w-2 h-2 rounded-full transition-all",
+                dot <= (cliente.rating || 0) ? "bg-[var(--text-primary)]" : "bg-black/10 hover:bg-black/20"
+              )}
+            />
+          ))}
         </div>
 
         {/* ROW 4: bottom row */}
         <div className="flex items-center justify-between mt-auto pt-1">
+          {lastComment ? (
+            <div className="flex items-center gap-1.5 overflow-hidden">
+              <span className="text-[10px] text-[var(--text-muted)] truncate italic">
+                "{lastComment.text}"
+              </span>
+            </div>
+          ) : (
+            <div />
+          )}
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-6 h-6 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[10px] font-outfit font-semibold flex-shrink-0">
               {(cliente.assigned_to && typeof cliente.assigned_to === 'string' ? cliente.assigned_to.split(' ') : []).map(n => n[0]).join('') || 'A'}
@@ -190,9 +216,9 @@ export const ClienteCard: React.FC<ClienteCardProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed z-[110] bg-white border border-[#E4E3DE] rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,0.15),0_4px_16px_rgba(0,0,0,0.08)] p-4 min-w-[260px] max-w-[300px] max-h-[80vh] overflow-y-auto flex flex-col gap-6"
+              className="fixed z-[110] bg-white border border-[#E4E3DE] rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,0.15),0_4px_16px_rgba(0,0,0,0.08)] p-4 min-w-[260px] max-w-[90vw] sm:max-w-[300px] max-h-[80vh] overflow-y-auto flex flex-col gap-6"
               style={{
-                left: Math.min(menuPos.x, window.innerWidth - 300),
+                left: Math.min(menuPos.x, window.innerWidth - (window.innerWidth < 640 ? window.innerWidth * 0.9 : 300)),
                 top: Math.min(menuPos.y, window.innerHeight - 500)
               }}
             >

@@ -285,9 +285,10 @@ export async function updateRow(sheetName: string, rowIndex: number, updates: an
     const data = [];
 
     for (const [key, value] of Object.entries(updates)) {
-      const colIndex = headers.indexOf(key);
+      // Case-insensitive header matching
+      const colIndex = headers.findIndex(h => h.toLowerCase() === key.toLowerCase());
       if (colIndex === -1) {
-        console.warn(`[GoogleSheets] Key '${key}' not found in headers, skipping update for this field.`);
+        console.warn(`[GoogleSheets] Key '${key}' not found in headers (case-insensitive), skipping update for this field.`);
         continue;
       }
 
@@ -369,7 +370,7 @@ export async function findRowIndex(sheetName: string, id: string | number): Prom
 
     // Get headers to find the correct column for 'id'
     const headers = await getHeaders(sheetName);
-    const idColIndex = headers.indexOf('id');
+    const idColIndex = headers.findIndex(h => h.toLowerCase() === 'id');
     const colLetter = idColIndex >= 0 ? colIndexToLetter(idColIndex) : 'A';
 
     console.log(`[GoogleSheets] findRowIndex: searching '${id}' in ${sheetName} column ${colLetter} (index ${idColIndex})`);

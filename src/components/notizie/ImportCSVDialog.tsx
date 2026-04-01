@@ -195,7 +195,7 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
               </button>
             </div>
 
-            <div className="p-8 overflow-y-auto flex-1">
+            <div className="p-6 sm:p-8 overflow-y-auto flex-1">
               {step === 'upload' && (
                 <div 
                   onClick={() => fileInputRef.current?.click()}
@@ -208,14 +208,14 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
                       handleFileUpload(event);
                     }
                   }}
-                  className="h-[360px] border-2 border-dashed border-[var(--border-light)] rounded-[24px] flex flex-col items-center justify-center gap-5 hover:border-black/20 hover:bg-[var(--bg-subtle)] transition-all cursor-pointer group"
+                  className="h-[280px] sm:h-[360px] border-2 border-dashed border-[var(--border-light)] rounded-[24px] flex flex-col items-center justify-center gap-5 hover:border-black/20 hover:bg-[var(--bg-subtle)] transition-all cursor-pointer group"
                 >
-                  <div className="w-20 h-20 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-muted)] group-hover:scale-110 group-hover:bg-white group-hover:shadow-xl transition-all duration-300">
-                    <Upload size={36} />
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-muted)] group-hover:scale-110 group-hover:bg-white group-hover:shadow-xl transition-all duration-300">
+                    <Upload size={32} className="sm:w-9 sm:h-9" />
                   </div>
-                  <div className="text-center">
-                    <p className="font-outfit font-bold text-[18px] text-[var(--text-primary)] mb-1">Clicca o trascina il file CSV</p>
-                    <p className="font-outfit font-medium text-[14px] text-[var(--text-muted)]">Solo file .csv supportati</p>
+                  <div className="text-center px-4">
+                    <p className="font-outfit font-bold text-[16px] sm:text-[18px] text-[var(--text-primary)] mb-1">Clicca o trascina il file CSV</p>
+                    <p className="font-outfit font-medium text-[13px] sm:text-[14px] text-[var(--text-muted)]">Solo file .csv supportati</p>
                   </div>
                   <input 
                     type="file" 
@@ -229,7 +229,7 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
 
               {step === 'mapping' && (
                 <div className="flex flex-col gap-8">
-                  <div className="bg-[var(--bg-subtle)] p-6 rounded-[20px] border border-[var(--border-light)]">
+                  <div className="bg-[var(--bg-subtle)] p-4 sm:p-6 rounded-[20px] border border-[var(--border-light)]">
                     <h3 className="font-outfit font-bold text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)] mb-4">Anteprima Dati (Prime 5 righe)</h3>
                     <div className="overflow-x-auto">
                       <table className="w-full text-[12px] font-outfit border-collapse">
@@ -255,7 +255,7 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
 
                   <div className="flex flex-col gap-4">
                     <h3 className="font-outfit font-bold text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Mappatura Campi</h3>
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                       {NOTIZIA_FIELDS.map(field => (
                         <div key={field.key} className="flex flex-col gap-2">
                           <label className="font-outfit font-bold text-[11px] text-[var(--text-primary)] px-1">{field.label}</label>
