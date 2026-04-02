@@ -22,48 +22,37 @@ export const ClientiKanban: React.FC<ClientiKanbanProps> = ({ onClienteClick, on
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
-
     if (!destination) return;
-
-    if (
-      source.droppableId === destination.droppableId &&
-      source.index === destination.index
-    ) {
-      return;
-    }
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
     const sourceStatus = source.droppableId as ClienteStatus;
     const destStatus = destination.droppableId as ClienteStatus;
+    const isSameColumn = source.droppableId === destination.droppableId;
 
     const sourceItems = [...(clientiByStatus[sourceStatus] || [])];
-    const destItems = source.droppableId === destination.droppableId 
-      ? sourceItems 
-      : [...(clientiByStatus[destStatus] || [])];
+    const destItems = isSameColumn ? sourceItems : [...(clientiByStatus[destStatus] || [])];
 
     const [movedItem] = sourceItems.splice(source.index, 1);
-    
-    if (source.droppableId !== destination.droppableId) {
+
+    if (!isSameColumn) {
       const oldStatus = movedItem.status;
       movedItem.status = destStatus;
-      
       updateCliente({ id: draggableId, status: destStatus, silent: true });
-      
       pushAction({
         type: 'UPDATE_CLIENTE',
         payload: { id: draggableId, status: destStatus },
         undo: async () => updateCliente({ id: draggableId, status: oldStatus as ClienteStatus }),
         redo: async () => updateCliente({ id: draggableId, status: destStatus })
       });
+      destItems.splice(destination.index, 0, movedItem);
+      const updatedSource = sourceItems.map((item, i) => ({ ...item, display_order: i + 1 }));
+      const updatedDest = destItems.map((item, i) => ({ ...item, display_order: i + 1 }));
+      reorderClienti([...updatedSource, ...updatedDest]);
+    } else {
+      sourceItems.splice(destination.index, 0, movedItem);
+      const updated = sourceItems.map((item, i) => ({ ...item, display_order: i + 1 }));
+      reorderClienti(updated);
     }
-
-    destItems.splice(destination.index, 0, movedItem);
-
-    const updatedItems = destItems.map((item, index) => ({
-      ...item,
-      display_order: index + 1
-    }));
-
-    reorderClienti(updatedItems);
   };
 
   return (
@@ -106,10 +95,10 @@ interface KanbanColumnProps {
   onEdit: () => void;
 }
 
-const KanbanColumn: React.FC<KanbanColumnProps> = ({ 
-  column, 
-  clienti, 
-  onClienteClick, 
+const KanbanColumn: React.FC<KanbanColumnProps> = ({
+  column,
+  clienti,
+  onClienteClick,
   onQuickAdd,
   updateCliente,
   deleteCliente,
@@ -118,36 +107,50 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
   const statusColor = column.color;
 
   return (
-    <div className="flex flex-col min-w-[210px] w-[210px] bg-[var(--bg-subtle)] rounded-[12px] p-2 h-full">
-      <div 
-        className="pt-2 pb-1.5 px-1 flex items-center justify-between border-t-[3px] group"
-        style={{ borderTopColor: statusColor }}
+    <div className="flex flex-col w-[238px] flex-shrink-0 h-full">
+      {/* Header — identical to notizie */}
+      <div
+        className="h-[40px] flex items-center justify-between gap-2 px-1 pb-3 mb-3 border-b-2 group"
+        style={{ borderBottomColor: statusColor }}
       >
-        <div className="flex items-center gap-1">
-          <span className="font-outfit font-semibold text-[11px] uppercase tracking-[0.07em] text-[var(--text-secondary)]">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <div
+            className="w-[10px] h-[10px] rounded-full flex-shrink-0"
+            style={{ backgroundColor: statusColor }}
+          />
+          <span className="font-outfit font-bold text-[11px] uppercase tracking-[0.12em] text-[var(--text-primary)] truncate">
             {column.label}
           </span>
-          <button onClick={onEdit} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/5 rounded">
+          <button
+            onClick={onEdit}
+            className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/5 rounded"
+          >
             <Pencil size={10} className="text-[var(--text-muted)]" />
           </button>
+          <div className="bg-[var(--bg-subtle)] px-[7px] py-[1px] rounded-full flex items-center justify-center font-outfit font-semibold text-[11px] text-[var(--text-muted)]">
+            {clienti.length}
+          </div>
         </div>
-        <div className="bg-white min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center font-outfit font-semibold text-[10px] text-[var(--text-secondary)] shadow-sm">
-          {clienti.length}
-        </div>
+        <button
+          onClick={onQuickAdd}
+          className="w-7 h-7 rounded-lg bg-[var(--bg-subtle)] text-[var(--text-muted)] flex items-center justify-center hover:bg-[var(--border-light)] transition-colors flex-shrink-0"
+        >
+          <Plus size={16} />
+        </button>
       </div>
 
-      <Droppable droppableId={column.key}>
+      {/* Droppable area */}
+      <Droppable droppableId={column.key} type="CLIENTE">
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              "flex-1 flex flex-col gap-1.5 mt-2 transition-colors duration-150 rounded-lg",
-              snapshot.isDraggingOver && "bg-black/5"
+              "flex-1 flex flex-col gap-2 transition-colors duration-150",
+              snapshot.isDraggingOver && "bg-black/5 rounded-xl"
             )}
           >
             {clienti.map((cliente, index) => (
-              /* @ts-ignore */
               <Draggable key={cliente.id} draggableId={cliente.id} index={index}>
                 {(provided, snapshot) => (
                   <div
@@ -173,13 +176,6 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
           </div>
         )}
       </Droppable>
-
-      <button
-        onClick={onQuickAdd}
-        className="mt-2 w-7 h-7 flex items-center justify-center bg-white border border-[var(--border-light)] rounded-full text-[var(--text-muted)] hover:bg-black/5 transition-colors self-center"
-      >
-        <Plus size={16} />
-      </button>
     </div>
   );
 };

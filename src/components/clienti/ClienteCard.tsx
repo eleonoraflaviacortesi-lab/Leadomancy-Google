@@ -192,10 +192,11 @@ export const ClienteCard: React.FC<ClienteCardProps> = ({
           )}
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-6 h-6 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[10px] font-outfit font-semibold flex-shrink-0">
-              {(cliente.assigned_to && typeof cliente.assigned_to === 'string' ? cliente.assigned_to.split(' ') : []).map(n => n[0]).join('') || 'A'}
+              {(cliente.nome?.[0] || 'B').toUpperCase()}
             </div>
-            <span className="font-outfit font-medium text-[11px] text-[var(--text-secondary)] truncate">
-              {cliente.assigned_to || 'Agente'}
+            <span className="font-outfit font-medium text-[11px] truncate max-w-[80px]"
+              style={{ color: dark ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)' }}>
+              {cliente.nome || 'Buyer'}
             </span>
           </div>
           <span className="font-outfit font-normal text-[11px] text-[var(--text-muted)] flex-shrink-0">

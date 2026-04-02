@@ -118,9 +118,11 @@ export function useAppointments() {
 
       await Promise.allSettled(promises);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey });
-      toast.success("Appuntamento aggiornato");
+      if (!(variables as any).silent) {
+        toast.success("Appuntamento aggiornato");
+      }
     },
   });
 

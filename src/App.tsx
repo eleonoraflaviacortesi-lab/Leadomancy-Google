@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 import { AuthProvider } from "@/src/hooks/useAuth";
 import { UndoRedoProvider } from "@/src/hooks/useUndoRedo";
 import AppLayout from "@/src/components/layout/AppLayout";
@@ -60,7 +61,13 @@ export default function App() {
                 <Route path="*" element={<Navigate to="/404" replace />} />
               </Routes>
             </Suspense>
-            <Toaster position="top-right" richColors />
+            <Toaster 
+              position="top-right" 
+              icons={{
+                success: <CheckCircle2 className="w-4 h-4 text-white" />,
+                error: <AlertCircle className="w-4 h-4 text-[#F5A0B0]" />,
+              }}
+            />
           </BrowserRouter>
         </UndoRedoProvider>
       </AuthProvider>

@@ -127,3 +127,30 @@ aside {
     @apply list-disc list-inside mb-2;
   }
 }
+
+/* Sonner Customization */
+[data-sonner-toast] {
+  font-family: 'Outfit', sans-serif !important;
+  border-radius: var(--radius-md) !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  background: #1A1A18 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #1A1A18 !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background: #FFFFFF !important;
+  color: #1A1A18 !important;
+  border: 1px solid #F5A0B0 !important;
+}
+
+[data-sonner-toast][data-type="loading"] {
+  background: #FFFFFF !important;
+  color: #1A1A18 !important;
+  border: 1px solid var(--border-medium) !important;
+}

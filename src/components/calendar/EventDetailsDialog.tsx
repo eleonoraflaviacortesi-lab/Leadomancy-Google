@@ -384,7 +384,7 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
                 )}
 
                 {/* Color picker for tasks */}
-                {isTask && isEditing && (
+                {isTask && (
                   <div className="flex flex-col gap-3">
                     <p className="font-outfit font-bold text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)]">Colore</p>
                     <div className="flex gap-3 flex-wrap">
@@ -392,14 +392,26 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
                         <button 
                           key={c} 
                           type="button"
-                          onClick={() => updateAppointment({ id: event.id, card_color: c })}
+                          onClick={() => updateAppointment({ id: event.id, card_color: c, silent: true } as any)}
                           className={cn(
                             "w-8 h-8 rounded-full border-2 transition-all",
-                            event.originalData?.card_color === c ? "border-black scale-110" : "border-transparent"
+                            (event.originalData?.card_color || null) === c ? "border-black scale-110" : "border-transparent"
                           )}
                           style={{ background: c }}
                         />
                       ))}
+                      <button
+                        type="button"
+                        onClick={() => updateAppointment({ id: event.id, card_color: null, silent: true } as any)}
+                        style={{
+                          width: 32, height: 32, borderRadius: '50%', border: '2px solid var(--border-light)',
+                          background: 'white', cursor: 'pointer', fontSize: 14, display: 'flex',
+                          alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)'
+                        }}
+                        title="Rimuovi colore"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
                 )}

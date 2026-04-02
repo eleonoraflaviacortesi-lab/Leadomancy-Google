@@ -244,6 +244,14 @@ export const CalendarPage: React.FC = () => {
     return events;
   }, [appointments, googleEvents, clienti, notizie]);
 
+  // Sync selectedEvent with the latest allEvents after every refetch
+  useEffect(() => {
+    if (selectedEvent && isDetailsOpen) {
+      const updated = allEvents.find(e => e.id === selectedEvent.id);
+      if (updated) setSelectedEvent(updated);
+    }
+  }, [allEvents]);
+
   // Navigation handlers
   const handlePrev = () => {
     if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1));
@@ -279,7 +287,7 @@ export const CalendarPage: React.FC = () => {
       return;
     }
 
-    if (event.type !== 'appointment') {
+    if (event.type !== 'appointment' && event.type !== 'task') {
       return;
     }
 
@@ -537,9 +545,13 @@ const MonthView: React.FC<{
                     event.type === 'google_calendar' && "text-white",
                     event.type === 'cliente_reminder' && "bg-[#EDE8FD] text-[#3B2B8A]",
                     event.type === 'notizia_reminder' && "bg-[#FEF5D0] text-[#5C3800]",
-                    event.type === 'task' && "bg-[#EEF1F8] text-[#2B3A5C]"
+                    event.type === 'task' && "text-[#2B3A5C]"
                   )}
-                  style={{ backgroundColor: event.originalData.calendarColor }}
+                  style={{ 
+                    backgroundColor: event.type === 'task' 
+                      ? (event.originalData?.card_color || (event.originalData?.completed ? 'var(--bg-subtle)' : '#EEF1F8'))
+                      : event.originalData.calendarColor 
+                  }}
                 >
                   {event.type === 'task' && (event.originalData?.completed ? '✓ ' : '○ ')}
                   {!event.allDay && format(event.start, 'HH:mm')} {event.title}
@@ -833,10 +845,13 @@ const TimeGridView: React.FC<{
                       return (
                         <div
                           key={event.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, event.id)}
+                          onDragEnd={handleDragEnd}
                           onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
                           style={{
                             ...getEventStyle(event),
-                            background: event.originalData?.completed ? 'var(--bg-subtle)' : 'white',
+                            background: event.originalData?.card_color || (event.originalData?.completed ? 'var(--bg-subtle)' : 'white'),
                             borderLeft: '3px solid #6DC88A',
                             borderRadius: 6,
                             padding: '3px 7px',
@@ -888,7 +903,6 @@ const TimeGridView: React.FC<{
                         }}
                         className={cn(
                           "absolute left-1 right-1 rounded-[6px] p-1 px-2 shadow-sm border-l-[3px] overflow-hidden transition-transform active:scale-[0.98] cursor-pointer z-10",
-                          isDraggingEvent && "pointer-events-none",
                           event.type === 'appointment' && "text-white border-white/20",
                           event.type === 'google_calendar' && "text-white border-white/20"
                         )}
