@@ -20,7 +20,7 @@ export function generateClientePDF(
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Leadomancy - ${cliente.nome} ${cliente.cognome}</title>
+      <title>ALTAIR - ${cliente.nome} ${cliente.cognome}</title>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
       <style>
         body {
@@ -162,7 +162,7 @@ export function generateClientePDF(
           </div>
         </div>
         <div class="header-meta">
-          Leadomancy CRM<br>
+          ALTAIR CRM<br>
           Ciclo generato il ${new Date().toLocaleDateString('it-IT')}
         </div>
       </div>

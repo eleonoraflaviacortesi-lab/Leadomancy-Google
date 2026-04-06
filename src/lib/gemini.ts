@@ -177,17 +177,17 @@ Ritorna SOLO il JSON.`;
  * Genera una breve citazione motivazionale giornaliera in italiano.
  */
 export async function generateDailyQuote(): Promise<{ quote: string; author: string }> {
-  const prompt = "Genera una citazione breve (massimo 15 parole) sulla crescita personale o il successo nel real estate. Rispondi esclusivamente in formato JSON: {\"quote\": \"...\", \"author\": \"...\"}. Lingua: italiano.";
+  const prompt = "Generate a short, soulful daily quote (max 15 words) in the style of Insight Timer. Focus on inner growth, mindfulness, and spiritual evolution. Language: English. Respond strictly in JSON format: {\"quote\": \"...\", \"author\": \"...\"}.";
   try {
     const response = await callGemini(
       [{ role: 'user', parts: [{ text: prompt }] }],
-      "Sei un assistente AI che genera citazioni ispiratrici.",
+      "You are a spiritual guide and mindfulness teacher.",
       true
     );
     return JSON.parse(response);
   } catch (error) {
     console.error("Gemini generateDailyQuote error:", error);
-    return { quote: "L'eccellenza non è un atto, ma un'abitudine.", author: "Aristotele" };
+    return { quote: "The quieter you become, the more you are able to hear.", author: "Rumi" };
   }
 }
 
@@ -198,7 +198,7 @@ export async function chatWithContext(
   messages: Array<{ role: 'user' | 'model'; parts: [{ text: string }] }>,
   systemContext?: string
 ): Promise<string> {
-  const baseSystem = "Sei l'assistente AI di Leadomancy, un CRM per il real estate di lusso in Italia. Sei professionale, elegante e proattivo.";
+  const baseSystem = "Sei l'assistente AI di ALTAIR, un CRM per il real estate di lusso in Italia. Sei professionale, elegante e proattivo.";
   const fullSystem = systemContext ? `${baseSystem}\n\nContesto aggiuntivo:\n${systemContext}` : baseSystem;
   
   return callGemini(messages, fullSystem);

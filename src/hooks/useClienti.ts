@@ -61,7 +61,6 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
         });
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 30000, // 30 seconds
     enabled: !!user,
   });
 
@@ -161,7 +160,7 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
       toast.success("Cliente aggiunto");
     },
     onSettled: () => {
-      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 3500);
+      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 10000);
     },
   });
 
@@ -221,7 +220,7 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
+      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 10000);
     },
   });
 
@@ -249,7 +248,7 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
       toast.success("Buyer eliminato");
     },
     onSettled: () => {
-      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 3500);
+      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 10000);
     },
   });
 
@@ -272,7 +271,7 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
       queryClient.setQueryData(queryKey, context?.previousClienti);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
+      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 10000);
     },
   });
 

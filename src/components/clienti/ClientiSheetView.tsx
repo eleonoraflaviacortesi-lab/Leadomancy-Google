@@ -7,6 +7,7 @@ import {
   MoreVertical, 
   GripVertical, 
   Plus, 
+  Minus,
   Eye, 
   Trash2, 
   Copy, 
@@ -195,6 +196,25 @@ export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({
   const [editingCell, setEditingCell] = useState<{ id: string; key: string } | null>(null);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [selectedColKey, setSelectedColKey] = useState<string | null>(null);
+  const { overrides, updateOverride } = useColumnTypeOverrides('clienti-sheet');
+  const { columns: kanbanCols } = useClientKanbanColumns();
+  const [copiedValue, setCopiedValue] = useState<any>(null);
+  const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
+  const [dragOverRowId, setDragOverRowId] = useState<string | null>(null);
+  const [dragOverColKey, setDragOverColKey] = useState<string | null>(null);
+  const [rowContextMenu, setRowContextMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+  const [cellContextMenu, setCellContextMenu] = useState<{ x: number; y: number; id: string; key: string; value: any } | null>(null);
+  const [headerContextMenu, setHeaderContextMenu] = useState<{ x: number; y: number; key: string } | null>(null);
+  const [badgePopup, setBadgePopup] = useState<{ x: number; y: number; id: string; key: string; type: 'lingua' | 'portale' | 'tipo_contatto' } | null>(null);
+
+  const [fontSize, setFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('clienti-sheet-font-size');
+    return saved ? parseInt(saved) : 12; // Default 12px
+  });
+
+  useEffect(() => {
+    localStorage.setItem('clienti-sheet-font-size', fontSize.toString());
+  }, [fontSize]);
 
   const [rowFormats, setRowFormats] = useState<Record<string, FormatSettings>>(() => {
     const saved = localStorage.getItem('clienti-sheet-row-formats-v3');
@@ -210,41 +230,36 @@ export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({
     const saved = localStorage.getItem('custom-lingua-colors');
     return saved ? JSON.parse(saved) : DEFAULT_LINGUA_COLORS;
   });
+  const [linguaOptions, setLinguaOptions] = useState<string[]>(() => {
+    const saved = localStorage.getItem('custom-lingua-options');
+    return saved ? JSON.parse(saved) : LINGUA_OPTIONS;
+  });
 
   const [portaleColors, setPortaleColors] = useState<Record<string, string>>(() => {
     const saved = localStorage.getItem('custom-portale-colors');
     return saved ? JSON.parse(saved) : DEFAULT_PORTALE_COLORS;
+  });
+  const [portaleOptions, setPortaleOptions] = useState<string[]>(() => {
+    const saved = localStorage.getItem('custom-portale-options');
+    return saved ? JSON.parse(saved) : PORTALE_OPTIONS;
   });
 
   const [tipoContattoColors, setTipoContattoColors] = useState<Record<string, string>>(() => {
     const saved = localStorage.getItem('custom-tipo-contatto-colors');
     return saved ? JSON.parse(saved) : DEFAULT_TIPO_CONTATTO_COLORS;
   });
-
-  const [rowContextMenu, setRowContextMenu] = useState<{ x: number; y: number; id: string } | null>(null);
-  const [cellContextMenu, setCellContextMenu] = useState<{ x: number; y: number; id: string; key: string; value: any } | null>(null);
-  const [headerContextMenu, setHeaderContextMenu] = useState<{ x: number; y: number; key: string } | null>(null);
-  const [badgePopup, setBadgePopup] = useState<{ x: number; y: number; id: string; key: string; type: 'lingua' | 'portale' | 'tipo_contatto' } | null>(null);
-
-  const [copiedValue, setCopiedValue] = useState<any>(null);
-  const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
-  const [dragOverRowId, setDragOverRowId] = useState<string | null>(null);
-  const [draggedColKey, setDraggedColKey] = useState<string | null>(null);
-  const [dragOverColKey, setDragOverColKey] = useState<string | null>(null);
-
-  const { overrides, updateOverride } = useColumnTypeOverrides('clienti');
-  const { columns: kanbanCols } = useClientKanbanColumns();
+  const [tipoContattoOptions, setTipoContattoOptions] = useState<string[]>(() => {
+    const saved = localStorage.getItem('custom-tipo-contatto-options');
+    return saved ? JSON.parse(saved) : TIPO_CONTATTO_OPTIONS;
+  });
 
   // --- Persistence ---
-  useEffect(() => { localStorage.setItem('clienti-sheet-custom-cols', JSON.stringify(customCols)); }, [customCols]);
-  useEffect(() => { localStorage.setItem('clienti-sheet-col-widths-v3', JSON.stringify(colWidths)); }, [colWidths]);
-  useEffect(() => { localStorage.setItem('clienti-sheet-col-order-v3', JSON.stringify(colOrder)); }, [colOrder]);
-  useEffect(() => { localStorage.setItem('clienti-sheet-sort', JSON.stringify(sortState)); }, [sortState]);
-  useEffect(() => { localStorage.setItem('clienti-sheet-row-formats-v3', JSON.stringify(rowFormats)); }, [rowFormats]);
-  useEffect(() => { localStorage.setItem('clienti-sheet-col-formats-v3', JSON.stringify(colFormats)); }, [colFormats]);
   useEffect(() => { localStorage.setItem('custom-lingua-colors', JSON.stringify(linguaColors)); }, [linguaColors]);
+  useEffect(() => { localStorage.setItem('custom-lingua-options', JSON.stringify(linguaOptions)); }, [linguaOptions]);
   useEffect(() => { localStorage.setItem('custom-portale-colors', JSON.stringify(portaleColors)); }, [portaleColors]);
+  useEffect(() => { localStorage.setItem('custom-portale-options', JSON.stringify(portaleOptions)); }, [portaleOptions]);
   useEffect(() => { localStorage.setItem('custom-tipo-contatto-colors', JSON.stringify(tipoContattoColors)); }, [tipoContattoColors]);
+  useEffect(() => { localStorage.setItem('custom-tipo-contatto-options', JSON.stringify(tipoContattoOptions)); }, [tipoContattoOptions]);
 
   // --- Helpers ---
   const getContrastColor = (hex: string | undefined) => {
@@ -264,6 +279,7 @@ export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({
       textDecoration: rowF.strikethrough || colF.strikethrough ? 'line-through' : 'none',
       color: rowF.color || colF.color || 'inherit',
       backgroundColor: rowF.backgroundColor || colF.backgroundColor || 'transparent',
+      fontSize: fontSize + 'px',
     };
   };
 
@@ -472,6 +488,11 @@ export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({
       <AnimatePresence>
         {(selectedRowId || selectedColKey) && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex items-center justify-end gap-1 p-1.5 border-b bg-[var(--bg-subtle)]">
+            <div className="flex items-center gap-1 border-r pr-2 mr-2">
+              <button onClick={() => setFontSize(p => Math.max(10, p - 1))} className="p-1 hover:bg-black/5 rounded"><Minus size={12} /></button>
+              <span className="text-[11px] font-medium w-6 text-center">{fontSize}px</span>
+              <button onClick={() => setFontSize(p => Math.min(20, p + 1))} className="p-1 hover:bg-black/5 rounded"><Plus size={12} /></button>
+            </div>
             <ToolbarButton icon={<Bold size={16} />} onClick={() => {
               const type = selectedRowId ? 'row' : 'col';
               const id = selectedRowId || selectedColKey!;
@@ -545,7 +566,7 @@ export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({
                       selectedColKey === key && "bg-primary/5",
                       dragOverColKey === key && "border-l-2 border-l-[#1A1A18]"
                     )}
-                    style={{ width: colWidths[key] }}
+                    style={{ width: colWidths[key], fontSize: fontSize + 'px' }}
                   >
                     <div className="flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1 cursor-pointer truncate flex-1" onClick={() => setSortState(p => ({ col: key, dir: p.col === key && p.dir === 'asc' ? 'desc' : 'asc' }))} onContextMenu={(e) => { e.preventDefault(); setHeaderContextMenu({ x: e.clientX, y: e.clientY, key }); }}>
@@ -667,15 +688,22 @@ export const ClientiSheetView: React.FC<ClientiSheetViewProps> = ({
         )}
         {badgePopup && (
           <BadgePopup 
-            {...badgePopup}
+            key={`${badgePopup.x}-${badgePopup.y}`}
+            x={badgePopup.x}
+            y={badgePopup.y}
             onClose={() => setBadgePopup(null)}
-            options={badgePopup.type === 'lingua' ? LINGUA_OPTIONS : badgePopup.type === 'portale' ? PORTALE_OPTIONS : TIPO_CONTATTO_OPTIONS}
+            options={badgePopup.type === 'lingua' ? linguaOptions : badgePopup.type === 'portale' ? portaleOptions : tipoContattoOptions}
             colors={badgePopup.type === 'lingua' ? linguaColors : badgePopup.type === 'portale' ? portaleColors : tipoContattoColors}
             onSelect={(val) => { onUpdate(badgePopup.id, { [badgePopup.key]: val }); setBadgePopup(null); }}
             onUpdateColor={(val, color) => {
               if(badgePopup.type === 'lingua') setLinguaColors(p => ({...p, [val]: color}));
               else if(badgePopup.type === 'portale') setPortaleColors(p => ({...p, [val]: color}));
               else setTipoContattoColors(p => ({...p, [val]: color}));
+            }}
+            onUpdateOptions={(opts) => {
+              if(badgePopup.type === 'lingua') setLinguaOptions(opts);
+              else if(badgePopup.type === 'portale') setPortaleOptions(opts);
+              else setTipoContattoOptions(opts);
             }}
           />
         )}
@@ -888,26 +916,39 @@ const HeaderContextMenu: React.FC<{ x: number; y: number; onClose: () => void; o
 const BadgePopup: React.FC<{
   x: number; y: number; onClose: () => void; options: string[]; colors: Record<string, string>;
   onSelect: (v: string) => void; onUpdateColor: (v: string, c: string) => void;
-}> = ({ x, y, onClose, options, colors, onSelect, onUpdateColor }) => {
+  onUpdateOptions: (opts: string[]) => void;
+}> = ({ x, y, onClose, options, colors, onSelect, onUpdateColor, onUpdateOptions }) => {
   const [showPicker, setShowPicker] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+
   return (
     <>
       <div className="fixed inset-0 z-[100]" onClick={onClose} />
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="fixed z-[101] w-48 bg-white border rounded-xl shadow-2xl p-2" style={{ left: Math.min(x, window.innerWidth - 200), top: Math.min(y, window.innerHeight - 300) }}>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="fixed z-[101] w-56 bg-white border rounded-xl shadow-2xl p-2" style={{ left: Math.min(x, window.innerWidth - 250), top: Math.min(y, window.innerHeight - 300) }}>
+        <div className="flex justify-between items-center mb-2 px-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Opzioni</span>
+          <button onClick={() => setIsEditing(!isEditing)} className="text-[10px] text-primary hover:underline">{isEditing ? "Fine" : "Modifica"}</button>
+        </div>
         <div className="flex flex-col gap-1">
           {options.map(opt => (
             <div key={opt} className="flex items-center gap-1 group">
+              {isEditing && (
+                <>
+                  <button onClick={() => onUpdateOptions(options.filter(o => o !== opt))} className="text-red-400 hover:text-red-600"><X size={12} /></button>
+                  <button onClick={() => setShowPicker(opt)} className="text-gray-400 hover:text-primary"><Palette size={12} /></button>
+                </>
+              )}
               <button 
-                onClick={() => onSelect(opt)}
+                onClick={() => !isEditing && onSelect(opt)}
                 onContextMenu={(e) => { e.preventDefault(); setShowPicker(opt); }}
-                className="flex-1 px-2 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wider text-left transition-colors"
+                className={cn("flex-1 px-2 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wider text-left transition-colors", !isEditing && "hover:opacity-80")}
                 style={{ backgroundColor: (colors[opt] || '#6b7280') + '20', color: colors[opt] || '#6b7280' }}
               >
-                {opt}
+                {isEditing ? <input className="w-full bg-transparent outline-none" value={opt} onChange={(e) => onUpdateOptions(options.map(o => o === opt ? e.target.value : o))} /> : opt}
               </button>
             </div>
           ))}
-          <button onClick={() => { const n = prompt("Nuova opzione:"); if(n) onSelect(n); }} className="mt-1 px-2 py-1.5 border border-dashed rounded-md text-[11px] text-gray-400 hover:text-primary hover:border-primary transition-colors flex items-center gap-2 justify-center">
+          <button onClick={() => { const n = prompt("Nuova opzione:"); if(n) onUpdateOptions([...options, n]); }} className="mt-1 px-2 py-1.5 border border-dashed rounded-md text-[11px] text-gray-400 hover:text-primary hover:border-primary transition-colors flex items-center gap-2 justify-center">
             <Plus size={12} /> Aggiungi
           </button>
         </div>

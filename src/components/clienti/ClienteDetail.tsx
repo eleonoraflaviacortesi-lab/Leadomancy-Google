@@ -1116,7 +1116,7 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
 
               <div className="py-10 text-center border-t border-[var(--border-light)]">
                 <span className="text-[11px] text-[var(--text-muted)] font-outfit uppercase tracking-widest">
-                  Leadomancy CRM
+                  ALTAIR CRM
                 </span>
               </div>
             </div>

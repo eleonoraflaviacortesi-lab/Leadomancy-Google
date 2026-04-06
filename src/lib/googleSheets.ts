@@ -1,5 +1,5 @@
 /**
- * Leadomancy Google Sheets Data Layer
+ * ALTAIR Google Sheets Data Layer
  * Handles all CRUD operations using the Google Sheets API.
  */
 
@@ -120,16 +120,22 @@ async function getHeaders(sheetName: string): Promise<string[]> {
 }
 
 /**
+ * Normalizes a header string to a consistent key format (lowercase, trimmed, spaces to underscores).
+ */
+const normalizeKey = (key: string) => key.toLowerCase().trim().replace(/\s+/g, '_');
+
+/**
  * Maps a raw sheet row array to a typed object based on headers.
  */
 function rowToObject<T>(headers: string[], row: any[], rowIndex: number): T {
   const obj: any = { _rowIndex: rowIndex };
   
   headers.forEach((header, index) => {
+    const normalizedHeader = normalizeKey(header);
     let value = row[index];
     
     if (value === undefined || value === null || value === '') {
-      obj[header] = null;
+      obj[normalizedHeader] = null;
       return;
     }
 
@@ -149,7 +155,7 @@ function rowToObject<T>(headers: string[], row: any[], rowIndex: number): T {
     // Convert numeric strings to numbers (except specific ID/status fields)
     const skipNumericConversion = ['id', 'user_id', 'sede', 'status'];
     if (
-      !skipNumericConversion.includes(header) && 
+      !skipNumericConversion.includes(normalizedHeader) && 
       typeof value === 'string' && 
       !isNaN(Number(value)) && 
       value.trim() !== ''
@@ -157,7 +163,7 @@ function rowToObject<T>(headers: string[], row: any[], rowIndex: number): T {
       value = Number(value);
     }
 
-    obj[header] = value;
+    obj[normalizedHeader] = value;
   });
 
   return obj as T;
@@ -168,7 +174,8 @@ function rowToObject<T>(headers: string[], row: any[], rowIndex: number): T {
  */
 function objectToRow(headers: string[], obj: any): any[] {
   return headers.map((header) => {
-    const value = obj[header];
+    const normalizedHeader = normalizeKey(header);
+    const value = obj[normalizedHeader] ?? obj[header];
     if (value === null || value === undefined) return '';
     if (typeof value === 'object') return JSON.stringify(value);
     return value;
@@ -285,10 +292,12 @@ export async function updateRow(sheetName: string, rowIndex: number, updates: an
     const data = [];
 
     for (const [key, value] of Object.entries(updates)) {
-      // Case-insensitive header matching
-      const colIndex = headers.findIndex(h => h.toLowerCase() === key.toLowerCase());
+      // Robust header matching using normalization
+      const normalizedKey = normalizeKey(key);
+      const colIndex = headers.findIndex(h => normalizeKey(h) === normalizedKey);
+      
       if (colIndex === -1) {
-        console.warn(`[GoogleSheets] Key '${key}' not found in headers (case-insensitive), skipping update for this field.`);
+        console.warn(`[GoogleSheets] Key '${key}' (normalized: '${normalizedKey}') not found in headers, skipping update for this field.`);
         continue;
       }
 
@@ -370,7 +379,7 @@ export async function findRowIndex(sheetName: string, id: string | number): Prom
 
     // Get headers to find the correct column for 'id'
     const headers = await getHeaders(sheetName);
-    const idColIndex = headers.findIndex(h => h.toLowerCase() === 'id');
+    const idColIndex = headers.findIndex(h => normalizeKey(h) === 'id');
     const colLetter = idColIndex >= 0 ? colIndexToLetter(idColIndex) : 'A';
 
     console.log(`[GoogleSheets] findRowIndex: searching '${id}' in ${sheetName} column ${colLetter} (index ${idColIndex})`);
@@ -381,17 +390,21 @@ export async function findRowIndex(sheetName: string, id: string | number): Prom
     });
 
     const values = response.result.values || [];
-    console.log(`[GoogleSheets] findRowIndex: found ${values.length} rows, first 5:`, values.slice(0, 5).map((r: any[]) => r[0]));
+    console.log(`[GoogleSheets] findRowIndex: found ${values.length} rows.`);
+    
+    // Debug: log the first 20 rows to see what's happening
+    console.log(`[GoogleSheets] findRowIndex: first 20 rows:`, values.slice(0, 20).map((r: any[]) => r[0]));
 
     // Skip row 0 (header), find matching id
     for (let i = 1; i < values.length; i++) {
-      if (String(values[i][0]) === String(id)) {
+      const cellValue = values[i][0];
+      if (String(cellValue) === String(id)) {
         console.log(`[GoogleSheets] findRowIndex: found at row ${i + 1}`);
         return i + 1; // 1-based row index
       }
     }
 
-    console.warn(`[GoogleSheets] findRowIndex: ID '${id}' not found. All values:`, values.map((r: any[]) => r[0]));
+    console.warn(`[GoogleSheets] findRowIndex: ID '${id}' not found. Searched ${values.length} rows.`);
     return null;
   } catch (error) {
     console.error(`[GoogleSheets] Error in findRowIndex for ID ${id} in ${sheetName}:`, error);

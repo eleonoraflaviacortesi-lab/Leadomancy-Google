@@ -146,7 +146,7 @@ export const ClienteCard: React.FC<ClienteCardProps> = ({
         {/* ROW 1: type label + menu */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-[14px]">{cliente.emoji || '🏠'}</span>
+            <span className="text-[13px]">{cliente.emoji || '🏠'}</span>
             <div className="bg-[var(--bg-subtle)] text-[var(--text-muted)] font-outfit font-semibold text-[9px] uppercase tracking-[0.1em] px-[7px] py-[2px] rounded-full">
               BUYER
             </div>
@@ -158,7 +158,7 @@ export const ClienteCard: React.FC<ClienteCardProps> = ({
         </div>
 
         {/* ROW 2: title */}
-        <h3 className="font-outfit font-semibold text-[14px] leading-[1.3] text-[var(--text-primary)] line-clamp-2 mt-1">
+        <h3 className="font-outfit font-semibold text-[13px] leading-[1.3] text-[var(--text-primary)] line-clamp-2 mt-1">
           {cliente.nome} {cliente.cognome}
         </h3>
 
@@ -194,12 +194,12 @@ export const ClienteCard: React.FC<ClienteCardProps> = ({
             <div className="w-6 h-6 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[10px] font-outfit font-semibold flex-shrink-0">
               {(cliente.nome?.[0] || 'B').toUpperCase()}
             </div>
-            <span className="font-outfit font-medium text-[11px] truncate max-w-[80px]"
+            <span className="font-outfit font-medium text-[10px] truncate max-w-[80px]"
               style={{ color: dark ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)' }}>
               {cliente.nome || 'Buyer'}
             </span>
           </div>
-          <span className="font-outfit font-normal text-[11px] text-[var(--text-muted)] flex-shrink-0">
+          <span className="font-outfit font-normal text-[10px] text-[var(--text-muted)] flex-shrink-0">
             {new Date(cliente.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
           </span>
         </div>

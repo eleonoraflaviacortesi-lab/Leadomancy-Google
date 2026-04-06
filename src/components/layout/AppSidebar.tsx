@@ -74,7 +74,7 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
         </div>
         {!isCollapsed && (
           <span className="font-bold text-[11px] uppercase tracking-[0.15em] text-[var(--text-primary)]">
-            LEADOMANCY
+            ALTAIR
           </span>
         )}
       </div>

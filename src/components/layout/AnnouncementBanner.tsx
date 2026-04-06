@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useBannerSettings } from '@/src/hooks/useBannerSettings';
 import { useKPIs } from '@/src/hooks/useKPIs';
-import { formatCurrency } from '@/src/lib/utils';
+import { formatCurrency, cn } from '@/src/lib/utils';
 import { generateDailyQuote } from '@/src/lib/gemini';
 
 const Star8 = () => (
@@ -12,40 +12,50 @@ const Star8 = () => (
 
 export const AnnouncementBanner: React.FC = () => {
   const { settings, isLoading: isSettingsLoading } = useBannerSettings();
-  const { kpis: yearKpis, isLoading: isYearLoading } = useKPIs('year', true);
-  const { kpis: monthKpis, isLoading: isMonthLoading } = useKPIs('month', true);
-  const [quote, setQuote] = useState('');
+  const { kpis: yearKpisData, isLoading: isYearLoading } = useKPIs('year', true);
+  const { kpis: monthKpisData, isLoading: isMonthLoading } = useKPIs('month', true);
+  const [quote, setQuote] = useState<{ text: string; author: string } | null>(null);
+
+  const yearKpis = yearKpisData;
+  const monthKpis = monthKpisData;
 
   useEffect(() => {
     const today = new Date().toDateString();
     try {
-      const cached = sessionStorage.getItem('leadomancy_quote_today');
+      const cached = sessionStorage.getItem('leadomancy_quote_v3');
       if (cached) {
-        const { date, text } = JSON.parse(cached);
-        if (date === today && text) { setQuote(text.toUpperCase()); return; }
+        const parsed = JSON.parse(cached);
+        if (parsed.date === today && parsed.text) { 
+          setQuote({ text: parsed.text, author: parsed.author || '' }); 
+          return; 
+        }
       }
     } catch {}
     
     generateDailyQuote().then(q => {
       if (q && q.quote) {
-        const text = q.quote.toUpperCase();
-        setQuote(text);
-        sessionStorage.setItem('leadomancy_quote_today', 
-          JSON.stringify({ date: today, text }));
+        const text = q.quote;
+        const author = q.author || 'Unknown';
+        setQuote({ text, author });
+        sessionStorage.setItem('leadomancy_quote_v3', 
+          JSON.stringify({ date: today, text, author }));
       }
     });
   }, []);
 
   const tickerItems = useMemo(() => {
-    // Default fallback texts if KPI data is not ready
-    const fallbackTexts = ['BENVENUTO IN LEADOMANCY', 'OBIETTIVO FATTURATO AGENZIA', 'VENDITE DEL MESE'];
+    // Fallback if we really have nothing
+    const fallback = ['BENVENUTO IN LEADOMANCY', 'OBIETTIVO FATTURATO AGENZIA', 'VENDITE DEL MESE'];
     
-    if (!yearKpis || !monthKpis) return fallbackTexts;
+    // If we have KPIs, use them. If not, we might still be loading.
+    // We want to avoid returning fallback if we are just about to get data.
+    const hasData = yearKpis && monthKpis;
 
     const replaceTemplates = (text: string) => {
       if (!text) return '';
+      if (!hasData) return text;
       return text
-        .replace('{remaining}', formatCurrency(Math.max(0, (yearKpis.fatturato?.target || 0) - (yearKpis.fatturatoCredito?.value || 0))))
+        .replace('{remaining}', formatCurrency(Math.max(0, (yearKpis.fatturato?.target || 0) - (yearKpis.fatturato?.value || 0))))
         .replace('{target}', formatCurrency(yearKpis.fatturato?.target || 0))
         .replace('{fatturatoCredito}', formatCurrency(yearKpis.fatturatoCredito?.value || 0));
     };
@@ -57,19 +67,33 @@ export const AnnouncementBanner: React.FC = () => {
       settings.text4
     ]
       .filter(Boolean)
-      .map(replaceTemplates)
+      .map(t => replaceTemplates(t).toUpperCase())
       .filter(Boolean);
 
-    // Append extra items
-    items.push(`VENDITE ${monthKpis.vendite?.value || 0}/${monthKpis.vendite?.target || 0}`);
-    items.push(`INCARICHI MESE ${monthKpis.incarichi?.value || 0}/${monthKpis.incarichi?.target || 0}`);
+    if (hasData) {
+      const fatturatoTarget = yearKpis.fatturato?.target || 0;
+      const fatturatoActual = yearKpis.fatturato?.value || 0;
+      const fatturatoRemaining = Math.max(0, fatturatoTarget - fatturatoActual);
+      const fatturatoPercent = fatturatoTarget > 0
+        ? Math.round((fatturatoActual / fatturatoTarget) * 100)
+        : 0;
+
+      items.push(`OBIETTIVO FATTURATO ANNUALE ${formatCurrency(fatturatoTarget)}`.toUpperCase());
+      items.push(`FATTURATO REALIZZATO ${formatCurrency(fatturatoActual)} (${fatturatoPercent}%)`.toUpperCase());
+      items.push(`MANCANO AL TRAGUARDO ${formatCurrency(fatturatoRemaining)}`.toUpperCase());
+      items.push(`VENDITE MESE ${monthKpis.vendite?.value || 0} / TARGET ${monthKpis.vendite?.target || 0}`.toUpperCase());
+      items.push(`INCARICHI MESE ${monthKpis.incarichi?.value || 0} / TARGET ${monthKpis.incarichi?.target || 0}`.toUpperCase());
+    } else {
+      items.push('CARICAMENTO OBIETTIVI...');
+    }
     
-    if (quote) items.splice(Math.floor(items.length / 2), 0, quote);
+    if (quote) {
+      const quoteText = `"${quote.text}" — ${quote.author}`;
+      items.splice(Math.floor(items.length / 2), 0, quoteText);
+    }
 
-    return items.length > 0 ? items : fallbackTexts;
-  }, [settings, yearKpis, monthKpis, quote]);
-
-  console.log("Banner rendering, texts:", tickerItems);
+    return items.length > 0 ? items : fallback;
+  }, [settings, yearKpis, monthKpis, quote, isYearLoading, isMonthLoading]);
 
   return (
     <div 
@@ -91,14 +115,22 @@ export const AnnouncementBanner: React.FC = () => {
           {/* Render twice for seamless loop */}
           {[...Array(2)].map((_, i) => (
             <div key={i} className="flex items-center">
-              {tickerItems.map((item, index) => (
-                <React.Fragment key={index}>
-                  <span className="font-outfit text-[11px] font-semibold uppercase tracking-[0.15em]">
-                    {item}
-                  </span>
-                  <Star8 />
-                </React.Fragment>
-              ))}
+              {tickerItems.map((item, index) => {
+                const isQuote = item.startsWith('"');
+                return (
+                  <React.Fragment key={index}>
+                    <span 
+                      className={cn(
+                        "font-outfit text-[11px] font-semibold tracking-[0.15em]",
+                        isQuote && "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] animate-pulse-slow"
+                      )}
+                    >
+                      {item}
+                    </span>
+                    <Star8 />
+                  </React.Fragment>
+                );
+              })}
             </div>
           ))}
         </div>

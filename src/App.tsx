@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { AuthProvider } from "@/src/hooks/useAuth";
+import { DetailProvider } from "@/src/context/DetailContext";
 import { UndoRedoProvider } from "@/src/hooks/useUndoRedo";
 import AppLayout from "@/src/components/layout/AppLayout";
 import Auth from "@/src/pages/Auth";
@@ -34,7 +35,8 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <UndoRedoProvider>
-          <BrowserRouter>
+          <DetailProvider>
+            <BrowserRouter>
             <Suspense
               fallback={
                 <div className="min-h-screen flex items-center justify-center bg-[var(--bg-page)]">
@@ -69,6 +71,7 @@ export default function App() {
               }}
             />
           </BrowserRouter>
+          </DetailProvider>
         </UndoRedoProvider>
       </AuthProvider>
     </QueryClientProvider>

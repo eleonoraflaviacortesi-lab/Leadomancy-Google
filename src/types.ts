@@ -1,8 +1,11 @@
+export type UserRole = 'agente' | 'coordinatore' | 'admin';
+
 export type NotiziaStatus = 'new' | 'in_progress' | 'done' | 'on_shot' | 'taken' | 'credit' | 'no' | 'sold';
 
 export interface Notizia {
   id: string;
   user_id: string;
+  sede: string;
   emoji: string;
   name: string;
   nome: string; // Keep both for compatibility
@@ -147,7 +150,7 @@ export interface Profile {
   full_name?: string;
   sede: string;
   sedi?: string[];
-  role: 'admin' | 'agent' | 'coordinatore' | 'agente';
+  role: UserRole;
   photo_url?: string;
   avatar_emoji?: string;
   _rowIndex?: number;

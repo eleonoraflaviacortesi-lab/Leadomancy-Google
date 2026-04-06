@@ -9,8 +9,7 @@ export function useKPIs(period: 'week' | 'month' | 'year' = 'month', isOfficeVie
 
   const kpis = useMemo(() => {
     const sourceData = isOfficeView ? allData : myData;
-    if (!sourceData.length) return null;
-
+    
     const now = new Date();
     let start: Date;
     let prevStart: Date;
@@ -58,8 +57,14 @@ export function useKPIs(period: 'week' | 'month' | 'year' = 'month', isOfficeVie
       return { value, target: targetValue, delta, percent };
     };
 
-    // Adjust targets based on period (targets are monthly)
+    // Adjust targets based on period (targets are monthly except fatturato which is annual)
     const targetMultiplier = period === 'week' ? 0.25 : period === 'year' ? 12 : 1;
+    const fatturatoTargetAnnual = targets?.fatturato_target || 0;
+    const fatturatoTarget = period === 'year'
+      ? fatturatoTargetAnnual
+      : period === 'month'
+      ? Math.round(fatturatoTargetAnnual / 12)
+      : Math.round(fatturatoTargetAnnual / 52);
     
     return {
       contatti: getKPI('contatti', (targets?.contatti_target || 0) * targetMultiplier),
@@ -69,14 +74,14 @@ export function useKPIs(period: 'week' | 'month' | 'year' = 'month', isOfficeVie
       acquisizioni: getKPI('acquisizioni', (targets?.acquisizioni_target || 0) * targetMultiplier),
       incarichi: getKPI('incarichi', (targets?.incarichi_target || 0) * targetMultiplier),
       vendite: getKPI('vendite', (targets?.vendite_target || 0) * targetMultiplier),
-      fatturato: getKPI('fatturato', (targets?.fatturato_target || 0) * targetMultiplier),
+      fatturato: getKPI('fatturato', fatturatoTarget),
       trattativeChiuse: getKPI('trattativeChiuse', (targets?.trattative_chiuse_target || 0) * targetMultiplier),
       fatturatoCredito: getKPI('fatturatoCredito', 10000 * targetMultiplier),
     };
   }, [myData, allData, targets, period, isOfficeView]);
 
   return {
-    kpis,
+    kpis: (isDailyLoading || isTargetsLoading) ? null : kpis,
     isLoading: isDailyLoading || isTargetsLoading,
   };
 }

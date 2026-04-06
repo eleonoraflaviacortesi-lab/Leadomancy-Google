@@ -503,7 +503,7 @@ export const NotiziaDetail: React.FC<NotiziaDetailProps> = ({ notizia, open, onO
 
               <div className="py-10 text-center border-t border-[var(--border-light)] mt-8">
                 <span className="text-[11px] text-[var(--text-muted)] font-outfit uppercase tracking-widest">
-                  Leadomancy Notizie
+                  ALTAIR Notizie
                 </span>
               </div>
             </div>

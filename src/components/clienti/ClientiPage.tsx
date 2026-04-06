@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { LayoutGrid, List, Search, Download, Plus, Undo2, Redo2, Filter, X } from "lucide-react";
+import { LayoutGrid, List, Search, Download, Plus, Undo2, Redo2, Filter, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useClienti } from "@/src/hooks/useClienti";
 import { useUndoRedo } from "@/src/hooks/useUndoRedo";
@@ -8,6 +8,7 @@ import { ClientiKanban } from "./ClientiKanban";
 import { ClientiSheetView } from "./ClientiSheetView";
 import { AddClienteDialog } from "./AddClienteDialog";
 import { ClienteDetail } from "./ClienteDetail";
+import { ImportFileDialog } from "../notizie/ImportFileDialog";
 import { Cliente, ClienteStatus, ClienteFilters } from "@/src/types";
 import { CLIENTE_STATUS_CONFIG, REGIONI_OPTIONS } from "./clienteFormOptions";
 import { cn } from "@/src/lib/utils";
@@ -23,8 +24,34 @@ export const ClientiPage: React.FC = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [initialStatus, setInitialStatus] = useState<ClienteStatus | undefined>();
   const [selectedClienteId, setSelectedClienteId] = useState<string | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false);
+
+  const CLIENTE_FIELDS = [
+    { key: 'nome', label: 'Nome' },
+    { key: 'cognome', label: 'Cognome' },
+    { key: 'email', label: 'Email' },
+    { key: 'telefono', label: 'Telefono' },
+    { key: 'regione', label: 'Regione' },
+    { key: 'portale', label: 'Portale' },
+    { key: 'budget', label: 'Budget' },
+    { key: 'note', label: 'Note' },
+  ];
+
+  const handleImportClienti = async (data: any[]) => {
+    let successCount = 0;
+    for (const item of data) {
+      const cliente: Partial<Cliente> = {
+        ...item,
+        status: 'new',
+      };
+      if (cliente.budget_max) cliente.budget_max = parseFloat(cliente.budget_max.toString().replace(/[^0-9.]/g, '')) || 0;
+      await addCliente(cliente as any);
+      successCount++;
+    }
+    toast.success(`Importati con successo ${successCount} buyers`);
+  };
 
   const selectedCliente = useMemo(() => {
     if (!selectedClienteId) return null;
@@ -71,7 +98,7 @@ export const ClientiPage: React.FC = () => {
       <div className="flex flex-col gap-4 pb-0 px-4 sm:px-0">
         <div className="flex flex-col">
           <p className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-6">
-            Leadomancy / Buyers
+          ALTAIR / Buyers
           </p>
           <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
             Luxury Buyers
@@ -161,6 +188,13 @@ export const ClientiPage: React.FC = () => {
                 title="Esporta"
               >
                 <Download size={18} />
+              </button>
+              <button
+                onClick={() => setIsImportOpen(true)}
+                className="hidden sm:flex items-center justify-center w-[38px] h-[38px] rounded-full bg-white border border-[var(--border-light)] text-[var(--text-secondary)] hover:bg-black/5 transition-colors"
+                title="Importa"
+              >
+                <Upload size={18} />
               </button>
               <button
                 onClick={() => setIsAddDialogOpen(true)}
@@ -288,6 +322,13 @@ export const ClientiPage: React.FC = () => {
           deleteCliente(id);
           setIsDetailOpen(false);
         }}
+      />
+      <ImportFileDialog
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        title="Importa Buyers"
+        fields={CLIENTE_FIELDS}
+        onImport={handleImportClienti}
       />
     </div>
   );

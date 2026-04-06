@@ -144,7 +144,7 @@ export const UfficioPage: React.FC = () => {
       {/* Header Section */}
       <div className="flex flex-col">
         <p className="text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-4 sm:mt-6">
-          Leadomancy / Ufficio
+          ALTAIR / Ufficio
         </p>
         <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
           Ufficio {user?.sede}

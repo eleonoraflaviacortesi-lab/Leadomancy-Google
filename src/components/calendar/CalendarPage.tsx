@@ -186,7 +186,7 @@ export const CalendarPage: React.FC = () => {
         originalData: {
           ...app,
           calendarColor: calendar?.backgroundColor || '#1A1A18',
-          calendarSummary: calendar?.summary || 'Leadomancy'
+          calendarSummary: calendar?.summary || 'ALTAIR'
         }
       });
     });
@@ -204,7 +204,10 @@ export const CalendarPage: React.FC = () => {
           end,
           type: 'google_calendar',
           allDay: !gEvent.start.dateTime,
-          originalData: gEvent
+          originalData: {
+            ...gEvent,
+            calendarId: gEvent.organizer?.email || 'primary'
+          }
         });
       }
     });
@@ -250,7 +253,7 @@ export const CalendarPage: React.FC = () => {
       const updated = allEvents.find(e => e.id === selectedEvent.id);
       if (updated) setSelectedEvent(updated);
     }
-  }, [allEvents]);
+  }, [allEvents, isDetailsOpen]);
 
   // Navigation handlers
   const handlePrev = () => {
@@ -325,7 +328,7 @@ export const CalendarPage: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex flex-col">
             <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
-              Leadomancy / Attività
+              ALTAIR / Attività
             </p>
             <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', margin: 0, textTransform: 'capitalize' }}>
               {format(currentDate, 'MMMM yyyy', { locale: it })}
@@ -550,7 +553,7 @@ const MonthView: React.FC<{
                   style={{ 
                     backgroundColor: event.type === 'task' 
                       ? (event.originalData?.card_color || (event.originalData?.completed ? 'var(--bg-subtle)' : '#EEF1F8'))
-                      : event.originalData.calendarColor 
+                      : (event.originalData?.card_color || event.originalData?.calendarColor || '#1A1A18')
                   }}
                 >
                   {event.type === 'task' && (event.originalData?.completed ? '✓ ' : '○ ')}
@@ -586,6 +589,7 @@ const TimeGridView: React.FC<{
   const [selection, setSelection] = useState<{ day: Date; startHour: number; endHour: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDraggingEvent, setIsDraggingEvent] = useState(false);
+  const colRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const days = useMemo(() => {
     if (viewMode === 'day') return [currentDate];
@@ -610,6 +614,97 @@ const TimeGridView: React.FC<{
     const height = Math.max(28, duration * (HOUR_HEIGHT / 60));
 
     return { top: `${top}px`, height: `${height}px` };
+  };
+
+  // Google Calendar-style overlap layout
+  const computeLayout = (dayEvents: CalendarEvent[]) => {
+    if (dayEvents.length === 0) return new Map<string, { left: number; width: number; zIndex: number }>();
+
+    // Sort: longer events first (they go behind), then by start time
+    const sorted = [...dayEvents].sort((a, b) => {
+      const durA = differenceInMinutes(a.end, a.start);
+      const durB = differenceInMinutes(b.end, b.start);
+      if (durB !== durA) return durB - durA; // longer first
+      return a.start.getTime() - b.start.getTime();
+    });
+
+    // Build overlap groups: events that overlap with each other
+    const groups: CalendarEvent[][] = [];
+    for (const event of sorted) {
+      let placed = false;
+      for (const group of groups) {
+        const overlapsGroup = group.some(
+          other => event.start < other.end && event.end > other.start
+        );
+        if (overlapsGroup) {
+          group.push(event);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) groups.push([event]);
+    }
+
+    const layout = new Map<string, { left: number; width: number; zIndex: number }>();
+
+    for (const group of groups) {
+      // Within a group, assign columns using a greedy algorithm
+      // Each column holds non-overlapping events
+      const columns: CalendarEvent[][] = [];
+
+      // Re-sort group by start time for column assignment
+      const groupSorted = [...group].sort((a, b) => a.start.getTime() - b.start.getTime());
+
+      for (const event of groupSorted) {
+        let assigned = false;
+        for (let col = 0; col < columns.length; col++) {
+          const fits = !columns[col].some(
+            other => event.start < other.end && event.end > other.start
+          );
+          if (fits) {
+            columns[col].push(event);
+            assigned = true;
+            break;
+          }
+        }
+        if (!assigned) {
+          columns.push([event]);
+        }
+      }
+
+      const totalCols = columns.length;
+
+      // Assign position: events in later columns are smaller/narrower
+      // to create the Google Calendar cascade effect
+      for (let col = 0; col < columns.length; col++) {
+        for (const event of columns[col]) {
+          const dur = differenceInMinutes(event.end, event.start);
+          
+          // Google Calendar style: first col takes more space
+          // subsequent cols overlap slightly to the right
+          let left: number;
+          let width: number;
+
+          if (totalCols === 1) {
+            left = 2;
+            width = 96;
+          } else {
+            // Each column is offset by (colWidth * 0.7) and has width = colWidth * 1.1
+            // so events slightly overlap each other (like Google Calendar)
+            const offset = (col / totalCols) * 85;
+            left = offset + 2;
+            width = Math.min(95 - offset, (100 / totalCols) * 1.3);
+          }
+
+          // Shorter events go on top (higher zIndex)
+          const zIndex = Math.max(10, 50 - Math.floor(dur / 30));
+
+          layout.set(event.id, { left, width, zIndex });
+        }
+      }
+    }
+
+    return layout;
   };
 
   const isCurrentTimeVisible = useMemo(() => {
@@ -652,25 +747,6 @@ const TimeGridView: React.FC<{
 
   const handleDragEnd = () => {
     setIsDraggingEvent(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e: React.DragEvent, day: Date, hour: number) => {
-    e.preventDefault();
-    setIsDraggingEvent(false);
-    const eventId = e.dataTransfer.getData('eventId');
-    const event = events.find(ev => ev.id === eventId);
-    
-    if (event) {
-      const duration = differenceInMinutes(event.end, event.start);
-      const newStart = setMinutes(setHours(day, hour), 0);
-      const newEnd = new Date(newStart.getTime() + duration * 60000);
-      onEventDrop(eventId, newStart, newEnd);
-    }
   };
 
   return (
@@ -824,8 +900,36 @@ const TimeGridView: React.FC<{
 
             {days.map(day => {
               const dayEvents = events.filter(e => !e.allDay && isSameDay(e.start, day));
+              const layout = computeLayout(dayEvents);
               return (
-                <div key={day.toISOString()} className="flex-1 relative h-full">
+                <div 
+                  key={day.toISOString()} 
+                  className="flex-1 relative h-full"
+                  ref={el => { colRefs.current[day.toISOString()] = el; }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDraggingEvent(false);
+                    const eventId = e.dataTransfer.getData('eventId');
+                    const movedEvent = events.find(ev => ev.id === eventId);
+                    if (!movedEvent) return;
+                    const col = colRefs.current[day.toISOString()];
+                    if (!col) return;
+                    const rect = col.getBoundingClientRect();
+                    const y = e.clientY - rect.top;
+                    const totalMinutes = Math.round((y / HOUR_HEIGHT) * 60);
+                    const hour = Math.floor(totalMinutes / 60) + 6;
+                    const minutes = totalMinutes % 60;
+                    const clampedHour = Math.max(6, Math.min(21, hour));
+                    const duration = differenceInMinutes(movedEvent.end, movedEvent.start);
+                    const newStart = setMinutes(setHours(day, clampedHour), minutes);
+                    const newEnd = new Date(newStart.getTime() + duration * 60000);
+                    onEventDrop(eventId, newStart, newEnd);
+                  }}
+                >
                   {/* Clickable cells for creation */}
                   {hours.map(hour => (
                     <div
@@ -834,8 +938,6 @@ const TimeGridView: React.FC<{
                       onMouseDown={() => handleMouseDown(day, hour)}
                       onMouseEnter={() => handleMouseEnter(hour)}
                       onMouseUp={handleMouseUp}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(e, day, hour)}
                     />
                   ))}
 
@@ -845,25 +947,29 @@ const TimeGridView: React.FC<{
                       return (
                         <div
                           key={event.id}
-                          draggable
+                          draggable={true}
                           onDragStart={(e) => handleDragStart(e, event.id)}
                           onDragEnd={handleDragEnd}
                           onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
-                          style={{
-                            ...getEventStyle(event),
-                            background: event.originalData?.card_color || (event.originalData?.completed ? 'var(--bg-subtle)' : 'white'),
-                            borderLeft: '3px solid #6DC88A',
-                            borderRadius: 6,
-                            padding: '3px 7px',
-                            display: 'flex', alignItems: 'center', gap: 5,
-                            opacity: event.originalData?.completed ? 0.5 : 1,
-                            cursor: 'pointer',
-                            overflow: 'hidden',
-                            position: 'absolute',
-                            left: '4px',
-                            right: '4px',
-                            zIndex: 10
-                          }}
+                          style={(() => {
+                            const pos = layout.get(event.id) || { left: 2, width: 96, zIndex: 10 };
+                            return {
+                              ...getEventStyle(event),
+                              background: event.originalData?.card_color || (event.originalData?.completed ? 'var(--bg-subtle)' : 'white'),
+                              borderLeft: '3px solid #6DC88A',
+                              borderRadius: 6,
+                              padding: '3px 7px',
+                              display: 'flex', alignItems: 'center', gap: 5,
+                              opacity: event.originalData?.completed ? 0.5 : 1,
+                              cursor: 'pointer',
+                              overflow: 'hidden',
+                              position: 'absolute' as const,
+                              left: `${pos.left}%`,
+                              width: `${pos.width}%`,
+                              right: 'unset',
+                              zIndex: pos.zIndex,
+                            };
+                          })()}
                         >
                           <button
                             type="button"
@@ -891,7 +997,7 @@ const TimeGridView: React.FC<{
                         </div>
                       );
                     }
-                    return (
+                      return (
                       <div
                         key={event.id}
                         draggable={event.type === 'appointment' || event.type === 'google_calendar'}
@@ -902,14 +1008,22 @@ const TimeGridView: React.FC<{
                           onEventClick(event);
                         }}
                         className={cn(
-                          "absolute left-1 right-1 rounded-[6px] p-1 px-2 shadow-sm border-l-[3px] overflow-hidden transition-transform active:scale-[0.98] cursor-pointer z-10",
+                          "rounded-[6px] p-1 px-2 shadow-sm border-l-[3px] overflow-hidden transition-transform active:scale-[0.98] cursor-pointer",
                           event.type === 'appointment' && "text-white border-white/20",
                           event.type === 'google_calendar' && "text-white border-white/20"
                         )}
-                        style={{ 
-                          ...getEventStyle(event),
-                          backgroundColor: event.originalData.calendarColor
-                        }}
+                        style={(() => {
+                          const pos = layout.get(event.id) || { left: 2, width: 96, zIndex: 10 };
+                          return {
+                            ...getEventStyle(event),
+                            position: 'absolute' as const,
+                            left: `${pos.left}%`,
+                            width: `${pos.width}%`,
+                            right: 'unset',
+                            zIndex: pos.zIndex,
+                            backgroundColor: event.originalData?.card_color || event.originalData?.calendarColor || '#1A1A18',
+                          };
+                        })()}
                       >
                         <div className="font-outfit font-semibold text-[11px] leading-tight truncate">
                           {event.title}

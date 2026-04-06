@@ -13,18 +13,23 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useProfiles } from "@/src/hooks/useProfiles";
+import { useClienti } from "@/src/hooks/useClienti";
+import { useNotizie } from "@/src/hooks/useNotizie";
+import { useDetail } from "@/src/context/DetailContext";
 import { getSheetData, appendRow, updateRow, SHEETS, findRowIndex } from "@/src/lib/googleSheets";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isYesterday, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
 import { cn } from "@/src/lib/utils";
+import { toast } from "sonner";
 
 interface ChatMessage {
   id: string;
   user_id: string;
   message: string;
   sede: string;
-  mentions: string[];
+  mentions: string[]; // userIds
+  attachments: { type: 'notizia' | 'cliente', id: string }[];
   reactions: Record<string, string[]>; // emoji -> userIds[]
   created_at: string;
   _rowIndex?: number;
@@ -35,9 +40,15 @@ const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢'];
 export const OfficeChatPage: React.FC = () => {
   const { user } = useAuth();
   const { profiles } = useProfiles();
+  const { clienti } = useClienti();
+  const { notizie } = useNotizie();
+  const { openDetail } = useDetail();
   const queryClient = useQueryClient();
   const [inputValue, setInputValue] = useState("");
   const [showMentions, setShowMentions] = useState(false);
+  const [showAttachments, setShowAttachments] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [attachmentQuery, setAttachmentQuery] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
@@ -50,20 +61,34 @@ export const OfficeChatPage: React.FC = () => {
         .filter(m => m.sede === user.sede)
         .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     },
-    refetchInterval: 5000,
+    refetchInterval: 1000 * 60 * 5, // 5 minutes
     enabled: !!user?.sede,
   });
 
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
       if (!user) return;
+      
+      const mentions = profiles
+        .filter(p => text.includes(`@${p.full_name}`))
+        .map(p => p.id);
+        
+      const attachments: { type: 'notizia' | 'cliente', id: string }[] = [];
+      notizie.forEach(n => {
+        if (text.includes(`#${n.name}`)) attachments.push({ type: 'notizia', id: n.id });
+      });
+      clienti.forEach(c => {
+        if (text.includes(`#${c.nome} ${c.cognome}`)) attachments.push({ type: 'cliente', id: c.id });
+      });
+
       const id = crypto.randomUUID();
       const newMessage: ChatMessage = {
         id,
         user_id: user.id,
         message: text,
         sede: user.sede,
-        mentions: [], // Logic for mentions could be added
+        mentions,
+        attachments,
         reactions: {},
         created_at: new Date().toISOString()
       };
@@ -105,6 +130,16 @@ export const OfficeChatPage: React.FC = () => {
     }
   }, [messages, shouldAutoScroll]);
 
+  useEffect(() => {
+    if (user && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.mentions.includes(user.id) && lastMessage.user_id !== user.id) {
+        const author = profiles.find(p => p.id === lastMessage.user_id);
+        toast.info(`Sei stato menzionato da ${author?.full_name || 'un collega'}`);
+      }
+    }
+  }, [messages, user, profiles]);
+
   const handleScroll = () => {
     if (!scrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
@@ -141,7 +176,7 @@ export const OfficeChatPage: React.FC = () => {
       {/* Header Section */}
       <div className="flex flex-col mb-4">
         <p className="text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-4 sm:mt-6">
-          Leadomancy / Chat
+          ALTAIR / Chat
         </p>
         <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
           Chat di Sede
@@ -196,6 +231,25 @@ export const OfficeChatPage: React.FC = () => {
                             : "bg-white border border-[var(--border-light)] text-[var(--text-primary)] rounded-[18px] rounded-bl-none"
                         )}>
                           {msg.message}
+                          {msg.attachments?.map(a => {
+                            if (a.type === 'notizia') {
+                              const notizia = notizie.find(n => n.id === a.id);
+                              return notizia ? (
+                                <button key={a.id} onClick={() => openDetail('notizia', a.id)} className="block mt-2 p-2 bg-white/10 rounded-lg text-left hover:bg-white/20 transition-colors">
+                                  <p className="font-bold text-sm">{notizia.name}</p>
+                                  <p className="text-xs opacity-70">{notizia.zona}</p>
+                                </button>
+                              ) : null;
+                            } else {
+                              const cliente = clienti.find(c => c.id === a.id);
+                              return cliente ? (
+                                <button key={a.id} onClick={() => openDetail('cliente', a.id)} className="block mt-2 p-2 bg-white/10 rounded-lg text-left hover:bg-white/20 transition-colors">
+                                  <p className="font-bold text-sm">{cliente.nome} {cliente.cognome}</p>
+                                  <p className="text-xs opacity-70">{cliente.zona} - {cliente.budget}</p>
+                                </button>
+                              ) : null;
+                            }
+                          })}
                         </div>
 
                         {/* Reactions Row */}
@@ -254,13 +308,31 @@ export const OfficeChatPage: React.FC = () => {
       </div>
 
       {/* Input Area */}
-      <div className="p-3 md:p-4 bg-white border-t border-[var(--border-light)] mt-auto -mx-4 sm:mx-0">
-        <div className="max-w-4xl mx-auto relative px-4 sm:px-0">
-          <div className="flex items-center gap-2 md:gap-3 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[24px] p-1.5 md:p-2 pl-3 md:pl-4 focus-within:ring-1 focus-within:ring-black/5 transition-all">
+      <div className="bg-white border-t border-[var(--border-light)] mt-auto w-full">
+        <div className="relative w-full">
+          <div className="flex items-center gap-2 md:gap-3 bg-[var(--bg-subtle)] border-t border-[var(--border-light)] px-0 py-0 focus-within:ring-1 focus-within:ring-black/5 transition-all">
             <input 
               type="text"
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setInputValue(value);
+                
+                const lastWord = value.split(' ').pop() || '';
+                
+                if (lastWord.startsWith('@')) {
+                  setShowMentions(true);
+                  setMentionQuery(lastWord.slice(1));
+                  setShowAttachments(false);
+                } else if (lastWord.startsWith('#')) {
+                  setShowAttachments(true);
+                  setAttachmentQuery(lastWord.slice(1));
+                  setShowMentions(false);
+                } else {
+                  setShowMentions(false);
+                  setShowAttachments(false);
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -268,35 +340,83 @@ export const OfficeChatPage: React.FC = () => {
                 }
               }}
               placeholder="Scrivi un messaggio..."
-              className="flex-1 bg-transparent border-0 outline-none font-outfit text-[14px] py-1 min-w-0"
+              className="flex-1 bg-transparent border-0 outline-none font-outfit text-[14px] py-3 px-4 min-w-0"
             />
             
-            <div className="flex items-center gap-1 pr-1 shrink-0">
-              <button className="p-1.5 md:p-2 rounded-full hover:bg-[var(--border-light)] text-[var(--text-muted)] transition-colors hidden sm:block">
+            <div className="flex items-center gap-1 pr-4 shrink-0">
+              <button className="p-2 rounded-full hover:bg-[var(--border-light)] text-[var(--text-muted)] transition-colors hidden sm:block">
                 <Smile size={20} />
               </button>
               <button 
                 onClick={handleSend}
                 disabled={!inputValue.trim() || sendMessageMutation.isPending}
-                className="w-8 h-8 md:w-9 md:h-9 bg-black text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-all disabled:opacity-30"
+                className="w-9 h-9 bg-black text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-all disabled:opacity-30"
               >
-                <SendHorizontal size={16} className="md:w-[18px] md:h-[18px]" />
+                <SendHorizontal size={18} />
               </button>
             </div>
           </div>
 
-          {/* Mentions Dropdown (Simplified) */}
+          {/* Mentions Dropdown */}
           {showMentions && (
             <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-[var(--border-light)] rounded-[14px] shadow-xl overflow-hidden z-50">
-              {profiles.map(p => (
-                <button 
-                  key={p.id}
-                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--bg-subtle)] transition-colors text-left"
-                >
-                  <span className="text-lg">{p.avatar_emoji}</span>
-                  <span className="font-outfit text-[13px] font-medium">{p.full_name}</span>
-                </button>
-              ))}
+              {profiles
+                .filter(p => p.full_name?.toLowerCase().includes(mentionQuery.toLowerCase()))
+                .map(p => (
+                  <button 
+                    key={p.id}
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--bg-subtle)] transition-colors text-left"
+                    onClick={() => {
+                      const words = inputValue.split(' ');
+                      words.pop();
+                      setInputValue([...words, `@${p.full_name} `].join(' '));
+                      setShowMentions(false);
+                    }}
+                  >
+                    <span className="text-lg">{p.avatar_emoji}</span>
+                    <span className="font-outfit text-[13px] font-medium">{p.full_name}</span>
+                  </button>
+                ))}
+            </div>
+          )}
+
+          {/* Attachments Dropdown */}
+          {showAttachments && (
+            <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-[var(--border-light)] rounded-[14px] shadow-xl overflow-hidden z-50">
+              {notizie
+                .filter(n => n.name?.toLowerCase().includes(attachmentQuery.toLowerCase()))
+                .map(n => (
+                  <button 
+                    key={n.id}
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--bg-subtle)] transition-colors text-left"
+                    onClick={() => {
+                      const words = inputValue.split(' ');
+                      words.pop();
+                      setInputValue([...words, `#${n.name} `].join(' '));
+                      setShowAttachments(false);
+                    }}
+                  >
+                    <span className="text-lg">🏠</span>
+                    <span className="font-outfit text-[13px] font-medium">{n.name}</span>
+                  </button>
+                ))}
+              {clienti
+                .filter(c => c.nome?.toLowerCase().includes(attachmentQuery.toLowerCase()) || c.cognome?.toLowerCase().includes(attachmentQuery.toLowerCase()))
+                .map(c => (
+                  <button 
+                    key={c.id}
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--bg-subtle)] transition-colors text-left"
+                    onClick={() => {
+                      const words = inputValue.split(' ');
+                      words.pop();
+                      setInputValue([...words, `#${c.nome} ${c.cognome} `].join(' '));
+                      setShowAttachments(false);
+                    }}
+                  >
+                    <span className="text-lg">👤</span>
+                    <span className="font-outfit text-[13px] font-medium">{c.nome} {c.cognome}</span>
+                  </button>
+                ))}
             </div>
           )}
         </div>

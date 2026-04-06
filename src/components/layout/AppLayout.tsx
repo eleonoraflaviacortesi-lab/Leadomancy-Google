@@ -2,6 +2,11 @@ import React from "react";
 import { Navigate, Outlet, useLocation, NavLink } from "react-router-dom";
 import { useAuth } from "@/src/hooks/useAuth";
 import AppSidebar from "./AppSidebar";
+import { useDetail } from "@/src/context/DetailContext";
+import { ClienteDetail } from "@/src/components/clienti/ClienteDetail";
+import { NotiziaDetail } from "@/src/components/notizie/NotiziaDetail";
+import { useClienti } from "@/src/hooks/useClienti";
+import { useNotizie } from "@/src/hooks/useNotizie";
 import { Plus, LayoutDashboard, Building2, Users, CalendarDays, MessageSquare, Settings } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { useLocalStorage } from "@/src/hooks/useLocalStorage";
@@ -24,6 +29,11 @@ const MobileNavLink = ({ to, icon, label }: { to: string; icon: React.ReactNode;
 
 export default function AppLayout() {
   const { isAuthenticated, isLoading: authLoading, isUsingFallback } = useAuth();
+  const { detail, closeDetail } = useDetail();
+  const { clienti, updateCliente, deleteCliente } = useClienti();
+  const { notizie, updateNotizia, deleteNotizia } = useNotizie();
+  const selectedCliente = clienti.find(c => c.id === detail?.id);
+  const selectedNotizia = notizie.find(n => n.id === detail?.id);
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useLocalStorage("sidebar-collapsed", false);
   const [showFallbackBanner, setShowFallbackBanner] = React.useState(true);
@@ -63,21 +73,6 @@ export default function AppLayout() {
   if (!isAuthenticated && !forceShow) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
-
-  // Map path to title
-  const getPageTitle = () => {
-    const path = location.pathname;
-    if (path === "/") return "DASHBOARD";
-    if (path === "/properties") return "NOTIZIE";
-    if (path === "/contacts") return "BUYERS";
-    if (path === "/activities") return "CALENDARIO";
-    if (path === "/chat") return "CHAT";
-    if (path === "/inserisci") return "PRODUZIONE";
-    if (path === "/office") return "UFFICIO";
-    if (path === "/settings") return "IMPOSTAZIONI";
-    if (path === "/profile") return "PROFILO";
-    return "";
-  };
 
   return (
     <>
@@ -132,6 +127,40 @@ export default function AppLayout() {
           </div>
         </div>
       </div>
+
+      {/* Detail Panel */}
+      {detail && (
+        <div className="fixed inset-0 z-[200] flex justify-end">
+          <div className="absolute inset-0 bg-black/20" onClick={closeDetail} />
+          <div className="relative w-full max-w-md bg-white h-full shadow-xl">
+             {detail.type === 'cliente' && selectedCliente ? (
+               <ClienteDetail 
+                 cliente={selectedCliente}
+                 isOpen={true}
+                 onClose={closeDetail}
+                 onUpdate={(id, updates) => updateCliente({ id, ...updates })}
+                 onDelete={(id) => {
+                   deleteCliente(id);
+                   closeDetail();
+                 }}
+               />
+             ) : detail.type === 'notizia' && selectedNotizia ? (
+               <NotiziaDetail 
+                 notizia={selectedNotizia}
+                 open={true}
+                 onOpenChange={(open) => !open && closeDetail()}
+                 onUpdate={(id, updates) => updateNotizia({ id, ...updates })}
+                 onDelete={(id) => {
+                   deleteNotizia(id);
+                   closeDetail();
+                 }}
+               />
+             ) : (
+               <div className="p-6">Dettaglio non trovato</div>
+             )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

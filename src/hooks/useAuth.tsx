@@ -181,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           full_name: userInfo.name || '',
           role: 'agente',
           sede: 'Firenze',
-          sedi: ['Firenze'],
+          sedi: null,
           avatar_emoji: '👤'
         };
         
@@ -216,7 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           full_name: userInfo.name || '',
           role: 'agente',
           sede: 'Firenze',
-          sedi: ['Firenze'],
+          sedi: null,
           avatar_emoji: '👤'
         };
         setUser(fallbackProfile);

@@ -138,6 +138,7 @@ export interface Appointment {
 export interface DailyReport {
   id: string;
   user_id: string;
+  sede: string;
   date: string;
   contatti_reali: number;
   contatti_ideali: number;
@@ -182,3 +183,25 @@ export interface UndoableAction {
 }
 
 export type CalendarViewMode = 'day' | '3days' | 'week' | 'month';
+
+export interface CicloProduttivo {
+  id: string;
+  user_id: string;
+  sede: string;
+  date: string;
+  contatti_reali: number;
+  notizie_reali: number;
+  clienti_gestiti: number;
+  appuntamenti_vendita: number;
+  acquisizioni: number;
+  incarichi_vendita: number;
+  valutazioni_fatte: number;
+  vendite_numero: number;
+  vendite_valore: number;
+  nuove_trattative: number;
+  trattative_chiuse: number;
+  fatturato_a_credito: number;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}

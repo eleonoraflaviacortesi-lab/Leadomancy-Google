@@ -7,21 +7,36 @@ import { cn, formatCurrency } from "@/src/lib/utils";
 import { format, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
 
-const CounterField = ({ label, field, formData, onNumberInputChange }: { 
+const CounterField = ({ label, field, formData, onNumberInputChange, onCounterChange }: { 
   label: string; 
   field: keyof CicloProduttivo; 
   formData: any; 
-  onNumberInputChange: any 
+  onNumberInputChange: any;
+  onCounterChange: any;
 }) => (
   <div className="flex flex-col gap-1.5 p-3 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[12px] group hover:border-[var(--border-medium)] transition-all shadow-sm">
     <span className="text-[9px] font-outfit font-bold text-[var(--text-primary)] uppercase tracking-[0.1em]">{label}</span>
     <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => onCounterChange(field, -1)}
+        className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-[var(--border-light)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-all shadow-sm active:scale-95"
+      >
+        <Minus size={14} />
+      </button>
       <input
         type="number"
         value={formData[field] as number}
         onChange={(e) => onNumberInputChange(field, e.target.value)}
         className="w-full bg-white border border-[var(--border-light)] rounded-lg h-7 text-center font-outfit font-bold text-[12px] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all shadow-sm"
       />
+      <button
+        type="button"
+        onClick={() => onCounterChange(field, 1)}
+        className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-[var(--border-light)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-all shadow-sm active:scale-95"
+      >
+        <Plus size={14} />
+      </button>
     </div>
   </div>
 );
@@ -47,9 +62,17 @@ const CurrencyField = ({ label, field, formData, onNumberInputChange }: {
   </div>
 );
 
-export const ReportForm: React.FC = () => {
+interface ReportFormProps {
+  initialDate?: string;
+}
+
+export const ReportForm: React.FC<ReportFormProps> = ({ initialDate }) => {
   const { myData, saveDailyData } = useDailyData();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
+
+  useEffect(() => {
+    if (initialDate) setSelectedDate(initialDate);
+  }, [initialDate]);
   
   const existingReport = myData.find(r => r.date === selectedDate);
 
@@ -113,7 +136,7 @@ export const ReportForm: React.FC = () => {
 
   const handleNumberInputChange = (field: keyof CicloProduttivo, value: string) => {
     const num = parseFloat(value) || 0;
-    setFormData({ ...formData, [field]: num });
+    setFormData({ ...formData, [field]: Math.max(0, num) });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -161,11 +184,11 @@ export const ReportForm: React.FC = () => {
           </h3>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
-          <CounterField label="Contatti Reali" field="contatti_reali" formData={formData} onNumberInputChange={handleNumberInputChange} />
-          <CounterField label="Notizie Reali" field="notizie_reali" formData={formData} onNumberInputChange={handleNumberInputChange} />
-          <CounterField label="App. Vendita" field="appuntamenti_vendita" formData={formData} onNumberInputChange={handleNumberInputChange} />
-          <CounterField label="Incarichi Vendita" field="incarichi_vendita" formData={formData} onNumberInputChange={handleNumberInputChange} />
-          <CounterField label="Valutazioni Fatte" field="valutazioni_fatte" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Contatti Reali" field="contatti_reali" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
+          <CounterField label="Notizie Reali" field="notizie_reali" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
+          <CounterField label="App. Vendita" field="appuntamenti_vendita" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
+          <CounterField label="Incarichi Vendita" field="incarichi_vendita" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
+          <CounterField label="Valutazioni Fatte" field="valutazioni_fatte" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
         </div>
       </div>
 
@@ -178,10 +201,10 @@ export const ReportForm: React.FC = () => {
           </h3>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
-          <CounterField label="Vendite (Numero)" field="vendite_numero" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Vendite (Numero)" field="vendite_numero" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
           <CurrencyField label="Valore Vendite" field="vendite_valore" formData={formData} onNumberInputChange={handleNumberInputChange} />
-          <CounterField label="Nuove Trattative" field="nuove_trattative" formData={formData} onNumberInputChange={handleNumberInputChange} />
-          <CounterField label="Trattative Chiuse" field="trattative_chiuse" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Nuove Trattative" field="nuove_trattative" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
+          <CounterField label="Trattative Chiuse" field="trattative_chiuse" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
           <CurrencyField label="Fatturato a Credito" field="fatturato_a_credito" formData={formData} onNumberInputChange={handleNumberInputChange} />
         </div>
       </div>

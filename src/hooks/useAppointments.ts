@@ -43,8 +43,8 @@ export function useAppointments() {
         }))
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
     },
-    staleTime: 0,
-    refetchInterval: 5000,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchInterval: 1000 * 60 * 5, // 5 minutes
     enabled: !!user,
   });
 
@@ -104,25 +104,42 @@ export function useAppointments() {
         console.warn(`[useAppointments] Appointment ${updates.id} not found in sheet, skipping update.`);
         return;
       }
-      
       const appointment = appointments.find(a => a.id === updates.id);
       const finalUpdates = { ...updates, updated_at: new Date().toISOString() };
-
       const promises: Promise<any>[] = [
         updateRow(SHEETS.appointments, rowIndex, finalUpdates)
       ];
-
-      if (appointment?.google_event_id) {
+      if (appointment?.google_event_id && !((updates as any).silent)) {
         promises.push(updateCalendarEvent(appointment.google_event_id, { ...appointment, ...updates } as Appointment));
       }
-
       await Promise.allSettled(promises);
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey });
-      if (!(variables as any).silent) {
-        toast.success("Appuntamento aggiornato");
+    onMutate: async (updates) => {
+      // Cancel in-flight refetches so they don't overwrite optimistic update
+      await queryClient.cancelQueries({ queryKey });
+      // Snapshot previous value for rollback
+      const previous = queryClient.getQueryData<Appointment[]>(queryKey);
+      // Optimistically update the cache immediately
+      queryClient.setQueryData<Appointment[]>(queryKey, old =>
+        old?.map(a => a.id === updates.id ? { ...a, ...updates } : a) ?? []
+      );
+      return { previous };
+    },
+    onError: (_, __, context) => {
+      // Rollback on error
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
       }
+      toast.error('Errore nel salvataggio');
+    },
+    onSuccess: (_, variables) => {
+      if (!(variables as any).silent) {
+        toast.success('Appuntamento aggiornato');
+      }
+    },
+    onSettled: () => {
+      // Refetch in background after 2s to sync with Sheets
+      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 2000);
     },
   });
 

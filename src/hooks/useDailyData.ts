@@ -14,25 +14,28 @@ import {
 export function useDailyData() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const queryKey = ['daily_reports', user?.id];
+  const queryKey = ['daily_reports', user?.sede || 'all'];
 
-  const { data: allData = [], isLoading } = useQuery({
-    queryKey: ['daily_reports', user?.sede],
+  const { data: rawData = [], isLoading } = useQuery({
+    queryKey,
     queryFn: async () => {
-      if (!user?.sede) return [];
       const data = await getSheetData<CicloProduttivo>(SHEETS.daily_reports);
-      // Filter by office to ensure "Ufficio" view is office-specific
-      return data
-        .filter(r => r.sede === user.sede)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     },
     staleTime: 1000 * 60 * 5,
-    enabled: !!user?.sede,
+    enabled: !!user,
   });
 
   const myData = useMemo(() => {
-    return allData.filter(r => r.user_id === user?.id);
-  }, [allData, user]);
+    const userId = user?.user_id || user?.id;
+    if (!userId) return [];
+    return rawData.filter(r => String(r.user_id).toLowerCase() === String(userId).toLowerCase());
+  }, [rawData, user]);
+
+  const allData = useMemo(() => {
+    if (!user?.sede) return rawData;
+    return rawData.filter(r => String(r.sede).toLowerCase() === String(user.sede).toLowerCase());
+  }, [rawData, user?.sede]);
 
   const todayData = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -43,16 +46,20 @@ export function useDailyData() {
     mutationFn: async ({ data, date }: { data: Partial<CicloProduttivo>, date: string }) => {
       if (!user) throw new Error("User not authenticated");
       
+      const userId = user.user_id || user.id;
       // Check if record exists for user_id + date
       const allReports = await getSheetData<CicloProduttivo>(SHEETS.daily_reports);
-      const existingReport = allReports.find(r => r.user_id === user.id && r.date === date);
+      const existingReport = allReports.find(r => 
+        String(r.user_id).toLowerCase() === String(userId).toLowerCase() && 
+        r.date === date
+      );
 
       if (existingReport) {
         const rowIndex = await findRowIndex(SHEETS.daily_reports, existingReport.id);
         if (rowIndex) {
           await updateRow(SHEETS.daily_reports, rowIndex, {
             ...data,
-            sede: user.sede, // Ensure sede is updated/present
+            sede: user.sede || existingReport.sede, // Keep existing sede if user's is missing
             updated_at: new Date().toISOString()
           });
         }
@@ -62,8 +69,8 @@ export function useDailyData() {
         const newReport: CicloProduttivo = {
           ...data,
           id,
-          user_id: user.id,
-          sede: user.sede,
+          user_id: userId,
+          sede: user.sede || 'Firenze', // Default to Firenze if missing
           date,
           created_at: now,
           updated_at: now,
@@ -73,7 +80,12 @@ export function useDailyData() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
-      toast.success("Dati salvati");
+      queryClient.refetchQueries({ queryKey });
+      toast.success("Ciclo salvato ✓");
+    },
+    onError: (error) => {
+      console.error('[useDailyData] Save failed:', error);
+      toast.error("Errore nel salvataggio del ciclo");
     },
   });
 

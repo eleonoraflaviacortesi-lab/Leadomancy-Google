@@ -9,7 +9,7 @@ import { AddNotiziaDialog } from "./AddNotiziaDialog";
 import { NotiziaDetail } from "./NotiziaDetail";
 import { NotizieStatsChart } from "./NotizieStatsChart";
 import { FunnelChartModal } from "./FunnelChartModal";
-import { ImportCSVDialog } from "./ImportCSVDialog";
+import { ImportFileDialog } from "./ImportFileDialog";
 import { Notizia, NotiziaStatus } from "@/src/types";
 import { cn } from "@/src/lib/utils";
 
@@ -28,6 +28,35 @@ export const NotiziePage: React.FC = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [initialStatus, setInitialStatus] = useState<NotiziaStatus | undefined>();
   const [selectedNotiziaId, setSelectedNotiziaId] = useState<string | null>(null);
+
+  const NOTIZIA_FIELDS = [
+    { key: 'name', label: 'Nome/Titolo' },
+    { key: 'zona', label: 'Zona' },
+    { key: 'telefono', label: 'Telefono' },
+    { key: 'type', label: 'Tipologia' },
+    { key: 'prezzo_richiesto', label: 'Prezzo Richiesto' },
+    { key: 'valore', label: 'Valore Stimato' },
+    { key: 'rating', label: 'Rating (1-5)' },
+    { key: 'notes', label: 'Note' },
+  ];
+
+  const handleImportNotizie = async (data: any[]) => {
+    let successCount = 0;
+    for (const item of data) {
+      const noticia: Partial<Notizia> = {
+        ...item,
+        // Only set default status if it's not already provided in the imported data
+        status: item.status || 'new',
+        emoji: item.emoji || '🏠'
+      };
+      if (noticia.prezzo_richiesto) noticia.prezzo_richiesto = parseFloat(noticia.prezzo_richiesto.toString().replace(/[^0-9.]/g, '')) || 0;
+      if (noticia.valore) noticia.valore = parseFloat(noticia.valore.toString().replace(/[^0-9.]/g, '')) || 0;
+      if (noticia.rating) noticia.rating = parseFloat(noticia.rating.toString().replace(/[^0-9.]/g, '')) || 0;
+      await updateNotizia({ id: crypto.randomUUID(), ...noticia } as any);
+      successCount++;
+    }
+    toast.success(`Importate con successo ${successCount} notizie`);
+  };
 
   const selectedNotizia = useMemo(() => {
     if (!selectedNotiziaId) return null;
@@ -75,7 +104,7 @@ export const NotiziePage: React.FC = () => {
       {/* Breadcrumb & Title */}
       <div className="flex flex-col">
         <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
-          Leadomancy / Notizie
+          ALTAIR / Notizie
         </p>
         <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
           Notizie
@@ -251,9 +280,12 @@ export const NotiziePage: React.FC = () => {
       />
 
       {/* Import Dialog */}
-      <ImportCSVDialog
+      <ImportFileDialog
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
+        title="Importa Notizie"
+        fields={NOTIZIA_FIELDS}
+        onImport={handleImportNotizie}
       />
     </div>
   );

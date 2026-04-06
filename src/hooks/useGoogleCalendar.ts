@@ -19,6 +19,10 @@ export interface GoogleCalendarEvent {
   end: { dateTime?: string; date?: string };
   calendarId: string;
   calendarColor: string;
+  organizer?: { email?: string; displayName?: string };
+  htmlLink?: string;
+  description?: string;
+  location?: string;
 }
 
 export function useGoogleCalendar() {

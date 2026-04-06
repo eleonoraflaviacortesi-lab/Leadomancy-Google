@@ -161,7 +161,7 @@ export const PersonalDashboard: React.FC = () => {
       {/* 1. Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Leadomancy / Dashboard</p>
+          <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>ALTAIR / Dashboard</p>
           <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)' }}>Buongiorno, {user?.nome}</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', textTransform: 'capitalize' }}>{format(today, 'EEEE d MMMM yyyy', { locale: it })}</p>
         </div>

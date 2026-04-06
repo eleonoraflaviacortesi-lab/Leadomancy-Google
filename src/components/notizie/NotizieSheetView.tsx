@@ -7,6 +7,7 @@ import {
   MoreVertical, 
   GripVertical, 
   Plus, 
+  Minus,
   Eye, 
   Trash2, 
   Copy, 
@@ -22,7 +23,10 @@ import {
   Phone,
   ExternalLink,
   MessageCircle,
-  Star
+  Star,
+  Maximize2,
+  Minimize2,
+  Layout
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNotizie } from "@/src/hooks/useNotizie";
@@ -41,6 +45,32 @@ interface NotizieSheetViewProps {
   onAddNew?: () => void;
   isLoading?: boolean;
 }
+
+type Density = 'compact' | 'default' | 'large';
+
+const DENSITY_CONFIG = {
+  compact: { 
+    rowHeight: 'h-7', 
+    fontSize: 'text-[11px]', 
+    headerHeight: 'h-8',
+    iconSize: 12,
+    padding: 'px-1.5'
+  },
+  default: { 
+    rowHeight: 'h-9', 
+    fontSize: 'text-[13px]', 
+    headerHeight: 'h-10',
+    iconSize: 14,
+    padding: 'px-2'
+  },
+  large: { 
+    rowHeight: 'h-11', 
+    fontSize: 'text-[15px]', 
+    headerHeight: 'h-12',
+    iconSize: 16,
+    padding: 'px-3'
+  }
+};
 
 const COLUMNS = [
   { key: 'name', label: 'Nome', width: 180, minWidth: 120, editable: true, type: 'text' },
@@ -70,13 +100,15 @@ const CellInput = React.memo(({
   onSave, 
   onCancel, 
   type = "text",
-  className = ""
+  className = "",
+  fontSize = "text-[13px]"
 }: { 
   initialValue: any; 
   onSave: (val: any) => void; 
   onCancel: () => void;
   type?: string;
   className?: string;
+  fontSize?: string;
 }) => {
   const [value, setValue] = useState(initialValue);
   const savedRef = useRef(false);
@@ -85,7 +117,7 @@ const CellInput = React.memo(({
     <input
       autoFocus
       type={type}
-      className={cn("w-full bg-transparent outline-none font-outfit text-[13px]", className)}
+      className={cn("w-full bg-transparent outline-none font-outfit", fontSize, className)}
       value={value ?? ""}
       onChange={(e) => setValue(type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
       onBlur={() => {
@@ -173,6 +205,16 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
   const [draggedColKey, setDraggedColKey] = useState<string | null>(null);
   const [dragOverColKey, setDragOverColKey] = useState<string | null>(null);
 
+  const [density, setDensity] = useState<Density>(() => {
+    const saved = localStorage.getItem('notizie-sheet-density');
+    return (saved as Density) || 'default';
+  });
+
+  const [fontSize, setFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem('notizie-sheet-font-size');
+    return saved ? parseInt(saved) : 12; // Default 12px
+  });
+
   const { overrides, updateOverride } = useColumnTypeOverrides('notizie');
   const { columns: kanbanCols } = useKanbanColumns();
 
@@ -212,6 +254,14 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
   useEffect(() => {
     localStorage.setItem('notizie-sheet-fav-colors', JSON.stringify(favoriteColors));
   }, [favoriteColors]);
+
+  useEffect(() => {
+    localStorage.setItem('notizie-sheet-density', density);
+  }, [density]);
+
+  useEffect(() => {
+    localStorage.setItem('notizie-sheet-font-size', fontSize.toString());
+  }, [fontSize]);
 
   // --- Helpers ---
   const getLuminance = (hex: string) => {
@@ -426,6 +476,7 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
     const isEditing = editingCell?.id === notizia.id && editingCell?.key === col.key;
     const override = overrides[col.key];
     const cellType = override?.type || col.type;
+    const config = DENSITY_CONFIG[density];
 
     const cellStyle: React.CSSProperties = {
       width: colWidths[col.key],
@@ -436,10 +487,10 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
     if (isEditing) {
       if (cellType === 'status') {
         return (
-          <div className="relative w-full h-full flex items-center px-2" style={cellStyle}>
+          <div className={cn("relative w-full h-full flex items-center", config.padding)} style={cellStyle}>
             <select
               autoFocus
-              className="w-full bg-transparent outline-none font-outfit text-[13px]"
+              className={cn("w-full bg-transparent outline-none font-outfit", config.fontSize)}
               value={value}
               onChange={(e) => {
                 onUpdate(notizia.id, { status: e.target.value as any });
@@ -457,10 +508,11 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
 
       if (cellType === 'number') {
         return (
-          <div className="relative w-full h-full flex items-center px-2" style={cellStyle}>
+          <div className={cn("relative w-full h-full flex items-center", config.padding)} style={cellStyle}>
             <CellInput
               type="number"
               initialValue={value}
+              fontSize={config.fontSize}
               onSave={(val) => {
                 onUpdate(notizia.id, { [col.key]: val });
                 setEditingCell(null);
@@ -472,9 +524,10 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
       }
 
       return (
-        <div className="relative w-full h-full flex items-center px-2" style={cellStyle}>
+        <div className={cn("relative w-full h-full flex items-center", config.padding)} style={cellStyle}>
           <CellInput
             initialValue={value}
+            fontSize={config.fontSize}
             onSave={(val) => {
               onUpdate(notizia.id, { [col.key]: val });
               setEditingCell(null);
@@ -492,26 +545,27 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
       const color = statusColors[value] || '#E5E7EB';
       content = (
         <div 
-          className="px-2 py-0.5 rounded-full text-[11px] font-medium flex items-center gap-1.5"
+          className={cn("rounded-full font-medium flex items-center gap-1.5", density === 'compact' ? "px-1.5 py-0 text-[9px]" : "px-2 py-0.5 text-[11px]")}
           style={{ backgroundColor: color + '20', color: color }}
         >
-          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+          <div className={cn("rounded-full", density === 'compact' ? "w-1 h-1" : "w-1.5 h-1.5")} style={{ backgroundColor: color }} />
           {statusLabels[value] || value}
         </div>
       );
     } else if (cellType === 'boolean') {
       content = (
         <div className={cn(
-          "w-4 h-4 rounded-sm border flex items-center justify-center",
+          "rounded-sm border flex items-center justify-center",
+          density === 'compact' ? "w-3 h-3" : "w-4 h-4",
           value ? "bg-primary border-primary text-white" : "border-gray-300"
         )}>
-          {value && <Check size={12} />}
+          {value && <Check size={density === 'compact' ? 10 : 12} />}
         </div>
       );
     } else if (col.key === 'phone') {
       content = (
         <div className="flex items-center justify-between w-full group/phone">
-          <span className="truncate">{value}</span>
+          <span className={cn("truncate", config.fontSize)}>{value}</span>
           {value && (
             <a 
               href={`https://wa.me/${value.replace(/\D/g, '')}`} 
@@ -520,7 +574,7 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
               className="opacity-0 group-hover/phone:opacity-100 transition-opacity text-green-600 p-1 hover:bg-green-50 rounded"
               onClick={(e) => e.stopPropagation()}
             >
-              <MessageCircle size={14} />
+              <MessageCircle size={config.iconSize} />
             </a>
           )}
         </div>
@@ -531,23 +585,29 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
           href={value} 
           target="_blank" 
           rel="noopener noreferrer" 
-          className="text-blue-600 hover:underline flex items-center gap-1 truncate"
+          className={cn("text-blue-600 hover:underline flex items-center gap-1 truncate", config.fontSize)}
           onClick={(e) => e.stopPropagation()}
         >
-          {value} <ExternalLink size={10} />
+          {value} <ExternalLink size={config.iconSize - 4} />
         </a>
       );
     } else if (cellType === 'number') {
-      content = value?.toLocaleString('it-IT', { 
-        style: col.key.includes('prezzo') || col.key === 'valore' ? 'currency' : 'decimal', 
-        currency: 'EUR',
-        maximumFractionDigits: 0
-      });
+      content = (
+        <span className={config.fontSize}>
+          {value?.toLocaleString('it-IT', { 
+            style: col.key.includes('prezzo') || col.key === 'valore' ? 'currency' : 'decimal', 
+            currency: 'EUR',
+            maximumFractionDigits: 0
+          })}
+        </span>
+      );
+    } else {
+      content = <span className={config.fontSize}>{value}</span>;
     }
 
     return (
       <div 
-        className="px-2 h-full flex items-center truncate cursor-text"
+        className={cn("h-full flex items-center truncate cursor-text", config.padding)}
         style={cellStyle}
         onClick={() => col.editable && setEditingCell({ id: notizia.id, key: col.key })}
         onContextMenu={(e) => {
@@ -570,6 +630,7 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
       textDecoration: rowF.strikethrough || colF.strikethrough ? 'line-through' : 'none',
       color: rowF.color || colF.color || 'inherit',
       backgroundColor: rowF.backgroundColor || colF.backgroundColor || 'transparent',
+      fontSize: fontSize + 'px',
     };
   };
 
@@ -584,50 +645,76 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-white border border-[var(--border-light)] rounded-xl overflow-hidden shadow-sm">
-      {/* Format Toolbar */}
-      <AnimatePresence>
-        {(selectedRowId || selectedColKey) && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="flex items-center justify-end gap-1 p-1.5 border-b bg-[var(--bg-subtle)]"
-          >
-            <div className="flex items-center gap-1 px-2 py-1 border-r mr-1">
-              <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)]">
-                {selectedRowId ? "Riga" : "Colonna"}
-              </span>
-            </div>
-            <ToolbarButton 
-              icon={<Bold size={16} />} 
-              onClick={() => updateFormat(selectedRowId ? 'row' : 'col', { bold: !((selectedRowId ? rowFormats[selectedRowId!] : colFormats[selectedColKey!])?.bold) })} 
-            />
-            <ToolbarButton 
-              icon={<Italic size={16} />} 
-              onClick={() => updateFormat(selectedRowId ? 'row' : 'col', { italic: !((selectedRowId ? rowFormats[selectedRowId!] : colFormats[selectedColKey!])?.italic) })} 
-            />
-            <ToolbarButton 
-              icon={<Strikethrough size={16} />} 
-              onClick={() => updateFormat(selectedRowId ? 'row' : 'col', { strikethrough: !((selectedRowId ? rowFormats[selectedRowId!] : colFormats[selectedColKey!])?.strikethrough) })} 
-            />
-            <div className="w-px h-4 bg-gray-300 mx-1" />
-            <ColorPickerButton 
-              icon={<Type size={16} />} 
-              onSelect={(color) => updateFormat(selectedRowId ? 'row' : 'col', { color })} 
-            />
-            <ColorPickerButton 
-              icon={<Palette size={16} />} 
-              onSelect={(backgroundColor) => updateFormat(selectedRowId ? 'row' : 'col', { backgroundColor })} 
-            />
+      {/* Toolbar */}
+      <div className="flex items-center justify-between p-1.5 border-b bg-[var(--bg-subtle)]">
+        <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 border-r pr-2 mr-2">
+            <button onClick={() => setFontSize(p => Math.max(10, p - 1))} className="p-1 hover:bg-black/5 rounded"><Minus size={12} /></button>
+            <span className="text-[11px] font-medium w-6 text-center">{fontSize}px</span>
+            <button onClick={() => setFontSize(p => Math.min(20, p + 1))} className="p-1 hover:bg-black/5 rounded"><Plus size={12} /></button>
+          </div>
+          <div className="flex items-center bg-white border rounded-lg p-0.5 mr-2">
             <button 
-              onClick={() => { setSelectedRowId(null); setSelectedColKey(null); }}
-              className="ml-2 p-1 hover:bg-black/5 rounded"
+              onClick={() => setDensity('compact')}
+              className={cn(
+                "p-1.5 rounded-md transition-all",
+                density === 'compact' ? "bg-primary text-white shadow-sm" : "hover:bg-gray-100 text-gray-500"
+              )}
+              title="Compatta"
             >
-              <X size={14} />
+              <Minimize2 size={14} />
             </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <button 
+              onClick={() => setDensity('default')}
+              className={cn(
+                "p-1.5 rounded-md transition-all",
+                density === 'default' ? "bg-primary text-white shadow-sm" : "hover:bg-gray-100 text-gray-500"
+              )}
+              title="Predefinita"
+            >
+              <Layout size={14} />
+            </button>
+            <button 
+              onClick={() => setDensity('large')}
+              className={cn(
+                "p-1.5 rounded-md transition-all",
+                density === 'large' ? "bg-primary text-white shadow-sm" : "hover:bg-gray-100 text-gray-500"
+              )}
+              title="Grande"
+            >
+              <Maximize2 size={16} />
+            </button>
+          </div>
+        </div>
+        <AnimatePresence>
+          {(selectedRowId || selectedColKey) && (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="flex items-center gap-1">
+              <ToolbarButton icon={<Bold size={16} />} onClick={() => {
+                const type = selectedRowId ? 'row' : 'col';
+                const id = selectedRowId || selectedColKey!;
+                const current = (type === 'row' ? rowFormats[id] : colFormats[id])?.bold;
+                updateFormat(type, { bold: !current });
+              }} />
+              <ToolbarButton icon={<Italic size={16} />} onClick={() => {
+                const type = selectedRowId ? 'row' : 'col';
+                const id = selectedRowId || selectedColKey!;
+                const current = (type === 'row' ? rowFormats[id] : colFormats[id])?.italic;
+                updateFormat(type, { italic: !current });
+              }} />
+              <ToolbarButton icon={<Strikethrough size={16} />} onClick={() => {
+                const type = selectedRowId ? 'row' : 'col';
+                const id = selectedRowId || selectedColKey!;
+                const current = (type === 'row' ? rowFormats[id] : colFormats[id])?.strikethrough;
+                updateFormat(type, { strikethrough: !current });
+              }} />
+              <div className="w-px h-4 bg-gray-300 mx-1" />
+              <ColorPickerButton icon={<Type size={16} />} onSelect={(color) => updateFormat(selectedRowId ? 'row' : 'col', { color })} />
+              <ColorPickerButton icon={<Palette size={16} />} onSelect={(backgroundColor) => updateFormat(selectedRowId ? 'row' : 'col', { backgroundColor })} />
+              <button onClick={() => { setSelectedRowId(null); setSelectedColKey(null); }} className="ml-2 p-1 hover:bg-black/5 rounded"><X size={14} /></button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       <div className="flex-1 overflow-auto relative" ref={tableRef}>
         <table className="border-collapse table-fixed min-w-full">
@@ -654,7 +741,7 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
                       dragOverColKey === key && "bg-primary/30 border-l-2 border-l-primary",
                       selectedColKey === key && "bg-primary/5"
                     )}
-                    style={{ width: colWidths[key] }}
+                    style={{ width: colWidths[key], fontSize: fontSize + 'px' }}
                   >
                     <div className="flex items-center justify-between gap-1">
                       <div 
@@ -711,12 +798,14 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
             {sortedData.map((notizia, index) => {
               const bg = notizia.card_color || 'transparent';
               const contrastText = getContrastColor(notizia.card_color);
+              const config = DENSITY_CONFIG[density];
 
               return (
                 <tr 
                   key={notizia.id}
                   className={cn(
-                    "group h-9 border-b hover:bg-black/[0.02] transition-colors relative",
+                    "group border-b hover:bg-black/[0.02] transition-colors relative",
+                    config.rowHeight,
                     dragOverRowId === notizia.id && "border-t-2 border-t-primary",
                     selectedRowId === notizia.id && "bg-primary/5"
                   )}
@@ -730,7 +819,10 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
                 >
                   {/* Row Number Cell */}
                   <td 
-                    className="sticky left-0 z-10 bg-[var(--bg-subtle)] border-r text-center font-outfit text-[10px] text-[var(--text-muted)] select-none flex items-center justify-center gap-1 px-1 h-9"
+                    className={cn(
+                      "sticky left-0 z-10 bg-[var(--bg-subtle)] border-r text-center font-outfit text-[10px] text-[var(--text-muted)] select-none flex items-center justify-center gap-1 px-1",
+                      config.rowHeight
+                    )}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       setRowContextMenu({ x: e.clientX, y: e.clientY, id: notizia.id });
@@ -756,7 +848,8 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
                     <td 
                       key={key} 
                       className={cn(
-                        "border-r p-0 h-9 overflow-hidden",
+                        "border-r p-0 overflow-hidden",
+                        config.rowHeight,
                         selectedColKey === key && "bg-primary/5"
                       )}
                       onClick={(e) => {
@@ -777,11 +870,11 @@ export const NotizieSheetView: React.FC<NotizieSheetViewProps> = ({
             })}
             
             {/* Add Row Button */}
-            <tr className="h-9 border-b group cursor-pointer hover:bg-black/5" onClick={onAddNew}>
-              <td className="sticky left-0 z-10 bg-[var(--bg-subtle)] border-r flex items-center justify-center h-9">
+            <tr className={cn("border-b group cursor-pointer hover:bg-black/5", DENSITY_CONFIG[density].rowHeight)} onClick={onAddNew}>
+              <td className={cn("sticky left-0 z-10 bg-[var(--bg-subtle)] border-r flex items-center justify-center", DENSITY_CONFIG[density].rowHeight)}>
                 <Plus size={14} className="text-primary" />
               </td>
-              <td colSpan={colOrder.length} className="px-3 text-[12px] text-primary font-medium">
+              <td colSpan={colOrder.length} className={cn("px-3 text-primary font-medium", density === 'compact' ? "text-[10px]" : "text-[12px]")}>
                 Aggiungi nuova notizia...
               </td>
             </tr>

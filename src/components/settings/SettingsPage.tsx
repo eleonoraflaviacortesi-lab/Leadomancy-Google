@@ -11,14 +11,17 @@ import {
   User,
   CheckCircle2,
   GripVertical,
-  Plus
+  Plus,
+  Target
 } from "lucide-react";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
-import { clearHeaderCache } from "@/src/lib/googleSheets";
+import { clearHeaderCache, updateRow, findRowIndex, SHEETS } from "@/src/lib/googleSheets";
+import { UserRole } from "@/src/types";
 import { useKanbanColumns } from "@/src/hooks/useKanbanColumns";
 import { useClientKanbanColumns } from "@/src/hooks/useClientKanbanColumns";
 import { useBannerSettings } from "@/src/hooks/useBannerSettings";
+import { useSedeTargets } from "@/src/hooks/useSedeTargets";
 import { toast } from "sonner";
 import { cn } from "@/src/lib/utils";
 
@@ -29,6 +32,73 @@ const KANBAN_COLOR_PALETTE = [
   '#60a5fa', '#4ade80', '#c084fc', '#fbbf24', '#f87171', '#818cf8', '#f472b6', '#9ca3af',
   '#93c5fd', '#86efac', '#d8b4fe', '#fcd34d', '#fca5a5', '#a5b4fc', '#f9a8d4', '#d1d5db'
 ];
+
+const RoleSelector = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+
+  const roles: { value: UserRole; label: string; desc: string }[] = [
+    { value: 'agente', label: 'Agente', desc: 'Vede solo le proprie notizie e buyers' },
+    { value: 'coordinatore', label: 'Coordinatore', desc: 'Vede tutte le notizie della sede supervisionata' },
+    { value: 'admin', label: 'Admin', desc: 'Accesso completo a tutte le sedi' },
+  ];
+
+  const handleRoleChange = async (newRole: UserRole) => {
+    if (!user || saving) return;
+    setSaving(true);
+    try {
+      const rowIndex = await findRowIndex(SHEETS.users, user.user_id || user.id);
+      if (rowIndex) {
+        await updateRow(SHEETS.users, rowIndex, { role: newRole });
+        await queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+        toast.success('Ruolo aggiornato — ricarica la pagina');
+      }
+    } catch {
+      toast.error('Errore nel salvataggio');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      {roles.map(r => (
+        <button
+          key={r.value}
+          onClick={() => handleRoleChange(r.value)}
+          disabled={saving}
+          className={cn(
+            "flex items-start gap-4 p-4 rounded-xl border text-left transition-all",
+            user?.role === r.value
+              ? "bg-[#1A1A18] border-transparent text-white"
+              : "bg-white border-[var(--border-light)] hover:border-[var(--border-medium)]"
+          )}
+        >
+          <div className={cn(
+            "w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5",
+            user?.role === r.value ? "border-white bg-white" : "border-[var(--border-medium)]"
+          )}>
+            {user?.role === r.value && (
+              <div className="w-full h-full rounded-full bg-[#1A1A18] scale-50" />
+            )}
+          </div>
+          <div>
+            <p className={cn("font-outfit font-bold text-[13px]", user?.role === r.value ? "text-white" : "text-[var(--text-primary)]")}>
+              {r.label}
+            </p>
+            <p className={cn("font-outfit text-[11px] mt-0.5", user?.role === r.value ? "text-white/60" : "text-[var(--text-muted)]")}>
+              {r.desc}
+            </p>
+          </div>
+        </button>
+      ))}
+      <p className="text-[10px] font-outfit text-[var(--text-muted)] text-center">
+        Dopo il cambio ruolo, ricarica la pagina per applicare le modifiche.
+      </p>
+    </div>
+  );
+};
 
 const KanbanColumnManager = ({ useHook }: { useHook: any }) => {
   const { columns, addColumn, updateColumn, deleteColumn, reorderColumns } = useHook();
@@ -173,6 +243,123 @@ const KanbanColumnManager = ({ useHook }: { useHook: any }) => {
           Aggiungi
         </button>
       </div>
+    </div>
+  );
+};
+
+const SedeTargetsEditor = () => {
+  const { targets, isLoading, updateTargets } = useSedeTargets();
+  const [localTargets, setLocalTargets] = useState({
+    contatti_target: 0,
+    notizie_target: 0,
+    incarichi_target: 0,
+    acquisizioni_target: 0,
+    appuntamenti_target: 0,
+    vendite_target: 0,
+    fatturato_target: 0,
+    trattative_chiuse_target: 0,
+  });
+  const [isDirty, setIsDirty] = useState(false);
+
+  useEffect(() => {
+    if (targets) {
+      setLocalTargets({
+        contatti_target: Number(targets.contatti_target) || 0,
+        notizie_target: Number(targets.notizie_target) || 0,
+        incarichi_target: Number(targets.incarichi_target) || 0,
+        acquisizioni_target: Number(targets.acquisizioni_target) || 0,
+        appuntamenti_target: Number(targets.appuntamenti_target) || 0,
+        vendite_target: Number(targets.vendite_target) || 0,
+        fatturato_target: Number(targets.fatturato_target) || 0,
+        trattative_chiuse_target: Number(targets.trattative_chiuse_target) || 0,
+      });
+      setIsDirty(false);
+    }
+  }, [targets]);
+
+  const fields = [
+    { key: 'contatti_target', label: 'Contatti', icon: '👥' },
+    { key: 'notizie_target', label: 'Notizie', icon: '🏠' },
+    { key: 'incarichi_target', label: 'Incarichi', icon: '📋' },
+    { key: 'acquisizioni_target', label: 'Acquisizioni', icon: '🤝' },
+    { key: 'appuntamenti_target', label: 'Appuntamenti', icon: '📅' },
+    { key: 'vendite_target', label: 'Vendite', icon: '✅' },
+    { key: 'fatturato_target', label: 'Fatturato Annuale (€)', icon: '💰', isCurrency: true, isAnnual: true },
+    { key: 'trattative_chiuse_target', label: 'Trattative Chiuse', icon: '🏆' },
+  ];
+
+  const handleChange = (key: string, value: number) => {
+    setLocalTargets(prev => ({ ...prev, [key]: value }));
+    setIsDirty(true);
+  };
+
+  const handleSave = () => {
+    updateTargets(localTargets);
+    setIsDirty(false);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="w-5 h-5 border-2 border-black/10 border-t-black rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const now = new Date();
+  const monthLabel = now.toLocaleString('it-IT', { month: 'long', year: 'numeric' });
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <p className="font-outfit text-[12px] text-[var(--text-muted)] capitalize">{monthLabel}</p>
+        {isDirty && (
+          <button
+            onClick={handleSave}
+            className="h-8 px-4 bg-[#1A1A18] text-white rounded-full font-outfit font-bold text-[11px] uppercase tracking-wider hover:opacity-90 transition-all"
+          >
+            Salva
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-1 gap-2">
+        {fields.map(field => (
+          <div
+            key={field.key}
+            className="flex items-center gap-4 p-3 bg-white border border-[var(--border-light)] rounded-xl"
+          >
+            <span className="text-[18px] w-8 text-center flex-shrink-0">{field.icon}</span>
+            <span className="font-outfit font-medium text-[13px] text-[var(--text-primary)] flex-1">
+              {field.label}
+            </span>
+            <div className="flex items-center gap-2">
+              {(field as any).isAnnual && (
+                <span className="font-outfit text-[10px] text-[var(--text-muted)] uppercase tracking-wider bg-[var(--bg-subtle)] px-2 py-0.5 rounded-full">
+                  annuale
+                </span>
+              )}
+              {field.isCurrency && (
+                <span className="font-outfit text-[12px] text-[var(--text-muted)]">€</span>
+              )}
+              <input
+                type="number"
+                value={(localTargets as any)[field.key]}
+                onChange={e => handleChange(field.key, Number(e.target.value))}
+                className="w-28 h-8 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-lg px-3 text-[13px] font-outfit font-bold text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-black/10 text-right"
+                min={0}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      {isDirty && (
+        <button
+          onClick={handleSave}
+          className="w-full h-10 bg-[#1A1A18] text-white rounded-full font-outfit font-bold text-[12px] uppercase tracking-wider hover:opacity-90 transition-all"
+        >
+          Salva Obiettivi
+        </button>
+      )}
     </div>
   );
 };
@@ -346,7 +533,7 @@ export const SettingsPage: React.FC = () => {
       {/* Header Section */}
       <div className="flex flex-col">
         <p className="text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-4 sm:mt-6">
-          Leadomancy / Impostazioni
+          ALTAIR / Impostazioni
         </p>
         <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
           Impostazioni
@@ -434,6 +621,20 @@ export const SettingsPage: React.FC = () => {
           />
         </Section>
 
+        {/* RUOLO ACCOUNT */}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center">
+              <Shield size={18} className="text-[var(--text-primary)]" />
+            </div>
+            <div>
+              <h2 className="font-outfit font-bold text-[15px] text-[var(--text-primary)]">Ruolo Account</h2>
+              <p className="font-outfit text-[11px] text-[var(--text-muted)]">Determina cosa puoi vedere nell'app</p>
+            </div>
+          </div>
+          <RoleSelector />
+        </div>
+
         {/* COLONNE KANBAN — NOTIZIE */}
         <Section title="COLONNE KANBAN — NOTIZIE">
           <KanbanColumnManager useHook={useKanbanColumns} />
@@ -448,6 +649,24 @@ export const SettingsPage: React.FC = () => {
         <Section title="BANNER TICKER">
           <BannerTickerSettings />
         </Section>
+
+        {/* Obiettivi Sede */}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center">
+              <Target size={18} className="text-[var(--text-primary)]" />
+            </div>
+            <div>
+              <h2 className="font-outfit font-bold text-[15px] text-[var(--text-primary)]">
+                Obiettivi Sede
+              </h2>
+              <p className="font-outfit text-[11px] text-[var(--text-muted)]">
+                Target mensili per la tua sede
+              </p>
+            </div>
+          </div>
+          <SedeTargetsEditor />
+        </div>
 
         <div className="flex flex-col items-center gap-2 py-6">
           <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center mb-2">

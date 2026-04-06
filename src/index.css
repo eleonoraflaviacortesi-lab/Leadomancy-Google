@@ -154,3 +154,12 @@ aside {
   color: #1A1A18 !important;
   border: 1px solid var(--border-medium) !important;
 }
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; filter: brightness(1.2) drop-shadow(0 0 8px rgba(255, 255, 255, 0.9)); }
+  50% { opacity: 0.8; filter: brightness(1) drop-shadow(0 0 4px rgba(255, 255, 255, 0.5)); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

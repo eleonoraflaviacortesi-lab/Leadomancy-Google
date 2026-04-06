@@ -265,7 +265,7 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                           onChange={(e) => setSelectedCalendarId(e.target.value)}
                           className="w-full h-11 bg-[var(--bg-subtle)] border-none rounded-[12px] px-4 text-[14px] font-outfit outline-none appearance-none cursor-pointer"
                         >
-                          <option value="primary">Calendario Principale (Leadomancy)</option>
+                          <option value="primary">Calendario Principale (ALTAIR)</option>
                           {calendars.filter(c => !c.primary).map(c => (
                             <option key={c.id} value={c.id}>{c.summary}</option>
                           ))}

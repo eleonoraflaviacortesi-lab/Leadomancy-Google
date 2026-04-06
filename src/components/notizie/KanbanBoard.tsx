@@ -40,15 +40,15 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ onNotiziaClick, onQuic
       ? sourceItems 
       : [...(notizieByStatus[destStatus] || [])];
 
-    const [movedItem] = sourceItems.splice(source.index, 1);
-    
-    // Create a new object for the moved item to avoid in-place modification
-    const updatedMovedItem = { ...movedItem };
+    const movedItemIndex = sourceItems.findIndex(n => n.id === draggableId);
+    if (movedItemIndex === -1) return;
+
+    const [movedItem] = sourceItems.splice(movedItemIndex, 1);
+    const updatedMovedItem = { ...movedItem, status: destStatus };
     
     // If moving to a different column
     if (source.droppableId !== destination.droppableId) {
-      const oldStatus = updatedMovedItem.status;
-      updatedMovedItem.status = destStatus;
+      const oldStatus = movedItem.status;
       
       // Persist status change
       updateNotizia({ id: draggableId, status: destStatus, silent: true });
@@ -137,7 +137,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
   const statusColor = column.color;
 
   return (
-    <div className="flex flex-col w-[238px] flex-shrink-0 h-full">
+    <div className="flex flex-col min-w-[280px] w-[280px] flex-shrink-0 h-full">
       {/* Header */}
       <div 
         className="h-[40px] flex items-center justify-between gap-2 px-1 pb-3 mb-3 border-b-2 group"
@@ -170,7 +170,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              "flex-1 flex flex-col gap-2 transition-colors duration-150",
+              "flex-1 flex flex-col gap-2 transition-colors duration-150 min-h-[150px] overflow-y-auto overflow-x-hidden px-1",
               snapshot.isDraggingOver && "bg-black/5 rounded-xl"
             )}
           >

@@ -1,146 +1,137 @@
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Upload, FileText, Check, AlertCircle, ChevronRight, ChevronLeft, Loader2, ChevronDown, FileCheck, ArrowRight } from "lucide-react";
-import { useNotizie } from "@/src/hooks/useNotizie";
-import { Notizia, NotiziaStatus } from "@/src/types";
+import { X, Upload, Check, ChevronRight, ChevronLeft, Loader2, ChevronDown } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { toast } from "sonner";
 
-interface ImportCSVDialogProps {
+interface ImportFileDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  title: string;
+  fields: { key: string; label: string }[];
+  onImport: (data: any[]) => Promise<void>;
 }
 
 type Step = 'upload' | 'mapping' | 'confirm';
 
-const NOTIZIA_FIELDS = [
-  { key: 'name', label: 'Nome/Titolo' },
-  { key: 'zona', label: 'Zona' },
-  { key: 'telefono', label: 'Telefono' },
-  { key: 'type', label: 'Tipologia' },
-  { key: 'prezzo_richiesto', label: 'Prezzo Richiesto' },
-  { key: 'valore', label: 'Valore Stimato' },
-  { key: 'rating', label: 'Rating (1-5)' },
-  { key: 'notes', label: 'Note' },
-];
-
-export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClose }) => {
-  const { addNotizia } = useNotizie();
+export const ImportFileDialog: React.FC<ImportFileDialogProps> = ({ isOpen, onClose, title, fields, onImport }) => {
   const [step, setStep] = useState<Step>('upload');
   const [file, setFile] = useState<File | null>(null);
-  const [csvData, setCsvData] = useState<string[][]>([]);
+  const [fileData, setFileData] = useState<string[][]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const parseCSV = (text: string) => {
-    // Auto-detect delimiter
-    const firstLine = text.split('\n')[0];
-    const delimiter = firstLine.includes(';') ? ';' : ',';
-    
-    const rows: string[][] = [];
-    let currentRow: string[] = [];
-    let currentField = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      const nextChar = text[i + 1];
-
-      if (char === '"') {
-        if (inQuotes && nextChar === '"') {
-          currentField += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === delimiter && !inQuotes) {
-        currentRow.push(currentField.trim());
-        currentField = '';
-      } else if ((char === '\r' || char === '\n') && !inQuotes) {
-        if (currentField || currentRow.length > 0) {
-          currentRow.push(currentField.trim());
-          rows.push(currentRow);
-          currentRow = [];
-          currentField = '';
-        }
-        if (char === '\r' && nextChar === '\n') i++;
-      } else {
-        currentField += char;
-      }
-    }
-    if (currentField || currentRow.length > 0) {
-      currentRow.push(currentField.trim());
-      rows.push(currentRow);
-    }
-    return rows;
-  };
-
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
-    if (!selectedFile.name.endsWith('.csv')) {
-      toast.error("Per favore carica un file .csv");
+    
+    const isCSV = selectedFile.name.endsWith('.csv');
+    const isExcel = selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls');
+    
+    if (!isCSV && !isExcel) {
+      toast.error("Per favore carica un file .csv, .xlsx o .xls");
       return;
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const rows = parseCSV(text);
+    reader.onload = async (event) => {
+      const data = event.target?.result;
+      let rows: string[][] = [];
+
+      if (isCSV) {
+        const text = data as string;
+        // Auto-detect delimiter
+        const firstLine = text.split('\n')[0];
+        const delimiter = firstLine.includes(';') ? ';' : ',';
+        
+        const csvRows: string[][] = [];
+        let currentRow: string[] = [];
+        let currentField = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          const nextChar = text[i + 1];
+
+          if (char === '"') {
+            if (inQuotes && nextChar === '"') {
+              currentField += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (char === delimiter && !inQuotes) {
+            currentRow.push(currentField.trim());
+            currentField = '';
+          } else if ((char === '\r' || char === '\n') && !inQuotes) {
+            if (currentField || currentRow.length > 0) {
+              currentRow.push(currentField.trim());
+              csvRows.push(currentRow);
+              currentRow = [];
+              currentField = '';
+            }
+            if (char === '\r' && nextChar === '\n') i++;
+          } else {
+            currentField += char;
+          }
+        }
+        if (currentField || currentRow.length > 0) {
+          currentRow.push(currentField.trim());
+          csvRows.push(currentRow);
+        }
+        rows = csvRows;
+      } else {
+        const XLSX = await import('xlsx');
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+      }
+
       if (rows.length < 2) {
-        toast.error("Il file CSV sembra vuoto o non valido");
+        toast.error("Il file sembra vuoto o non valido");
         return;
       }
       setHeaders(rows[0]);
-      setCsvData(rows.slice(1));
+      setFileData(rows.slice(1));
       setFile(selectedFile);
       
       // Auto-mapping
       const newMapping: Record<string, string> = {};
-      NOTIZIA_FIELDS.forEach(field => {
+      fields.forEach(field => {
         const match = rows[0].findIndex(h => 
-          h.toLowerCase().includes(field.key.toLowerCase()) || 
-          h.toLowerCase().includes(field.label.toLowerCase())
+          h && (h.toLowerCase().includes(field.key.toLowerCase()) || 
+          h.toLowerCase().includes(field.label.toLowerCase()))
         );
         if (match !== -1) newMapping[field.key] = rows[0][match];
       });
       setMapping(newMapping);
       setStep('mapping');
     };
-    reader.readAsText(selectedFile);
+    
+    if (isCSV) reader.readAsText(selectedFile);
+    else reader.readAsBinaryString(selectedFile);
   };
 
   const handleImport = async () => {
     setIsImporting(true);
-    let successCount = 0;
-
     try {
-      for (const row of csvData) {
-        const noticia: Partial<Notizia> = {
-          status: 'new',
-          emoji: '🏠'
-        };
-
-        NOTIZIA_FIELDS.forEach(field => {
+      const dataToImport = fileData.map(row => {
+        const item: any = {};
+        fields.forEach(field => {
           const csvHeader = mapping[field.key];
           if (csvHeader) {
             const headerIndex = headers.indexOf(csvHeader);
             if (headerIndex !== -1) {
-              let value: any = row[headerIndex];
-              if (field.key === 'prezzo_richiesto' || field.key === 'valore' || field.key === 'rating') {
-                value = parseFloat(value.replace(/[^0-9.]/g, '')) || 0;
-              }
-              (noticia as any)[field.key] = value;
+              item[field.key] = row[headerIndex];
             }
           }
         });
-
-        await addNotizia(noticia);
-        successCount++;
-      }
-      toast.success(`Importate con successo ${successCount} notizie`);
+        return item;
+      });
+      await onImport(dataToImport);
       onClose();
     } catch (error) {
       toast.error("Errore durante l'importazione");
@@ -148,14 +139,6 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
     } finally {
       setIsImporting(false);
     }
-  };
-
-  const reset = () => {
-    setStep('upload');
-    setFile(null);
-    setCsvData([]);
-    setHeaders([]);
-    setMapping({});
   };
 
   return (
@@ -183,8 +166,8 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
                   <Upload size={22} />
                 </div>
                 <div>
-                  <h2 className="font-outfit font-bold text-[20px] text-[var(--text-primary)] tracking-[-0.5px]">Importa Notizie</h2>
-                  <p className="font-outfit font-bold text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Carica da file CSV</p>
+                  <h2 className="font-outfit font-bold text-[20px] text-[var(--text-primary)] tracking-[-0.5px]">{title}</h2>
+                  <p className="font-outfit font-bold text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Carica da file CSV o Excel</p>
                 </div>
               </div>
               <button 
@@ -214,14 +197,14 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
                     <Upload size={32} className="sm:w-9 sm:h-9" />
                   </div>
                   <div className="text-center px-4">
-                    <p className="font-outfit font-bold text-[16px] sm:text-[18px] text-[var(--text-primary)] mb-1">Clicca o trascina il file CSV</p>
-                    <p className="font-outfit font-medium text-[13px] sm:text-[14px] text-[var(--text-muted)]">Solo file .csv supportati</p>
+                    <p className="font-outfit font-bold text-[16px] sm:text-[18px] text-[var(--text-primary)] mb-1">Clicca o trascina il file CSV o Excel</p>
+                    <p className="font-outfit font-medium text-[13px] sm:text-[14px] text-[var(--text-muted)]">File .csv, .xlsx o .xls supportati</p>
                   </div>
                   <input 
                     type="file" 
                     ref={fileInputRef} 
                     onChange={handleFileUpload} 
-                    accept=".csv" 
+                    accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
                     className="hidden" 
                   />
                 </div>
@@ -241,7 +224,7 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
                           </tr>
                         </thead>
                         <tbody>
-                          {csvData.slice(0, 5).map((row, i) => (
+                          {fileData.slice(0, 5).map((row, i) => (
                             <tr key={i} className="border-b border-black/[0.03] last:border-0">
                               {row.map((cell, j) => (
                                 <td key={j} className="py-3 px-4 text-[var(--text-primary)] truncate max-w-[150px]">{cell}</td>
@@ -256,7 +239,7 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
                   <div className="flex flex-col gap-4">
                     <h3 className="font-outfit font-bold text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Mappatura Campi</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                      {NOTIZIA_FIELDS.map(field => (
+                      {fields.map(field => (
                         <div key={field.key} className="flex flex-col gap-2">
                           <label className="font-outfit font-bold text-[11px] text-[var(--text-primary)] px-1">{field.label}</label>
                           <div className="relative">
@@ -287,7 +270,7 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
                   <div className="text-center">
                     <h3 className="font-outfit font-bold text-[24px] text-[var(--text-primary)] mb-2">Pronto per l'importazione</h3>
                     <p className="font-outfit font-medium text-[16px] text-[var(--text-muted)]">
-                      Stai per importare <span className="font-bold text-[var(--text-primary)]">{csvData.length}</span> notizie nel sistema.
+                      Stai per importare <span className="font-bold text-[var(--text-primary)]">{fileData.length}</span> elementi nel sistema.
                     </p>
                   </div>
                   <div className="w-full max-w-sm bg-[var(--bg-subtle)] p-6 rounded-[20px] border border-[var(--border-light)] space-y-4">
@@ -297,7 +280,7 @@ export const ImportCSVDialog: React.FC<ImportCSVDialogProps> = ({ isOpen, onClos
                     </div>
                     <div className="flex justify-between items-center text-[13px] font-outfit">
                       <span className="text-[var(--text-muted)] font-medium">Campi mappati:</span>
-                      <span className="font-bold text-[var(--text-primary)]">{Object.keys(mapping).length} su {NOTIZIA_FIELDS.length}</span>
+                      <span className="font-bold text-[var(--text-primary)]">{Object.keys(mapping).length} su {fields.length}</span>
                     </div>
                   </div>
                 </div>

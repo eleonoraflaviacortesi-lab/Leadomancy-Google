@@ -59,7 +59,13 @@ export function useNotizie() {
       });
 
       return uniqueNotizie
-        .filter(n => n.user_id === user.user_id)
+        .filter(n => {
+          if (user.role === 'coordinatore' || user.role === 'admin') {
+            const supervisedSedi = user.sedi || [user.sede];
+            return supervisedSedi.includes(n.sede) || n.user_id === user.user_id;
+          }
+          return n.user_id === user.user_id;
+        })
         .sort((a, b) => {
           if (a.display_order !== b.display_order) {
             return (a.display_order || 0) - (b.display_order || 0);
@@ -68,7 +74,6 @@ export function useNotizie() {
         });
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 30000, // 30 seconds
     enabled: !!user,
   });
 
@@ -140,60 +145,65 @@ export function useNotizie() {
     onSettled: () => {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey });
-      }, 2000);
+      }, 10000);
     },
   });
 
   const updateNotiziaMutation = useMutation({
     mutationFn: async ({ id, silent, ...updates }: Partial<Notizia> & { id: string; silent?: boolean }) => {
       console.log("[useNotizie] Updating notizia:", id, updates);
-      const rowIndex = await findRowIndex(SHEETS.notizie, id);
-      console.log("[useNotizie] Row index found:", rowIndex);
-      if (!rowIndex) throw new Error("Notizia non trovata");
-      
-      const finalUpdates: any = {
-        ...updates,
-        updated_at: new Date().toISOString(),
-      };
-      
-      // Compatibility mapping
-      if (finalUpdates.name !== undefined) {
-        finalUpdates.nome = finalUpdates.name;
-        finalUpdates.Nome = finalUpdates.name;
+      try {
+        const rowIndex = await findRowIndex(SHEETS.notizie, id);
+        console.log("[useNotizie] Row index found:", rowIndex);
+        if (!rowIndex) throw new Error("Notizia non trovata");
+        
+        const finalUpdates: any = {
+          ...updates,
+          updated_at: new Date().toISOString(),
+        };
+        
+        // Compatibility mapping
+        if (finalUpdates.name !== undefined) {
+          finalUpdates.nome = finalUpdates.name;
+          finalUpdates.Nome = finalUpdates.name;
+        }
+        if (finalUpdates.nome !== undefined) {
+          finalUpdates.Nome = finalUpdates.nome;
+        }
+        if (finalUpdates.prezzo_richiesto !== undefined) {
+          finalUpdates.prezzo = finalUpdates.prezzo_richiesto;
+          finalUpdates.Prezzo = finalUpdates.prezzo_richiesto;
+        }
+        if (finalUpdates.prezzo !== undefined) {
+          finalUpdates.Prezzo = finalUpdates.prezzo;
+        }
+        if (finalUpdates.telefono !== undefined) {
+          finalUpdates.Telefono = finalUpdates.telefono;
+        }
+        if (finalUpdates.email !== undefined) {
+          finalUpdates.Email = finalUpdates.email;
+        }
+        if (finalUpdates.citta !== undefined) {
+          finalUpdates.Citta = finalUpdates.citta;
+        }
+        if (finalUpdates.indirizzo !== undefined) {
+          finalUpdates.Indirizzo = finalUpdates.indirizzo;
+        }
+        if (finalUpdates.zona !== undefined) {
+          finalUpdates.Zona = finalUpdates.zona;
+        }
+        if (finalUpdates.provincia !== undefined) {
+          finalUpdates.Provincia = finalUpdates.provincia;
+        }
+        
+        console.log("[useNotizie] Final updates:", finalUpdates);
+        
+        await updateRow(SHEETS.notizie, rowIndex, finalUpdates);
+        return { id, silent };
+      } catch (error) {
+        console.error("[useNotizie] Error updating row:", error);
+        throw error;
       }
-      if (finalUpdates.nome !== undefined) {
-        finalUpdates.Nome = finalUpdates.nome;
-      }
-      if (finalUpdates.prezzo_richiesto !== undefined) {
-        finalUpdates.prezzo = finalUpdates.prezzo_richiesto;
-        finalUpdates.Prezzo = finalUpdates.prezzo_richiesto;
-      }
-      if (finalUpdates.prezzo !== undefined) {
-        finalUpdates.Prezzo = finalUpdates.prezzo;
-      }
-      if (finalUpdates.telefono !== undefined) {
-        finalUpdates.Telefono = finalUpdates.telefono;
-      }
-      if (finalUpdates.email !== undefined) {
-        finalUpdates.Email = finalUpdates.email;
-      }
-      if (finalUpdates.citta !== undefined) {
-        finalUpdates.Citta = finalUpdates.citta;
-      }
-      if (finalUpdates.indirizzo !== undefined) {
-        finalUpdates.Indirizzo = finalUpdates.indirizzo;
-      }
-      if (finalUpdates.zona !== undefined) {
-        finalUpdates.Zona = finalUpdates.zona;
-      }
-      if (finalUpdates.provincia !== undefined) {
-        finalUpdates.Provincia = finalUpdates.provincia;
-      }
-      
-      console.log("[useNotizie] Final updates:", finalUpdates);
-      
-      await updateRow(SHEETS.notizie, rowIndex, finalUpdates);
-      return { id, silent };
     },
     onMutate: async ({ id, silent, ...updates }) => {
       await queryClient.cancelQueries({ queryKey });
@@ -217,7 +227,7 @@ export function useNotizie() {
     onSettled: () => {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey });
-      }, 2000);
+      }, 10000);
     },
   });
 
@@ -247,23 +257,28 @@ export function useNotizie() {
     onSettled: () => {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey });
-      }, 2000);
+      }, 10000);
     },
   });
 
   const reorderNotizieMutation = useMutation({
     mutationFn: async (reordered: Notizia[]) => {
-      // Only update items that actually changed their display_order
-      // We fetch the current state to compare
+      // Only update items that actually changed their display_order or status
       const currentData = await getSheetData<Notizia>(SHEETS.notizie);
-      const currentMap = new Map(currentData.map(n => [String(n.id), n.display_order]));
+      const currentMap = new Map(currentData.map(n => [String(n.id), { order: n.display_order, status: n.status }]));
 
       await Promise.all(reordered.map(async (n) => {
-        const currentOrder = currentMap.get(String(n.id));
-        if (currentOrder !== n.display_order) {
+        const current = currentMap.get(String(n.id));
+        const hasOrderChanged = current?.order !== n.display_order;
+        const hasStatusChanged = current?.status !== n.status;
+
+        if (hasOrderChanged || hasStatusChanged) {
           const rowIndex = await findRowIndex(SHEETS.notizie, n.id);
           if (rowIndex) {
-            await updateRow(SHEETS.notizie, rowIndex, { display_order: n.display_order });
+            await updateRow(SHEETS.notizie, rowIndex, { 
+              display_order: n.display_order,
+              status: n.status 
+            });
           }
         }
       }));
@@ -279,7 +294,9 @@ export function useNotizie() {
           if (a.display_order !== b.display_order) {
             return (a.display_order || 0) - (b.display_order || 0);
           }
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return dateB - dateA;
         });
       });
       
@@ -287,11 +304,12 @@ export function useNotizie() {
     },
     onError: (err, reordered, context) => {
       queryClient.setQueryData(queryKey, context?.previousNotizie);
+      toast.error("Errore durante il riordino");
     },
     onSettled: () => {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey });
-      }, 2000);
+      }, 10000);
     },
   });
 

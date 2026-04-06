@@ -49,7 +49,7 @@ export const CalendarSidebar: React.FC<CalendarSidebarProps> = ({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-outfit font-bold text-[var(--text-primary)] truncate">
-                      Leadomancy
+                      ALTAIR
                     </p>
                     <p className="text-[10px] font-outfit text-[var(--text-muted)] uppercase tracking-wider">
                       Appuntamenti Locali

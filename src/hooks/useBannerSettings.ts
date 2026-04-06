@@ -11,13 +11,13 @@ export interface BannerSettings {
 }
 
 const DEFAULT_SETTINGS: BannerSettings = {
-  text1: 'MANCANO €{remaining} AL TRAGUARDO',
-  text2: 'OBIETTIVO FATTURATO AGENZIA €{target}',
-  text3: 'FATTURATO A CREDITO €{fatturatoCredito}',
+  text1: 'BENVENUTO IN LEADOMANCY',
+  text2: 'FATTURATO A CREDITO €{fatturatoCredito}',
+  text3: '',
   text4: '',
   bgColor: '#000000',
   textColor: '#FFFFFF',
-  speed: 40
+  speed: 60
 };
 
 export function useBannerSettings() {
