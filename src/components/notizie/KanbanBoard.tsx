@@ -189,7 +189,10 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
                       onEmojiChange={(id, emoji) => updateNotizia({ id, emoji })}
                       onColorChange={(id, card_color) => updateNotizia({ id, card_color })}
                       onUpdate={(id, updates) => updateNotizia({ id, ...updates, silent: true })}
-                      onDelete={(id) => deleteNotizia(id)}
+                      onDelete={(id) => {
+                        if (!window.confirm('Eliminare questa notizia?')) return;
+                        deleteNotizia(id);
+                      }}
                       isDragging={snapshot.isDragging}
                     />
                   </div>

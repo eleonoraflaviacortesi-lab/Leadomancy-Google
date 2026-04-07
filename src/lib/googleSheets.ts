@@ -320,13 +320,20 @@ export async function updateRow(sheetName: string, rowIndex: number, updates: an
     
     await ensureSheetsApi();
 
-    await (window as any).gapi.client.sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
-      resource: {
-        valueInputOption: 'RAW',
-        data: data,
-      },
-    });
+    console.log(`[GoogleSheets] Attempting batchUpdate for ${sheetName} row ${rowIndex}, data length: ${data.length}`);
+    try {
+      await (window as any).gapi.client.sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        resource: {
+          valueInputOption: 'RAW',
+          data: data,
+        },
+      });
+      console.log(`[GoogleSheets] batchUpdate successful for ${sheetName} row ${rowIndex}`);
+    } catch (apiError) {
+      console.error(`[GoogleSheets] batchUpdate API error for ${sheetName} row ${rowIndex}:`, apiError);
+      throw apiError;
+    }
   } catch (error) {
     console.error(`[GoogleSheets] Error updating row ${rowIndex} in ${sheetName}:`, error);
     throw new Error(`Failed to update row ${rowIndex} in sheet: ${sheetName}`);
@@ -344,23 +351,30 @@ export async function deleteRow(sheetName: string, rowIndex: number): Promise<vo
 
     await ensureSheetsApi();
 
-    await (window as any).gapi.client.sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
-      resource: {
-        requests: [
-          {
-            deleteDimension: {
-              range: {
-                sheetId: sheetId,
-                dimension: 'ROWS',
-                startIndex: rowIndex - 1,
-                endIndex: rowIndex,
+    console.log(`[GoogleSheets] Attempting deleteRow for ${sheetName} row ${rowIndex}, sheetId: ${sheetId}`);
+    try {
+      await (window as any).gapi.client.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        resource: {
+          requests: [
+            {
+              deleteDimension: {
+                range: {
+                  sheetId: sheetId,
+                  dimension: 'ROWS',
+                  startIndex: rowIndex - 1,
+                  endIndex: rowIndex,
+                },
               },
             },
-          },
-        ],
-      },
-    });
+          ],
+        },
+      });
+      console.log(`[GoogleSheets] deleteRow successful for ${sheetName} row ${rowIndex}`);
+    } catch (apiError) {
+      console.error(`[GoogleSheets] deleteRow API error for ${sheetName} row ${rowIndex}:`, apiError);
+      throw apiError;
+    }
   } catch (error) {
     console.error(`[GoogleSheets] Error deleting row ${rowIndex} from ${sheetName}:`, error);
     throw new Error(`Failed to delete row ${rowIndex} from sheet: ${sheetName}`);

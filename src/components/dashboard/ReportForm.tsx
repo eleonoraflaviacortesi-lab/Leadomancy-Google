@@ -7,37 +7,21 @@ import { cn, formatCurrency } from "@/src/lib/utils";
 import { format, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
 
-const CounterField = ({ label, field, formData, onNumberInputChange, onCounterChange }: { 
+const CounterField = ({ label, field, formData, onNumberInputChange }: { 
   label: string; 
   field: keyof CicloProduttivo; 
   formData: any; 
   onNumberInputChange: any;
-  onCounterChange: any;
 }) => (
   <div className="flex flex-col gap-1.5 p-3 bg-[var(--bg-subtle)] border border-[var(--border-light)] rounded-[12px] group hover:border-[var(--border-medium)] transition-all shadow-sm">
     <span className="text-[9px] font-outfit font-bold text-[var(--text-primary)] uppercase tracking-[0.1em]">{label}</span>
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={() => onCounterChange(field, -1)}
-        className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-[var(--border-light)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-all shadow-sm active:scale-95"
-      >
-        <Minus size={14} />
-      </button>
-      <input
-        type="number"
-        value={formData[field] as number}
-        onChange={(e) => onNumberInputChange(field, e.target.value)}
-        className="w-full bg-white border border-[var(--border-light)] rounded-lg h-7 text-center font-outfit font-bold text-[12px] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all shadow-sm"
-      />
-      <button
-        type="button"
-        onClick={() => onCounterChange(field, 1)}
-        className="w-7 h-7 flex items-center justify-center rounded-lg bg-white border border-[var(--border-light)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-all shadow-sm active:scale-95"
-      >
-        <Plus size={14} />
-      </button>
-    </div>
+    <input
+      type="number"
+      value={formData[field] === null ? '' : formData[field]}
+      onChange={(e) => onNumberInputChange(field, e.target.value)}
+      placeholder="0"
+      className="w-full bg-white border border-[var(--border-light)] rounded-lg h-7 text-center font-outfit font-bold text-[12px] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all shadow-sm"
+    />
   </div>
 );
 
@@ -53,7 +37,7 @@ const CurrencyField = ({ label, field, formData, onNumberInputChange }: {
       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-outfit font-bold text-[var(--text-muted)]">€</span>
       <input
         type="number"
-        value={formData[field] as number}
+        value={formData[field] === null ? '' : formData[field]}
         onChange={(e) => onNumberInputChange(field, e.target.value)}
         placeholder="0.00"
         className="w-full pl-6 pr-3 h-7 bg-white border border-[var(--border-light)] rounded-lg font-outfit font-bold text-[12px] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)]/10 transition-all shadow-sm"
@@ -76,72 +60,78 @@ export const ReportForm: React.FC<ReportFormProps> = ({ initialDate }) => {
   
   const existingReport = myData.find(r => r.date === selectedDate);
 
-  const [formData, setFormData] = useState<Partial<CicloProduttivo>>({
-    contatti_reali: 0,
-    notizie_reali: 0,
-    appuntamenti_vendita: 0,
-    acquisizioni: 0,
-    incarichi_vendita: 0,
-    valutazioni_fatte: 0,
-    vendite_numero: 0,
-    vendite_valore: 0,
-    nuove_trattative: 0,
-    trattative_chiuse: 0,
-    fatturato_a_credito: 0,
+  const [formData, setFormData] = useState<Partial<Record<keyof CicloProduttivo, number | null | string>>>({
+    contatti_reali: null,
+    notizie_reali: null,
+    appuntamenti_vendita: null,
+    acquisizioni: null,
+    incarichi_vendita: null,
+    valutazioni_fatte: null,
+    vendite_numero: null,
+    vendite_valore: null,
+    nuove_trattative: null,
+    trattative_chiuse: null,
+    fatturato_a_credito: null,
     notes: ''
   });
 
   useEffect(() => {
     if (existingReport) {
       setFormData({
-        contatti_reali: existingReport.contatti_reali || 0,
-        notizie_reali: existingReport.notizie_reali || 0,
-        appuntamenti_vendita: existingReport.appuntamenti_vendita || 0,
-        acquisizioni: existingReport.acquisizioni || 0,
-        incarichi_vendita: existingReport.incarichi_vendita || 0,
-        valutazioni_fatte: existingReport.valutazioni_fatte || 0,
-        vendite_numero: existingReport.vendite_numero || 0,
-        vendite_valore: existingReport.vendite_valore || 0,
-        nuove_trattative: existingReport.nuove_trattative || 0,
-        trattative_chiuse: existingReport.trattative_chiuse || 0,
-        fatturato_a_credito: existingReport.fatturato_a_credito || 0,
+        contatti_reali: existingReport.contatti_reali ?? null,
+        notizie_reali: existingReport.notizie_reali ?? null,
+        appuntamenti_vendita: existingReport.appuntamenti_vendita ?? null,
+        acquisizioni: existingReport.acquisizioni ?? null,
+        incarichi_vendita: existingReport.incarichi_vendita ?? null,
+        valutazioni_fatte: existingReport.valutazioni_fatte ?? null,
+        vendite_numero: existingReport.vendite_numero ?? null,
+        vendite_valore: existingReport.vendite_valore ?? null,
+        nuove_trattative: existingReport.nuove_trattative ?? null,
+        trattative_chiuse: existingReport.trattative_chiuse ?? null,
+        fatturato_a_credito: existingReport.fatturato_a_credito ?? null,
         notes: existingReport.notes || ''
       });
     } else {
       setFormData({
-        contatti_reali: 0,
-        notizie_reali: 0,
-        appuntamenti_vendita: 0,
-        acquisizioni: 0,
-        incarichi_vendita: 0,
-        valutazioni_fatte: 0,
-        vendite_numero: 0,
-        vendite_valore: 0,
-        nuove_trattative: 0,
-        trattative_chiuse: 0,
-        fatturato_a_credito: 0,
+        contatti_reali: null,
+        notizie_reali: null,
+        appuntamenti_vendita: null,
+        acquisizioni: null,
+        incarichi_vendita: null,
+        valutazioni_fatte: null,
+        vendite_numero: null,
+        vendite_valore: null,
+        nuove_trattative: null,
+        trattative_chiuse: null,
+        fatturato_a_credito: null,
         notes: ''
       });
     }
   }, [existingReport, selectedDate]);
-
-  const handleCounterChange = (field: keyof CicloProduttivo, delta: number) => {
-    const currentValue = Number(formData[field]) || 0;
-    setFormData({ ...formData, [field]: Math.max(0, currentValue + delta) });
-  };
 
   const handleInputChange = (field: keyof CicloProduttivo, value: string) => {
     setFormData({ ...formData, [field]: value });
   };
 
   const handleNumberInputChange = (field: keyof CicloProduttivo, value: string) => {
-    const num = parseFloat(value) || 0;
-    setFormData({ ...formData, [field]: Math.max(0, num) });
+    if (value === '') {
+      setFormData({ ...formData, [field]: null });
+      return;
+    }
+    const num = parseFloat(value);
+    setFormData({ ...formData, [field]: Math.max(0, isNaN(num) ? 0 : num) });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    saveDailyData({ data: formData, date: selectedDate });
+    const dataToSave = { ...formData };
+    // Convert null to 0
+    (Object.keys(dataToSave) as (keyof CicloProduttivo)[]).forEach(key => {
+      if (dataToSave[key] === null) {
+        dataToSave[key] = 0;
+      }
+    });
+    saveDailyData({ data: dataToSave as CicloProduttivo, date: selectedDate });
   };
 
   return (
@@ -184,11 +174,11 @@ export const ReportForm: React.FC<ReportFormProps> = ({ initialDate }) => {
           </h3>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
-          <CounterField label="Contatti Reali" field="contatti_reali" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
-          <CounterField label="Notizie Reali" field="notizie_reali" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
-          <CounterField label="App. Vendita" field="appuntamenti_vendita" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
-          <CounterField label="Incarichi Vendita" field="incarichi_vendita" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
-          <CounterField label="Valutazioni Fatte" field="valutazioni_fatte" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
+          <CounterField label="Contatti Reali" field="contatti_reali" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Notizie Reali" field="notizie_reali" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="App. Vendita" field="appuntamenti_vendita" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Incarichi Vendita" field="incarichi_vendita" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Valutazioni Fatte" field="valutazioni_fatte" formData={formData} onNumberInputChange={handleNumberInputChange} />
         </div>
       </div>
 
@@ -201,10 +191,10 @@ export const ReportForm: React.FC<ReportFormProps> = ({ initialDate }) => {
           </h3>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
-          <CounterField label="Vendite (Numero)" field="vendite_numero" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
+          <CounterField label="Vendite (Numero)" field="vendite_numero" formData={formData} onNumberInputChange={handleNumberInputChange} />
           <CurrencyField label="Valore Vendite" field="vendite_valore" formData={formData} onNumberInputChange={handleNumberInputChange} />
-          <CounterField label="Nuove Trattative" field="nuove_trattative" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
-          <CounterField label="Trattative Chiuse" field="trattative_chiuse" formData={formData} onNumberInputChange={handleNumberInputChange} onCounterChange={handleCounterChange} />
+          <CounterField label="Nuove Trattative" field="nuove_trattative" formData={formData} onNumberInputChange={handleNumberInputChange} />
+          <CounterField label="Trattative Chiuse" field="trattative_chiuse" formData={formData} onNumberInputChange={handleNumberInputChange} />
           <CurrencyField label="Fatturato a Credito" field="fatturato_a_credito" formData={formData} onNumberInputChange={handleNumberInputChange} />
         </div>
       </div>

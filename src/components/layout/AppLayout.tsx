@@ -140,7 +140,9 @@ export default function AppLayout() {
                  onClose={closeDetail}
                  onUpdate={(id, updates) => updateCliente({ id, ...updates })}
                  onDelete={(id) => {
-                   deleteCliente(id);
+                   if (window.confirm('Eliminare questo cliente?')) {
+                     deleteCliente(id);
+                   }
                    closeDetail();
                  }}
                />
@@ -151,7 +153,9 @@ export default function AppLayout() {
                  onOpenChange={(open) => !open && closeDetail()}
                  onUpdate={(id, updates) => updateNotizia({ id, ...updates })}
                  onDelete={(id) => {
-                   deleteNotizia(id);
+                   if (window.confirm('Eliminare questa notizia?')) {
+                     deleteNotizia(id);
+                   }
                    closeDetail();
                  }}
                />

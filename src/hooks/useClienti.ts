@@ -280,7 +280,7 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
     filteredClienti,
     clientiByStatus,
     isLoading,
-    addCliente: addClienteMutation.mutate,
+    addCliente: addClienteMutation.mutateAsync,
     updateCliente: updateClienteMutation.mutate,
     deleteCliente: deleteClienteMutation.mutate,
     reorderClienti: reorderClientiMutation.mutate,

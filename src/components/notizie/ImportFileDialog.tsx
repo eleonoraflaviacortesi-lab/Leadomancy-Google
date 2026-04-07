@@ -83,19 +83,33 @@ export const ImportFileDialog: React.FC<ImportFileDialogProps> = ({ isOpen, onCl
         }
         rows = csvRows;
       } else {
-        const XLSX = await import('xlsx');
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+        try {
+          const XLSX = await import('xlsx');
+          const workbook = XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+        } catch (xlsxError) {
+          console.error('[Import] XLSX parse error:', xlsxError);
+          toast.error("Errore nella lettura del file Excel. Prova a salvarlo come .csv");
+          return;
+        }
       }
 
       if (rows.length < 2) {
         toast.error("Il file sembra vuoto o non valido");
         return;
       }
-      setHeaders(rows[0]);
-      setFileData(rows.slice(1));
+      // Filter out empty rows
+      const dataRows = rows.slice(1).filter(row => 
+        row && row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== '')
+      );
+      if (dataRows.length === 0) {
+        toast.error("Nessun dato trovato nel file");
+        return;
+      }
+      setHeaders(rows[0].map(h => String(h || '').trim()));
+      setFileData(dataRows);
       setFile(selectedFile);
       
       // Auto-mapping
@@ -263,27 +277,39 @@ export const ImportFileDialog: React.FC<ImportFileDialogProps> = ({ isOpen, onCl
               )}
 
               {step === 'confirm' && (
-                <div className="flex flex-col items-center justify-center gap-8 py-8">
-                  <div className="w-24 h-24 rounded-full bg-[#F0FFF4] text-[#2D8A4E] border-2 border-[#6DC88A] flex items-center justify-center shadow-lg shadow-green-500/10">
-                    <Check size={48} />
-                  </div>
-                  <div className="text-center">
-                    <h3 className="font-outfit font-bold text-[24px] text-[var(--text-primary)] mb-2">Pronto per l'importazione</h3>
-                    <p className="font-outfit font-medium text-[16px] text-[var(--text-muted)]">
-                      Stai per importare <span className="font-bold text-[var(--text-primary)]">{fileData.length}</span> elementi nel sistema.
+                isImporting ? (
+                  <div className="flex flex-col items-center gap-4 py-8">
+                    <Loader2 size={48} className="animate-spin text-[var(--text-muted)]" />
+                    <p className="font-outfit font-bold text-[16px] text-[var(--text-primary)]">
+                      Importazione in corso...
+                    </p>
+                    <p className="font-outfit text-[13px] text-[var(--text-muted)]">
+                      Non chiudere questa finestra
                     </p>
                   </div>
-                  <div className="w-full max-w-sm bg-[var(--bg-subtle)] p-6 rounded-[20px] border border-[var(--border-light)] space-y-4">
-                    <div className="flex justify-between items-center text-[13px] font-outfit">
-                      <span className="text-[var(--text-muted)] font-medium">File:</span>
-                      <span className="font-bold text-[var(--text-primary)]">{file?.name}</span>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-8 py-8">
+                    <div className="w-24 h-24 rounded-full bg-[#F0FFF4] text-[#2D8A4E] border-2 border-[#6DC88A] flex items-center justify-center shadow-lg shadow-green-500/10">
+                      <Check size={48} />
                     </div>
-                    <div className="flex justify-between items-center text-[13px] font-outfit">
-                      <span className="text-[var(--text-muted)] font-medium">Campi mappati:</span>
-                      <span className="font-bold text-[var(--text-primary)]">{Object.keys(mapping).length} su {fields.length}</span>
+                    <div className="text-center">
+                      <h3 className="font-outfit font-bold text-[24px] text-[var(--text-primary)] mb-2">Pronto per l'importazione</h3>
+                      <p className="font-outfit font-medium text-[16px] text-[var(--text-muted)]">
+                        Stai per importare <span className="font-bold text-[var(--text-primary)]">{fileData.length}</span> elementi nel sistema.
+                      </p>
+                    </div>
+                    <div className="w-full max-w-sm bg-[var(--bg-subtle)] p-6 rounded-[20px] border border-[var(--border-light)] space-y-4">
+                      <div className="flex justify-between items-center text-[13px] font-outfit">
+                        <span className="text-[var(--text-muted)] font-medium">File:</span>
+                        <span className="font-bold text-[var(--text-primary)]">{file?.name}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[13px] font-outfit">
+                        <span className="text-[var(--text-muted)] font-medium">Campi mappati:</span>
+                        <span className="font-bold text-[var(--text-primary)]">{Object.keys(mapping).length} su {fields.length}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )
               )}
             </div>
 

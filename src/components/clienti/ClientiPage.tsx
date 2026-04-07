@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/src/hooks/useAuth';
 import { motion, AnimatePresence } from "motion/react";
 import { LayoutGrid, List, Search, Download, Plus, Undo2, Redo2, Filter, X, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -15,6 +17,8 @@ import { cn } from "@/src/lib/utils";
 
 export const ClientiPage: React.FC = () => {
   const [filters, setFilters] = useState<ClienteFilters>({});
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { filteredClienti, isLoading, updateCliente, deleteCliente, addCliente } = useClienti({ filters });
   const { undo, redo, canUndo, canRedo } = useUndoRedo();
   
@@ -40,17 +44,59 @@ export const ClientiPage: React.FC = () => {
   ];
 
   const handleImportClienti = async (data: any[]) => {
+    const { appendRow, SHEETS } = await import('@/src/lib/googleSheets');
+    const validRows = data.filter(item => item && Object.values(item).some(v => v));
+    if (validRows.length === 0) { toast.error('Nessun dato valido trovato'); return; }
+    
     let successCount = 0;
-    for (const item of data) {
-      const cliente: Partial<Cliente> = {
-        ...item,
-        status: 'new',
-      };
-      if (cliente.budget_max) cliente.budget_max = parseFloat(cliente.budget_max.toString().replace(/[^0-9.]/g, '')) || 0;
-      await addCliente(cliente as any);
-      successCount++;
+    toast.info(`Importazione di ${validRows.length} buyers in corso...`);
+    
+    const parseArray = (val: any): string[] => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      const s = String(val).trim();
+      if (s.startsWith('[')) { try { return JSON.parse(s); } catch {} }
+      return s ? s.split(/[,;|]/).map(x => x.trim()).filter(Boolean) : [];
+    };
+    
+    for (const item of validRows) {
+      try {
+        const id = crypto.randomUUID();
+        const now = new Date().toISOString();
+        const cliente = {
+          id,
+          user_id: user?.user_id || user?.id,
+          assigned_to: user?.user_id || user?.id,
+          sede: user?.sede || '',
+          nome: item.nome || item.name || '',
+          cognome: item.cognome || item.surname || '',
+          telefono: item.telefono || item.phone || '',
+          email: item.email || '',
+          paese: item.paese || item.country || '',
+          lingua: item.lingua || item.language || '',
+          budget_max: item.budget_max ? parseFloat(String(item.budget_max).replace(/[^0-9.]/g, '')) || null : null,
+          status: item.status || 'new',
+          portale: item.portale || item.portal || '',
+          regioni: JSON.stringify(parseArray(item.regioni || item.regione)),
+          tipologia: JSON.stringify(parseArray(item.tipologia)),
+          motivo_zona: JSON.stringify(parseArray(item.motivo_zona)),
+          contesto: JSON.stringify(parseArray(item.contesto)),
+          note_extra: item.note_extra || item.note || '',
+          comments: '[]',
+          display_order: (filteredClienti.length || 0) + successCount + 1,
+          created_at: now,
+          updated_at: now,
+        };
+        await appendRow(SHEETS.clienti, cliente);
+        successCount++;
+        await new Promise(r => setTimeout(r, 400));
+      } catch (err) {
+        console.error('[Import clienti] Row failed:', item, err);
+      }
     }
-    toast.success(`Importati con successo ${successCount} buyers`);
+    
+    queryClient.invalidateQueries({ queryKey: ['clienti', user?.sede] });
+    toast.success(`Importati ${successCount} buyers su ${validRows.length}`);
   };
 
   const selectedCliente = useMemo(() => {

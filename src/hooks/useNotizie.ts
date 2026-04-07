@@ -233,11 +233,8 @@ export function useNotizie() {
 
   const deleteNotiziaMutation = useMutation({
     mutationFn: async (id: string) => {
-      if (!window.confirm('Eliminare questa notizia?')) {
-        throw new Error('Eliminazione annullata');
-      }
       const rowIndex = await findRowIndex(SHEETS.notizie, id);
-      if (!rowIndex) throw new Error("Notizia non trovata");
+      if (!rowIndex) throw new Error(`Notizia ${id} non trovata nel foglio`);
       await deleteRow(SHEETS.notizie, rowIndex);
       return id;
     },
@@ -247,9 +244,12 @@ export function useNotizie() {
       queryClient.setQueryData<Notizia[]>(queryKey, (old) => old?.filter(n => n.id !== id));
       return { previousNotizie };
     },
-    onError: (err, id, context) => {
+    onError: (err: any, id, context) => {
       queryClient.setQueryData(queryKey, context?.previousNotizie);
-      toast.error("Errore durante l'eliminazione");
+      if (err?.message !== 'Eliminazione annullata') {
+        console.error('[deleteNotizia] Error:', err);
+        toast.error("Errore durante l'eliminazione");
+      }
     },
     onSuccess: () => {
       toast.success("Notizia eliminata");
@@ -257,7 +257,7 @@ export function useNotizie() {
     onSettled: () => {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey });
-      }, 10000);
+      }, 3000);
     },
   });
 
@@ -317,7 +317,7 @@ export function useNotizie() {
     notizie,
     notizieByStatus,
     isLoading,
-    addNotizia: addNotiziaMutation.mutate,
+    addNotizia: addNotiziaMutation.mutateAsync,
     updateNotizia: updateNotiziaMutation.mutate,
     deleteNotizia: deleteNotiziaMutation.mutate,
     reorderNotizie: reorderNotizieMutation.mutate,

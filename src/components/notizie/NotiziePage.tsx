@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/src/hooks/useAuth';
 import { LayoutGrid, List, Search, Download, Plus, Undo2, Redo2, BarChart3, TrendingDown, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useNotizie } from "@/src/hooks/useNotizie";
@@ -14,7 +16,9 @@ import { Notizia, NotiziaStatus } from "@/src/types";
 import { cn } from "@/src/lib/utils";
 
 export const NotiziePage: React.FC = () => {
-  const { notizie, isLoading, updateNotizia, deleteNotizia } = useNotizie();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { notizie, isLoading, updateNotizia, deleteNotizia, addNotizia } = useNotizie();
   const { undo, redo, canUndo, canRedo } = useUndoRedo();
   
   const [viewMode, setViewMode] = useState<'kanban' | 'sheet'>(() => {
@@ -41,21 +45,46 @@ export const NotiziePage: React.FC = () => {
   ];
 
   const handleImportNotizie = async (data: any[]) => {
+    const { appendRow, SHEETS } = await import('@/src/lib/googleSheets');
+    const validRows = data.filter(item => item && Object.values(item).some(v => v));
+    if (validRows.length === 0) { toast.error('Nessun dato valido trovato'); return; }
+    
     let successCount = 0;
-    for (const item of data) {
-      const noticia: Partial<Notizia> = {
-        ...item,
-        // Only set default status if it's not already provided in the imported data
-        status: item.status || 'new',
-        emoji: item.emoji || '🏠'
-      };
-      if (noticia.prezzo_richiesto) noticia.prezzo_richiesto = parseFloat(noticia.prezzo_richiesto.toString().replace(/[^0-9.]/g, '')) || 0;
-      if (noticia.valore) noticia.valore = parseFloat(noticia.valore.toString().replace(/[^0-9.]/g, '')) || 0;
-      if (noticia.rating) noticia.rating = parseFloat(noticia.rating.toString().replace(/[^0-9.]/g, '')) || 0;
-      await updateNotizia({ id: crypto.randomUUID(), ...noticia } as any);
-      successCount++;
+    toast.info(`Importazione di ${validRows.length} notizie in corso...`);
+    
+    for (const item of validRows) {
+      try {
+        const id = crypto.randomUUID();
+        const now = new Date().toISOString();
+        const notizia = {
+          id,
+          user_id: user?.user_id || user?.id,
+          name: item.name || item.nome || '',
+          zona: item.zona || '',
+          phone: item.phone || item.telefono || '',
+          type: item.type || item.tipo || '',
+          notes: item.notes || item.note || '',
+          status: item.status || 'new',
+          emoji: item.emoji || '🏠',
+          prezzo_richiesto: item.prezzo_richiesto ? parseFloat(String(item.prezzo_richiesto).replace(/[^0-9.]/g, '')) || null : null,
+          valore: item.valore ? parseFloat(String(item.valore).replace(/[^0-9.]/g, '')) || null : null,
+          rating: item.rating ? parseFloat(String(item.rating).replace(/[^0-9.]/g, '')) || null : null,
+          is_online: false,
+          display_order: (notizie.length || 0) + successCount + 1,
+          comments: '[]',
+          created_at: now,
+          updated_at: now,
+        };
+        await appendRow(SHEETS.notizie, notizia);
+        successCount++;
+        await new Promise(r => setTimeout(r, 400));
+      } catch (err) {
+        console.error('[Import notizie] Row failed:', item, err);
+      }
     }
-    toast.success(`Importate con successo ${successCount} notizie`);
+    
+    queryClient.invalidateQueries({ queryKey: ['notizie', user?.user_id] });
+    toast.success(`Importate ${successCount} notizie su ${validRows.length}`);
   };
 
   const selectedNotizia = useMemo(() => {
@@ -268,7 +297,11 @@ export const NotiziePage: React.FC = () => {
           open={detailOpen}
           onOpenChange={setDetailOpen}
           onUpdate={(id, updates) => updateNotizia({ id, ...updates })}
-          onDelete={(id) => { deleteNotizia(id); setDetailOpen(false); }}
+          onDelete={(id) => {
+            if (!window.confirm('Eliminare questa notizia?')) return;
+            deleteNotizia(id);
+            setDetailOpen(false);
+          }}
         />
       )}
 
