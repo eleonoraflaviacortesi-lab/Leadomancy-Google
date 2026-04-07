@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import EmojiPicker from 'emoji-picker-react';
-import { X, Phone, MapPin, Euro, Calendar, Clock, Sparkles, User, FileText, MessageSquare, Download, Trash2, Star, ChevronLeft, Palette, Check } from "lucide-react";
+import { X, Phone, MapPin, Euro, Calendar, Clock, Sparkles, User, FileText, MessageSquare, Download, Trash2, Star, ChevronLeft, Palette, Check, RefreshCw } from "lucide-react";
 import Markdown from "react-markdown";
 import { Notizia, NotiziaStatus } from "@/src/types";
 import { NOTIZIA_STATUS_LABELS, NOTIZIA_STATUS_COLORS, NOTIZIA_STATUSES } from "./notizieConfig";
 import { cn, formatCurrency } from "@/src/lib/utils";
+import { analyzeNotizia } from '@/src/lib/gemini';
 
 interface NotiziaDetailProps {
   notizia: Notizia | null;
@@ -212,6 +213,183 @@ const COLOR_OPTIONS = [
   '#F5F0FF','#FFF0F8','#FFEBCC','#E8F5E9',
   '#E3F2FD','#FCE4EC','#F3E5F5','#E0F7FA'
 ];
+
+const GeminiNotiziaAnalysis: React.FC<{ notizia: Notizia }> = ({ notizia }) => {
+  const [analysis, setAnalysis] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Cache key based on the data that triggers reanalysis (excluding status)
+  const cacheKey = useMemo(() => {
+    return [
+      notizia.name,
+      notizia.zona,
+      notizia.type,
+      notizia.prezzo_richiesto,
+      notizia.valore,
+      notizia.notes,
+      notizia.rating,
+      notizia.is_online,
+    ].join('|');
+  }, [
+    notizia.name,
+    notizia.zona,
+    notizia.type,
+    notizia.prezzo_richiesto,
+    notizia.valore,
+    notizia.notes,
+    notizia.rating,
+    notizia.is_online,
+  ]);
+
+  const runAnalysis = useCallback(async () => {
+    if (!notizia.name) return;
+    setIsLoading(true);
+    setError(false);
+    try {
+      const result = await analyzeNotizia({
+        name: notizia.name,
+        zona: notizia.zona,
+        type: notizia.type,
+        prezzo_richiesto: notizia.prezzo_richiesto,
+        valore: notizia.valore,
+        notes: notizia.notes,
+        rating: notizia.rating,
+        is_online: notizia.is_online,
+      });
+      setAnalysis(result);
+      // Cache in sessionStorage keyed by notizia id + data hash
+      try {
+        sessionStorage.setItem(
+          `altair-notizia-analysis-${notizia.id}`,
+          JSON.stringify({ key: cacheKey, analysis: result })
+        );
+      } catch {}
+    } catch (err) {
+      console.error('[GeminiNotiziaAnalysis] Error:', err);
+      setError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [notizia, cacheKey]);
+
+  // Load from cache or run on mount and when data changes
+  useEffect(() => {
+    // Check cache first
+    try {
+      const cached = sessionStorage.getItem(`altair-notizia-analysis-${notizia.id}`);
+      if (cached) {
+        const { key, analysis: cachedAnalysis } = JSON.parse(cached);
+        if (key === cacheKey) {
+          setAnalysis(cachedAnalysis);
+          return;
+        }
+      }
+    } catch {}
+
+    // Debounce: wait 2s after last change before calling API
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      runAnalysis();
+    }, 2000);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [cacheKey]);
+
+  // Render markdown-like text (bold with **)
+  const renderAnalysis = (text: string) => {
+    return text.split('\n').map((line, i) => {
+      if (!line.trim()) return null;
+      // Bold **text**
+      const parts = line.split(/\*\*(.*?)\*\*/g);
+      return (
+        <p key={i} style={{ margin: '2px 0', fontSize: 12, fontFamily: 'Outfit', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+          {parts.map((part, j) =>
+            j % 2 === 1
+              ? <strong key={j} style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{part}</strong>
+              : part
+          )}
+        </p>
+      );
+    }).filter(Boolean);
+  };
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #fafaf8 0%, #f5f4f0 100%)',
+      border: '1px solid var(--border-light)',
+      borderRadius: 16,
+      padding: '14px 16px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10,
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Sparkles size={14} style={{ color: '#6366f1' }} />
+          <span style={{
+            fontSize: 10, fontFamily: 'Outfit', fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.1em',
+            color: 'var(--text-muted)'
+          }}>
+            Analisi AI
+          </span>
+        </div>
+        <button
+          onClick={runAnalysis}
+          disabled={isLoading}
+          title="Rigenera analisi"
+          style={{
+            background: 'none', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer',
+            padding: 4, borderRadius: 6, opacity: isLoading ? 0.4 : 0.6,
+            display: 'flex', alignItems: 'center',
+          }}
+        >
+          <RefreshCw size={12} style={{
+            color: 'var(--text-muted)',
+            animation: isLoading ? 'spin 1s linear infinite' : 'none'
+          }} />
+        </button>
+      </div>
+
+      {/* Content */}
+      {isLoading && !analysis && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4 }}>
+          <div style={{
+            width: 16, height: 16, borderRadius: '50%',
+            border: '2px solid #6366f1', borderTopColor: 'transparent',
+            animation: 'spin 0.8s linear infinite', flexShrink: 0
+          }} />
+          <span style={{ fontSize: 12, fontFamily: 'Outfit', color: 'var(--text-muted)' }}>
+            Analisi in corso...
+          </span>
+        </div>
+      )}
+
+      {error && (
+        <p style={{ fontSize: 12, fontFamily: 'Outfit', color: '#ef4444' }}>
+          Errore nell'analisi. Clicca ↻ per riprovare.
+        </p>
+      )}
+
+      {analysis && (
+        <div style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 0.3s' }}>
+          {renderAnalysis(analysis)}
+        </div>
+      )}
+
+      {!analysis && !isLoading && !error && (
+        <p style={{ fontSize: 12, fontFamily: 'Outfit', color: 'var(--text-muted)' }}>
+          {notizia.name ? 'In attesa di analisi...' : 'Aggiungi un titolo per avviare l\'analisi'}
+        </p>
+      )}
+    </div>
+  );
+};
 
 export const NotiziaDetail: React.FC<NotiziaDetailProps> = ({ notizia, open, onOpenChange, onUpdate, onDelete }) => {
   const [isStatusEditing, setIsStatusEditing] = useState(false);
@@ -453,6 +631,10 @@ export const NotiziaDetail: React.FC<NotiziaDetailProps> = ({ notizia, open, onO
                           />
                         </div>
                       </div>
+                    </Section>
+
+                    <Section title="ANALISI AI">
+                      <GeminiNotiziaAnalysis notizia={notizia} />
                     </Section>
 
                     <Section title="COLORE SCHEDA">

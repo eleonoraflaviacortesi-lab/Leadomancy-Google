@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/src/hooks/useAuth";
-import { Cliente, ClienteStatus, ClienteFilters } from "@/src/types";
+import { Cliente, ClienteStatus, ClienteFilters } from "@/src/types/index";
 import { 
   getSheetData, 
   appendRow, 
@@ -20,7 +20,7 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { columns } = useClientKanbanColumns();
-  const queryKey = ['clienti', user?.user_id];
+  const queryKey = ['clienti', user?.sede];
 
   const { data: clienti = [], isLoading } = useQuery({
     queryKey,

@@ -203,3 +203,38 @@ export async function chatWithContext(
   
   return callGemini(messages, fullSystem);
 }
+
+export async function analyzeNotizia(notizia: {
+  name: string;
+  zona?: string | null;
+  type?: string | null;
+  prezzo_richiesto?: number | null;
+  valore?: number | null;
+  notes?: string | null;
+  rating?: number | null;
+  is_online?: boolean;
+}): Promise<string> {
+  const prompt = `Sei un esperto immobiliare di lusso italiano. 
+Analizza questa notizia (proprietà in vendita) e fornisci una strategia di vendita concisa e professionale.
+
+Dati proprietà:
+- Nome/Titolo: ${notizia.name || 'N/D'}
+- Zona: ${notizia.zona || 'N/D'}
+- Tipo: ${notizia.type || 'N/D'}
+- Prezzo richiesto: ${notizia.prezzo_richiesto ? `€${notizia.prezzo_richiesto.toLocaleString('it-IT')}` : 'N/D'}
+- Valore stimato: ${notizia.valore ? `€${notizia.valore.toLocaleString('it-IT')}` : 'N/D'}
+- Rating interno: ${notizia.rating ? `${notizia.rating}/5` : 'N/D'}
+- Online: ${notizia.is_online ? 'Sì' : 'No'}
+- Note: ${notizia.notes ? notizia.notes.replace(/<[^>]+>/g, ' ').trim().slice(0, 500) : 'Nessuna'}
+
+Fornisci in italiano una strategia di vendita focalizzata:
+1. **Posizionamento** (1 frase): come collocare la proprietà sul mercato.
+2. **Azione prioritaria** (1-2 bullet): cosa fare subito per vendere.
+
+Sii estremamente sintetico, strategico e professionale. Max 70 parole totali.`;
+
+  return await callGemini(
+    [{ role: 'user', parts: [{ text: prompt }] }],
+    'Sei un consulente immobiliare di lusso esperto del mercato italiano.'
+  );
+}

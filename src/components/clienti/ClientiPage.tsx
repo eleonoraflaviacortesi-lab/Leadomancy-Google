@@ -37,10 +37,16 @@ export const ClientiPage: React.FC = () => {
     { key: 'cognome', label: 'Cognome' },
     { key: 'email', label: 'Email' },
     { key: 'telefono', label: 'Telefono' },
-    { key: 'regione', label: 'Regione' },
+    { key: 'paese', label: 'Paese' },
+    { key: 'lingua', label: 'Lingua (ENG/ITA/FRA...)' },
     { key: 'portale', label: 'Portale' },
-    { key: 'budget', label: 'Budget' },
-    { key: 'note', label: 'Note' },
+    { key: 'budget_max', label: 'Budget Max (€)' },
+    { key: 'regioni', label: 'Regioni (separate da virgola)' },
+    { key: 'tipologia', label: 'Tipologia (separate da virgola)' },
+    { key: 'status', label: 'Status' },
+    { key: 'note_extra', label: 'Note' },
+    { key: 'property_name', label: 'Nome Proprietà' },
+    { key: 'ref_number', label: 'Ref. Number' },
   ];
 
   const handleImportClienti = async (data: any[]) => {

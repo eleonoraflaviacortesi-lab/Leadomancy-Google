@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Upload, Check, ChevronRight, ChevronLeft, Loader2, ChevronDown } from "lucide-react";
 import { cn } from "@/src/lib/utils";
@@ -22,6 +22,18 @@ export const ImportFileDialog: React.FC<ImportFileDialogProps> = ({ isOpen, onCl
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setStep('upload');
+      setFile(null);
+      setFileData([]);
+      setHeaders([]);
+      setMapping({});
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [isOpen]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -112,14 +124,69 @@ export const ImportFileDialog: React.FC<ImportFileDialogProps> = ({ isOpen, onCl
       setFileData(dataRows);
       setFile(selectedFile);
       
-      // Auto-mapping
+      // Auto-mapping with aliases
+      const FIELD_ALIASES: Record<string, string[]> = {
+        // Notizie
+        name: ['name', 'nome', 'titolo', 'title', 'proprietà', 'property'],
+        zona: ['zona', 'zone', 'area', 'location', 'luogo', 'città', 'city'],
+        phone: ['phone', 'telefono', 'tel', 'cellulare', 'mobile', 'numero'],
+        type: ['type', 'tipo', 'tipologia', 'category', 'categoria'],
+        status: ['status', 'stato', 'state'],
+        prezzo_richiesto: ['prezzo_richiesto', 'prezzo', 'price', 'asking price', 'richiesta', 'asking'],
+        valore: ['valore', 'value', 'valutazione', 'stima', 'estimated'],
+        rating: ['rating', 'voto', 'score', 'punteggio', 'stars', 'stelle'],
+        notes: ['notes', 'note', 'note', 'description', 'descrizione', 'commenti', 'comments'],
+        is_online: ['is_online', 'online', 'pubblicato', 'published', 'portale'],
+        // Clienti
+        nome: ['nome', 'name', 'first name', 'firstname', 'given name'],
+        cognome: ['cognome', 'surname', 'last name', 'lastname', 'family name'],
+        email: ['email', 'e-mail', 'mail', 'posta'],
+        telefono: ['telefono', 'phone', 'tel', 'mobile', 'cellulare', 'numero'],
+        paese: ['paese', 'country', 'nazione', 'nation', 'provenienza'],
+        lingua: ['lingua', 'language', 'lang', 'idioma'],
+        portale: ['portale', 'portal', 'fonte', 'source', 'canale', 'channel'],
+        budget_max: ['budget_max', 'budget', 'max budget', 'massimo', 'maximum', 'budget massimo'],
+        regioni: ['regioni', 'regione', 'region', 'regions', 'area', 'zone'],
+        tipologia: ['tipologia', 'type', 'tipo', 'property type', 'categoria'],
+        status: ['status', 'stato', 'state', 'fase'],
+        note_extra: ['note_extra', 'note', 'notes', 'commenti', 'description', 'descrizione'],
+        property_name: ['property_name', 'proprietà', 'property', 'immobile', 'nome proprietà'],
+        ref_number: ['ref_number', 'ref', 'reference', 'codice', 'rif', 'rif.', 'numero rif'],
+      };
+
       const newMapping: Record<string, string> = {};
+      const cleanHeader = (h: string) => String(h || '').toLowerCase().trim()
+        .replace(/[_\-\s]+/g, ' ');
+
       fields.forEach(field => {
-        const match = rows[0].findIndex(h => 
-          h && (h.toLowerCase().includes(field.key.toLowerCase()) || 
-          h.toLowerCase().includes(field.label.toLowerCase()))
+        const aliases = FIELD_ALIASES[field.key] || [field.key, field.label];
+        
+        // 1. Try exact match first
+        let matchIdx = rows[0].findIndex(h => 
+          cleanHeader(h) === cleanHeader(field.key) ||
+          cleanHeader(h) === cleanHeader(field.label)
         );
-        if (match !== -1) newMapping[field.key] = rows[0][match];
+        
+        // 2. Try alias exact match
+        if (matchIdx === -1) {
+          matchIdx = rows[0].findIndex(h =>
+            aliases.some(alias => cleanHeader(h) === cleanHeader(alias))
+          );
+        }
+        
+        // 3. Try alias contains match (less greedy — alias must be full word)
+        if (matchIdx === -1) {
+          matchIdx = rows[0].findIndex(h => {
+            const ch = cleanHeader(h);
+            return aliases.some(alias => {
+              const ca = cleanHeader(alias);
+              // Match only if alias is at word boundary, not substring of longer word
+              return ch === ca || ch.startsWith(ca + ' ') || ch.endsWith(' ' + ca) || ch.includes(' ' + ca + ' ');
+            });
+          });
+        }
+        
+        if (matchIdx !== -1) newMapping[field.key] = rows[0][matchIdx];
       });
       setMapping(newMapping);
       setStep('mapping');
@@ -306,6 +373,58 @@ export const ImportFileDialog: React.FC<ImportFileDialogProps> = ({ isOpen, onCl
                       <div className="flex justify-between items-center text-[13px] font-outfit">
                         <span className="text-[var(--text-muted)] font-medium">Campi mappati:</span>
                         <span className="font-bold text-[var(--text-primary)]">{Object.keys(mapping).length} su {fields.length}</span>
+                      </div>
+                      
+                      {(() => {
+                        // Check required fields
+                        const requiredKey = fields.find(f => 
+                          f.key === 'name' || f.key === 'nome'
+                        )?.key;
+                        if (!requiredKey || !mapping[requiredKey]) return null;
+                        
+                        const headerIndex = headers.indexOf(mapping[requiredKey]);
+                        const emptyCount = fileData.filter(row => 
+                          !row[headerIndex] || String(row[headerIndex]).trim() === ''
+                        ).length;
+                        
+                        if (emptyCount === 0) return (
+                          <div className="flex items-center gap-2 text-[13px] font-outfit text-[#2D8A4E]">
+                            <Check size={16} />
+                            Tutti i record hanno il campo nome compilato
+                          </div>
+                        );
+                        
+                        return (
+                          <div className="flex items-center gap-2 text-[13px] font-outfit text-amber-600 bg-amber-50 px-4 py-3 rounded-[12px] border border-amber-100">
+                            <span>⚠️</span>
+                            {emptyCount} record senza nome — verranno importati senza titolo
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    <div className="pt-3 border-t border-[var(--border-light)]">
+                      <p className="text-[11px] font-outfit font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">
+                        Campi mappati:
+                      </p>
+                      <div className="flex flex-col gap-1">
+                        {fields.map(field => {
+                          const isMapped = !!mapping[field.key];
+                          return (
+                            <div key={field.key} className="flex items-center justify-between text-[12px] font-outfit">
+                              <span className={isMapped ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
+                                {field.label}
+                              </span>
+                              {isMapped ? (
+                                <span className="text-[#2D8A4E] font-bold">
+                                  ✓ {mapping[field.key]}
+                                </span>
+                              ) : (
+                                <span className="text-[var(--text-muted)]">— non mappato</span>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>

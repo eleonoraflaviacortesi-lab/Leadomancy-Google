@@ -36,12 +36,14 @@ export const NotiziePage: React.FC = () => {
   const NOTIZIA_FIELDS = [
     { key: 'name', label: 'Nome/Titolo' },
     { key: 'zona', label: 'Zona' },
-    { key: 'telefono', label: 'Telefono' },
+    { key: 'phone', label: 'Telefono' },
     { key: 'type', label: 'Tipologia' },
-    { key: 'prezzo_richiesto', label: 'Prezzo Richiesto' },
-    { key: 'valore', label: 'Valore Stimato' },
+    { key: 'status', label: 'Status' },
+    { key: 'prezzo_richiesto', label: 'Prezzo Richiesto (€)' },
+    { key: 'valore', label: 'Valore Stimato (€)' },
     { key: 'rating', label: 'Rating (1-5)' },
     { key: 'notes', label: 'Note' },
+    { key: 'is_online', label: 'Online (true/false)' },
   ];
 
   const handleImportNotizie = async (data: any[]) => {

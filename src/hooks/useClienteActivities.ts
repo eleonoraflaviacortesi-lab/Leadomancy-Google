@@ -14,7 +14,7 @@ export function useClienteActivities(clienteId: string) {
   const [activities, setActivities] = useState<ClienteActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const storageKey = `leadomancy-activities-${clienteId}`;
+  const storageKey = `altair-activities-${clienteId}`;
 
   const loadActivities = useCallback(() => {
     setIsLoading(true);

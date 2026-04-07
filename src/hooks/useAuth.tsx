@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { useGoogleLogin, TokenResponse } from "@react-oauth/google";
 import { gapi } from "gapi-script";
 import { toast } from "sonner";
-import { Profile } from "@/src/types";
+import { Profile } from "@/src/types/index";
 import { getSheetData, appendRow, SHEETS, clearHeaderCache } from "@/src/lib/googleSheets";
 
 interface AuthContextType {

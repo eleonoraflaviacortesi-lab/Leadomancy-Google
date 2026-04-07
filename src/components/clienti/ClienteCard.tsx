@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import EmojiPicker from 'emoji-picker-react';
 import { MoreHorizontal, Bell, Trash2, Plus, SendHorizontal, Sparkles } from "lucide-react";
 import { Cliente } from "@/src/types";
 import { CLIENTE_STATUS_CONFIG } from "./clienteFormOptions";
@@ -49,6 +50,7 @@ export const ClienteCard: React.FC<ClienteCardProps> = ({
 }) => {
   const { user } = useAuth();
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showEmojiInput, setShowEmojiInput] = useState(false);
   const [customEmoji, setCustomEmoji] = useState("");
   const [commentText, setCommentText] = useState("");
@@ -146,7 +148,23 @@ export const ClienteCard: React.FC<ClienteCardProps> = ({
         {/* ROW 1: type label + menu */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-[13px]">{cliente.emoji || '🏠'}</span>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(!showEmojiPicker); }}
+              className="text-[13px] hover:bg-black/5 rounded-full w-6 h-6 flex items-center justify-center transition-colors"
+            >
+              {cliente.emoji || '🏠'}
+            </button>
+            {showEmojiPicker && (
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/20" onClick={() => setShowEmojiPicker(false)}>
+                <div className="bg-white p-2 rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                  <EmojiPicker 
+                    width={280} 
+                    height={350}
+                    onEmojiClick={(e) => { onEmojiChange?.(cliente.id, e.emoji); setShowEmojiPicker(false); }} 
+                  />
+                </div>
+              </div>
+            )}
             <div className="bg-[var(--bg-subtle)] text-[var(--text-muted)] font-outfit font-semibold text-[9px] uppercase tracking-[0.1em] px-[7px] py-[2px] rounded-full">
               BUYER
             </div>
@@ -247,52 +265,6 @@ export const ClienteCard: React.FC<ClienteCardProps> = ({
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* EMOJI */}
-              <div className="flex flex-col">
-                <span className="text-[9px] uppercase tracking-[0.12em] text-[#9B9B95] font-sans font-medium mb-2">Emoji</span>
-                <div className="grid grid-cols-6 gap-1">
-                  {QUICK_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      onClick={() => {
-                        onEmojiChange?.(cliente.id, emoji);
-                        closeMenu();
-                      }}
-                      className={cn(
-                        "w-[36px] h-[36px] flex items-center justify-center text-[20px] rounded-[10px] transition-all",
-                        cliente.emoji === emoji ? "bg-[#1A1A18] grayscale-0" : "hover:bg-[#EFEEEA]"
-                      )}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setShowEmojiInput(!showEmojiInput)}
-                    className="w-[36px] h-[36px] flex items-center justify-center border border-dashed border-[#D1D0CB] rounded-[10px] hover:bg-[#EFEEEA] transition-colors"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-                {showEmojiInput && (
-                  <div className="flex gap-2 mt-2">
-                    <input
-                      autoFocus
-                      type="text"
-                      placeholder="Emoji..."
-                      value={customEmoji}
-                      onChange={(e) => setCustomEmoji(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && customEmoji) {
-                          onEmojiChange?.(cliente.id, customEmoji);
-                          closeMenu();
-                        }
-                      }}
-                      className="flex-1 bg-[#EFEEEA] border-0 rounded-[10px] px-3 py-1.5 text-[12px] font-sans outline-none"
-                    />
-                  </div>
-                )}
               </div>
 
               {/* COLORE CARD */}
