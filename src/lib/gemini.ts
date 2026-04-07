@@ -214,27 +214,48 @@ export async function analyzeNotizia(notizia: {
   rating?: number | null;
   is_online?: boolean;
 }): Promise<string> {
-  const prompt = `Sei un esperto immobiliare di lusso italiano. 
-Analizza questa notizia (proprietà in vendita) e fornisci una strategia di vendita concisa e professionale.
 
-Dati proprietà:
-- Nome/Titolo: ${notizia.name || 'N/D'}
+  const datiDisponibili = [
+    notizia.name && `Nome: ${notizia.name}`,
+    notizia.zona && `Zona: ${notizia.zona}`,
+    notizia.type && `Tipo: ${notizia.type}`,
+    notizia.prezzo_richiesto && `Prezzo richiesto: €${notizia.prezzo_richiesto.toLocaleString('it-IT')}`,
+    notizia.valore && `Valore stimato: €${notizia.valore.toLocaleString('it-IT')}`,
+    notizia.rating && `Rating interno: ${notizia.rating}/5`,
+    notizia.is_online !== undefined && `Pubblicata online: ${notizia.is_online ? 'Sì' : 'No'}`,
+    notizia.notes && `Note agente: ${notizia.notes.replace(/<[^>]+>/g, ' ').trim().slice(0, 400)}`,
+  ].filter(Boolean).join('\n');
+
+  const prompt = `Sei un agente immobiliare di lusso. Analizza questa proprietà in modo conciso.
+
+Dati:
+- Nome: ${notizia.name || 'N/D'}
 - Zona: ${notizia.zona || 'N/D'}
 - Tipo: ${notizia.type || 'N/D'}
-- Prezzo richiesto: ${notizia.prezzo_richiesto ? `€${notizia.prezzo_richiesto.toLocaleString('it-IT')}` : 'N/D'}
-- Valore stimato: ${notizia.valore ? `€${notizia.valore.toLocaleString('it-IT')}` : 'N/D'}
-- Rating interno: ${notizia.rating ? `${notizia.rating}/5` : 'N/D'}
-- Online: ${notizia.is_online ? 'Sì' : 'No'}
-- Note: ${notizia.notes ? notizia.notes.replace(/<[^>]+>/g, ' ').trim().slice(0, 500) : 'Nessuna'}
+- Prezzo richiesto: ${notizia.prezzo_richiesto ? '€' + notizia.prezzo_richiesto.toLocaleString('it-IT') : 'N/D'}
+- Valore stimato: ${notizia.valore ? '€' + notizia.valore.toLocaleString('it-IT') : 'N/D'}
+- Rating: ${notizia.rating ? notizia.rating + '/5' : 'N/D'}
+- Note: ${notizia.notes ? notizia.notes.replace(/<[^>]+>/g, ' ').trim().slice(0, 300) : 'nessuna'}
 
-Fornisci in italiano una strategia di vendita focalizzata:
-1. **Posizionamento** (1 frase): come collocare la proprietà sul mercato.
-2. **Azione prioritaria** (1-2 bullet): cosa fare subito per vendere.
+Rispondi con massimo 4 frasi brevi e dirette in italiano. 
+NON usare asterischi, markdown, bullet points o simboli.
+NON usare termini inglesi.
+Scrivi come un professionista che parla a un collega.
+Valuta: potenziale commerciale, rapporto prezzo/valore, e una cosa concreta da fare.`;
 
-Sii estremamente sintetico, strategico e professionale. Max 70 parole totali.`;
+  const systemInstruction = `Sei un assistente per agenti immobiliari. 
+Il tuo unico compito è commentare i dati che ti vengono forniti.
+Non hai accesso a internet. Non conosci questa proprietà.
+Non aggiungere MAI informazioni esterne ai dati ricevuti.
+Se i dati sono pochi, scrivi meno. Non riempire con supposizioni.`;
 
-  return await callGemini(
-    [{ role: 'user', parts: [{ text: prompt }] }],
-    'Sei un consulente immobiliare di lusso esperto del mercato italiano.'
-  );
+  try {
+    return await callGemini(
+      [{ role: 'user', parts: [{ text: prompt }] }],
+      systemInstruction
+    );
+  } catch (error: any) {
+    console.error('[analyzeNotizia] Error:', error);
+    return 'Analisi non disponibile. Riprova tra qualche istante.';
+  }
 }

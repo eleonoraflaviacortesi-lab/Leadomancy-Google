@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import EmojiPicker from 'emoji-picker-react';
 import { MoreHorizontal, Bell, Star, Trash2, Plus, SendHorizontal } from "lucide-react";
 import { Notizia } from "@/src/types";
 import { NOTIZIA_STATUS_COLORS, NOTIZIA_STATUS_LABELS, NOTIZIA_STATUSES } from "./notizieConfig";
@@ -51,6 +50,8 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showEmojiInput, setShowEmojiInput] = useState(false);
   const [customEmoji, setCustomEmoji] = useState("");
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const [emojiPickerPos, setEmojiPickerPos] = useState<{ x: number; y: number } | null>(null);
   const [commentText, setCommentText] = useState("");
   const [showCommentSuccess, setShowCommentSuccess] = useState(false);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
@@ -90,6 +91,8 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
     setCustomEmoji("");
     setCommentText("");
     setShowCommentSuccess(false);
+    setShowEmojiPicker(false);
+    setEmojiPickerPos(null);
   };
 
   const handleSendComment = () => {
@@ -137,22 +140,100 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
         {/* ROW 1: type label + menu */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <button 
-              onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(!showEmojiPicker); }}
+            <button
+              ref={emojiButtonRef}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+                const rect = e.currentTarget.getBoundingClientRect();
+                setEmojiPickerPos({ x: rect.left, y: rect.bottom + 6 });
+                setShowEmojiPicker(true);
+                setShowEmojiInput(false);
+                setCustomEmoji('');
+              }}
               className="text-[14px] hover:bg-black/5 rounded-full w-6 h-6 flex items-center justify-center transition-colors"
+              title="Cambia emoji"
             >
               {notizia.emoji || '🏠'}
             </button>
-            {showEmojiPicker && (
-              <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/20" onClick={() => setShowEmojiPicker(false)}>
-                <div className="bg-white p-2 rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                  <EmojiPicker 
-                    width={280} 
-                    height={350}
-                    onEmojiClick={(e) => { onEmojiChange?.(notizia.id, e.emoji); setShowEmojiPicker(false); }} 
-                  />
+
+            {showEmojiPicker && emojiPickerPos && (
+              <>
+                <div
+                  className="fixed inset-0 z-[200]"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setShowEmojiPicker(false);
+                    setShowEmojiInput(false);
+                    setCustomEmoji('');
+                  }}
+                />
+                <div
+                  className="fixed z-[201] bg-white border border-[#E4E3DE] rounded-[16px] shadow-[0_8px_32px_rgba(0,0,0,0.15)] p-3 w-[240px]"
+                  style={{
+                    left: Math.min(emojiPickerPos.x, window.innerWidth - 250),
+                    top: emojiPickerPos.y,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="grid grid-cols-6 gap-1 mb-2">
+                    {QUICK_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => {
+                          onEmojiChange?.(notizia.id, emoji);
+                          setShowEmojiPicker(false);
+                        }}
+                        className={cn(
+                          "w-9 h-9 flex items-center justify-center text-[20px] rounded-[10px] transition-all hover:bg-[#EFEEEA]",
+                          notizia.emoji === emoji && "bg-[#EFEEEA] ring-1 ring-black/20"
+                        )}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setShowEmojiInput(v => !v)}
+                      className="w-9 h-9 flex items-center justify-center border border-dashed border-[#D1D0CB] rounded-[10px] hover:bg-[#EFEEEA] transition-colors"
+                    >
+                      <Plus size={14} className="text-[#9B9B95]" />
+                    </button>
+                  </div>
+                  {showEmojiInput && (
+                    <div className="flex gap-2 mt-1">
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Incolla emoji..."
+                        value={customEmoji}
+                        onChange={(e) => setCustomEmoji(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && customEmoji.trim()) {
+                            onEmojiChange?.(notizia.id, customEmoji.trim());
+                            setShowEmojiPicker(false);
+                            setShowEmojiInput(false);
+                            setCustomEmoji('');
+                          }
+                        }}
+                        className="flex-1 bg-[#EFEEEA] border-0 rounded-[10px] px-3 py-1.5 text-[13px] font-sans outline-none"
+                      />
+                      <button
+                        onClick={() => {
+                          if (customEmoji.trim()) {
+                            onEmojiChange?.(notizia.id, customEmoji.trim());
+                            setShowEmojiPicker(false);
+                            setShowEmojiInput(false);
+                            setCustomEmoji('');
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-[#1A1A18] text-white rounded-[10px] text-[11px] font-sans font-medium"
+                      >
+                        Usa
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
+              </>
             )}
             <div className="bg-black/5 text-[var(--text-muted)] font-outfit font-semibold text-[9px] uppercase tracking-[0.1em] px-[7px] py-[2px] rounded-full">
               {notizia.type || 'NOTIZIA'}

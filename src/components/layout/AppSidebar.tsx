@@ -69,11 +69,11 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
       <div className="py-[15px] flex items-center px-[10px] gap-3">
         <div className="w-7 h-7 bg-black rounded-full flex-shrink-0 flex items-center justify-center">
           <svg viewBox="0 0 24 24" fill="white" style={{ width: 16, height: 16 }}>
-            <path d="M12 2L14.2 8.8H21.4L15.6 13L17.8 19.8L12 15.6L6.2 19.8L8.4 13L2.6 8.8H9.8L12 2Z" />
+            <path d="M12 1 L13.5 8.5 L20.5 6 L16 12 L22 14.5 L15 15.5 L17 22.5 L12 18 L7 22.5 L9 15.5 L2 14.5 L8 12 L3.5 6 L10.5 8.5 Z" />
           </svg>
         </div>
         {!isCollapsed && (
-          <span className="font-bold text-[11px] uppercase tracking-[0.15em] text-[var(--text-primary)]">
+          <span className="font-bold text-[15px] uppercase tracking-[0.15em] text-[var(--text-primary)]">
             ALTAIR
           </span>
         )}

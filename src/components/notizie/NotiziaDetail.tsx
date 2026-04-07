@@ -299,22 +299,56 @@ const GeminiNotiziaAnalysis: React.FC<{ notizia: Notizia }> = ({ notizia }) => {
     };
   }, [cacheKey]);
 
-  // Render markdown-like text (bold with **)
   const renderAnalysis = (text: string) => {
-    return text.split('\n').map((line, i) => {
-      if (!line.trim()) return null;
-      // Bold **text**
-      const parts = line.split(/\*\*(.*?)\*\*/g);
-      return (
-        <p key={i} style={{ margin: '2px 0', fontSize: 12, fontFamily: 'Outfit', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-          {parts.map((part, j) =>
-            j % 2 === 1
-              ? <strong key={j} style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{part}</strong>
-              : part
-          )}
-        </p>
-      );
-    }).filter(Boolean);
+    return text
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .map((line, i) => {
+        // Remove leading * or - bullet characters
+        const cleaned = line.replace(/^[\*\-•]\s*/, '');
+        
+        // Parse inline bold (**text**) and italic (*text*)
+        const parseInline = (str: string): React.ReactNode[] => {
+          const nodes: React.ReactNode[] = [];
+          const regex = /\*\*(.*?)\*\*|\*(.*?)\*/g;
+          let lastIndex = 0;
+          let match;
+          while ((match = regex.exec(str)) !== null) {
+            if (match.index > lastIndex) {
+              nodes.push(str.slice(lastIndex, match.index));
+            }
+            if (match[1] !== undefined) {
+              // **bold**
+              nodes.push(
+                <strong key={match.index} style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {match[1]}
+                </strong>
+              );
+            } else if (match[2] !== undefined) {
+              // *italic* — render as plain text, strip asterisks
+              nodes.push(match[2]);
+            }
+            lastIndex = regex.lastIndex;
+          }
+          if (lastIndex < str.length) {
+            nodes.push(str.slice(lastIndex));
+          }
+          return nodes;
+        };
+
+        return (
+          <p key={i} style={{
+            margin: '3px 0',
+            fontSize: 12,
+            fontFamily: 'Outfit',
+            lineHeight: 1.65,
+            color: 'var(--text-secondary)',
+          }}>
+            {parseInline(cleaned)}
+          </p>
+        );
+      });
   };
 
   return (
