@@ -300,7 +300,6 @@ export const NotiziePage: React.FC = () => {
           onOpenChange={setDetailOpen}
           onUpdate={(id, updates) => updateNotizia({ id, ...updates })}
           onDelete={(id) => {
-            if (!window.confirm('Eliminare questa notizia?')) return;
             deleteNotizia(id);
             setDetailOpen(false);
           }}

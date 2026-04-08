@@ -690,10 +690,8 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
   };
 
   const handleDelete = () => {
-    if (window.confirm("Sei sicuro di voler eliminare questo cliente?")) {
-      onDelete?.(cliente.id);
-      onClose();
-    }
+    onDelete?.(cliente.id);
+    onClose();
   };
   return (
     <AnimatePresence>
@@ -731,7 +729,7 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   className="w-8 h-8 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[16px] hover:bg-black/5 transition-colors shrink-0"
                 >
-                  {cliente.emoji || '👤'}
+                  {cliente.emoji !== '' ? (cliente.emoji || '👤') : null}
                 </button>
                 {showEmojiPicker && (
                   <div className="absolute z-[80] top-[64px] left-[16px] md:left-[100px] mt-2">

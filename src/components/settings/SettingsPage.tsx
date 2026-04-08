@@ -12,7 +12,9 @@ import {
   CheckCircle2,
   GripVertical,
   Plus,
-  Target
+  Target,
+  Palette,
+  X
 } from "lucide-react";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,6 +24,7 @@ import { useKanbanColumns } from "@/src/hooks/useKanbanColumns";
 import { useClientKanbanColumns } from "@/src/hooks/useClientKanbanColumns";
 import { useBannerSettings } from "@/src/hooks/useBannerSettings";
 import { useSedeTargets } from "@/src/hooks/useSedeTargets";
+import { useFavoriteColors } from '@/src/hooks/useFavoriteColors';
 import { toast } from "sonner";
 import { cn } from "@/src/lib/utils";
 
@@ -32,6 +35,68 @@ const KANBAN_COLOR_PALETTE = [
   '#60a5fa', '#4ade80', '#c084fc', '#fbbf24', '#f87171', '#818cf8', '#f472b6', '#9ca3af',
   '#93c5fd', '#86efac', '#d8b4fe', '#fcd34d', '#fca5a5', '#a5b4fc', '#f9a8d4', '#d1d5db'
 ];
+
+const FavoriteColorsManager = () => {
+  const { favorites, addColor, removeColor, updateColor } = useFavoriteColors();
+  const [newColor, setNewColor] = useState('#ffffff');
+
+  return (
+    <div className="flex flex-col gap-4">
+      {favorites.length === 0 && (
+        <p className="font-outfit text-[12px] text-[var(--text-muted)]">
+          Nessun colore salvato ancora. Aggiungili dalle card del kanban.
+        </p>
+      )}
+      
+      {/* Saved colors list */}
+      <div className="flex flex-col gap-2">
+        {favorites.map((color) => (
+          <div key={color} className="flex items-center gap-3 p-3 bg-white border border-[var(--border-light)] rounded-xl">
+            {/* Color preview + edit */}
+            <div className="relative w-8 h-8 rounded-full border border-black/10 overflow-hidden flex-shrink-0" style={{ backgroundColor: color }}>
+              <input
+                type="color"
+                value={color}
+                onChange={(e) => updateColor(color, e.target.value)}
+                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                title="Modifica colore"
+              />
+            </div>
+            <span className="font-outfit font-mono text-[12px] text-[var(--text-muted)] flex-1">
+              {color}
+            </span>
+            <button
+              onClick={() => removeColor(color)}
+              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-red-50 text-[var(--text-muted)] hover:text-red-500 transition-colors"
+              title="Rimuovi"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Add new color */}
+      <div className="flex items-center gap-3">
+        <div className="relative w-8 h-8 rounded-full border border-black/10 overflow-hidden flex-shrink-0" style={{ backgroundColor: newColor }}>
+          <input
+            type="color"
+            value={newColor}
+            onChange={(e) => setNewColor(e.target.value)}
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+          />
+        </div>
+        <span className="font-outfit font-mono text-[12px] text-[var(--text-muted)] flex-1">{newColor}</span>
+        <button
+          onClick={() => { addColor(newColor); setNewColor('#ffffff'); }}
+          className="h-8 px-4 bg-[#1A1A18] text-white rounded-full font-outfit font-bold text-[11px] uppercase tracking-wider hover:opacity-90 transition-all"
+        >
+          Aggiungi
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const RoleSelector = () => {
   const { user } = useAuth();
@@ -666,6 +731,21 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
           <SedeTargetsEditor />
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center">
+              <Palette size={18} className="text-[var(--text-primary)]" />
+            </div>
+            <div>
+              <h2 className="font-outfit font-bold text-[15px] text-[var(--text-primary)]">Colori Preferiti</h2>
+              <p className="font-outfit text-[11px] text-[var(--text-muted)]">
+                Colori salvati — disponibili su tutte le card del kanban
+              </p>
+            </div>
+          </div>
+          <FavoriteColorsManager />
         </div>
 
         <div className="flex flex-col items-center gap-2 py-6">

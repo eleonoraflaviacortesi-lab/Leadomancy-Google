@@ -129,7 +129,9 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(isTask ? 'Eliminare questa task?' : 'Eliminare questo appuntamento?')) return;
+    if (!isTask ? 'Eliminare questa task?' : 'Eliminare questo appuntamento?') {
+      onDelete(isTask);
+    }
     await deleteAppointment(event.id);
     toast.success('Eliminato');
     onClose();

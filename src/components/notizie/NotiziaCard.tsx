@@ -4,6 +4,7 @@ import { MoreHorizontal, Bell, Star, Trash2, Plus, SendHorizontal } from "lucide
 import { Notizia } from "@/src/types";
 import { NOTIZIA_STATUS_COLORS, NOTIZIA_STATUS_LABELS, NOTIZIA_STATUSES } from "./notizieConfig";
 import { cn, formatCurrency } from "@/src/lib/utils";
+import { useFavoriteColors } from '@/src/hooks/useFavoriteColors';
 
 interface NotiziaCardProps {
   notizia: Notizia;
@@ -47,13 +48,10 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
   isDragging 
 }) => {
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showEmojiInput, setShowEmojiInput] = useState(false);
-  const [customEmoji, setCustomEmoji] = useState("");
-  const emojiButtonRef = useRef<HTMLButtonElement>(null);
-  const [emojiPickerPos, setEmojiPickerPos] = useState<{ x: number; y: number } | null>(null);
   const [commentText, setCommentText] = useState("");
   const [showCommentSuccess, setShowCommentSuccess] = useState(false);
+  const [customColorValue, setCustomColorValue] = useState<string>('');
+  const { favorites, addColor } = useFavoriteColors();
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const isOnShot = notizia.status === 'on_shot';
@@ -87,12 +85,9 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
 
   const closeMenu = () => {
     setMenuPos(null);
-    setShowEmojiInput(false);
-    setCustomEmoji("");
     setCommentText("");
     setShowCommentSuccess(false);
-    setShowEmojiPicker(false);
-    setEmojiPickerPos(null);
+    setCustomColorValue('');
   };
 
   const handleSendComment = () => {
@@ -118,6 +113,22 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
     : null;
 
   const dark = isDarkColor(notizia.card_color);
+  
+  const textColor = notizia.card_color
+    ? (dark ? '#ffffff' : '#1A1A18')
+    : 'var(--text-primary)';
+  
+  const textMutedColor = notizia.card_color
+    ? (dark ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.45)')
+    : 'var(--text-muted)';
+  
+  const badgeBg = notizia.card_color
+    ? (dark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)')
+    : 'var(--bg-subtle)';
+  
+  const badgeColor = notizia.card_color
+    ? (dark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.5)')
+    : 'var(--text-muted)';
 
   return (
     <>
@@ -139,113 +150,32 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
       >
         {/* ROW 1: type label + menu */}
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1.5">
-            <button
-              ref={emojiButtonRef}
-              onClick={(e) => {
-                e.stopPropagation();
-                e.nativeEvent.stopImmediatePropagation();
-                const rect = e.currentTarget.getBoundingClientRect();
-                setEmojiPickerPos({ x: rect.left, y: rect.bottom + 6 });
-                setShowEmojiPicker(true);
-                setShowEmojiInput(false);
-                setCustomEmoji('');
-              }}
-              className="text-[14px] hover:bg-black/5 rounded-full w-6 h-6 flex items-center justify-center transition-colors"
-              title="Cambia emoji"
-            >
-              {notizia.emoji || '🏠'}
-            </button>
-
-            {showEmojiPicker && emojiPickerPos && (
-              <>
-                <div
-                  className="fixed inset-0 z-[200]"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    setShowEmojiPicker(false);
-                    setShowEmojiInput(false);
-                    setCustomEmoji('');
-                  }}
-                />
-                <div
-                  className="fixed z-[201] bg-white border border-[#E4E3DE] rounded-[16px] shadow-[0_8px_32px_rgba(0,0,0,0.15)] p-3 w-[240px]"
-                  style={{
-                    left: Math.min(emojiPickerPos.x, window.innerWidth - 250),
-                    top: emojiPickerPos.y,
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="grid grid-cols-6 gap-1 mb-2">
-                    {QUICK_EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => {
-                          onEmojiChange?.(notizia.id, emoji);
-                          setShowEmojiPicker(false);
-                        }}
-                        className={cn(
-                          "w-9 h-9 flex items-center justify-center text-[20px] rounded-[10px] transition-all hover:bg-[#EFEEEA]",
-                          notizia.emoji === emoji && "bg-[#EFEEEA] ring-1 ring-black/20"
-                        )}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => setShowEmojiInput(v => !v)}
-                      className="w-9 h-9 flex items-center justify-center border border-dashed border-[#D1D0CB] rounded-[10px] hover:bg-[#EFEEEA] transition-colors"
-                    >
-                      <Plus size={14} className="text-[#9B9B95]" />
-                    </button>
-                  </div>
-                  {showEmojiInput && (
-                    <div className="flex gap-2 mt-1">
-                      <input
-                        autoFocus
-                        type="text"
-                        placeholder="Incolla emoji..."
-                        value={customEmoji}
-                        onChange={(e) => setCustomEmoji(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && customEmoji.trim()) {
-                            onEmojiChange?.(notizia.id, customEmoji.trim());
-                            setShowEmojiPicker(false);
-                            setShowEmojiInput(false);
-                            setCustomEmoji('');
-                          }
-                        }}
-                        className="flex-1 bg-[#EFEEEA] border-0 rounded-[10px] px-3 py-1.5 text-[13px] font-sans outline-none"
-                      />
-                      <button
-                        onClick={() => {
-                          if (customEmoji.trim()) {
-                            onEmojiChange?.(notizia.id, customEmoji.trim());
-                            setShowEmojiPicker(false);
-                            setShowEmojiInput(false);
-                            setCustomEmoji('');
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-[#1A1A18] text-white rounded-[10px] text-[11px] font-sans font-medium"
-                      >
-                        Usa
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </>
+            <div className="flex items-center gap-1.5">
+            {notizia.emoji && notizia.emoji !== '' && (
+              <div className="text-[14px] w-6 h-6 flex items-center justify-center">
+                {notizia.emoji}
+              </div>
             )}
-            <div className="bg-black/5 text-[var(--text-muted)] font-outfit font-semibold text-[9px] uppercase tracking-[0.1em] px-[7px] py-[2px] rounded-full">
+            <div 
+              className="font-outfit font-semibold text-[9px] uppercase tracking-[0.1em] px-[7px] py-[2px] rounded-full"
+              style={{ backgroundColor: badgeBg, color: badgeColor }}
+            >
               {notizia.type || 'NOTIZIA'}
             </div>
           </div>
-          <button className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
+          <button 
+            className="hover:opacity-70 transition-colors"
+            style={{ color: textMutedColor }}
+          >
             <MoreHorizontal size={16} />
           </button>
         </div>
 
         {/* ROW 2: title */}
-        <h3 className="font-outfit font-semibold text-[14px] leading-[1.3] text-[var(--text-primary)] line-clamp-2 mt-1">
+        <h3 
+          className="font-outfit font-semibold text-[14px] leading-[1.3] line-clamp-2 mt-1"
+          style={{ color: textColor }}
+        >
           {notizia.name}
         </h3>
 
@@ -259,9 +189,13 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
                 onUpdate?.(notizia.id, { rating: dot === notizia.rating ? dot - 1 : dot });
               }}
               className={cn(
-                "w-2 h-2 rounded-full transition-all",
-                dot <= (notizia.rating || 0) ? "bg-[var(--text-primary)]" : "bg-black/10 hover:bg-black/20"
+                "w-2 h-2 rounded-full transition-all"
               )}
+              style={{ 
+                backgroundColor: notizia.card_color 
+                  ? (dot <= (notizia.rating || 0) ? (dark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.75)') : (dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'))
+                  : (dot <= (notizia.rating || 0) ? 'var(--text-primary)' : 'rgba(0,0,0,0.1)')
+              }}
             />
           ))}
         </div>
@@ -270,14 +204,20 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
         <div className="flex items-center justify-between mt-auto pt-1">
           {lastComment ? (
             <div className="flex items-center gap-1.5 overflow-hidden">
-              <span className="text-[10px] text-[var(--text-muted)] truncate italic">
+              <span 
+                className="text-[10px] truncate italic"
+                style={{ color: textMutedColor }}
+              >
                 "{lastComment.text}"
               </span>
             </div>
           ) : (
             <div />
           )}
-          <span className="font-outfit font-normal text-[11px] text-[var(--text-muted)] flex-shrink-0">
+          <span 
+            className="font-outfit font-normal text-[11px] flex-shrink-0"
+            style={{ color: textMutedColor }}
+          >
             {new Date(notizia.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
           </span>
         </div>
@@ -295,10 +235,10 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed z-[110] bg-white border border-[#E4E3DE] rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,0.15),0_4px_16px_rgba(0,0,0,0.08)] p-4 min-w-[260px] w-[90vw] sm:w-auto sm:max-w-[300px] max-h-[80vh] overflow-y-auto flex flex-col gap-6"
+              className="fixed z-[110] bg-white border border-[#E4E3DE] rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,0.15),0_4px_16px_rgba(0,0,0,0.08)] p-4 min-w-[260px] w-[90vw] sm:w-auto sm:max-w-[300px] flex flex-col gap-6"
               style={{
                 left: window.innerWidth < 640 ? '5vw' : Math.min(menuPos.x, window.innerWidth - 300),
-                top: Math.min(menuPos.y, window.innerHeight - 500)
+                top: Math.min(menuPos.y, Math.max(0, window.innerHeight - 600))
               }}
             >
               {/* STATO */}
@@ -327,9 +267,44 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
                 </div>
               </div>
 
+              {/* EMOJI */}
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase tracking-[0.12em] text-[#9B9B95] font-sans font-medium mb-1.5">Emoji</span>
+                <div className="grid grid-cols-6 gap-1">
+                  {QUICK_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => {
+                        onEmojiChange?.(notizia.id, emoji);
+                        closeMenu();
+                      }}
+                      className={cn(
+                        "w-7 h-7 flex items-center justify-center text-[16px] rounded-[8px] transition-all hover:bg-[#EFEEEA]",
+                        notizia.emoji === emoji && "bg-[#EFEEEA] ring-1 ring-black/20"
+                      )}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+                {console.log('Notizia emoji:', notizia.emoji)}
+                {notizia.emoji && notizia.emoji !== '' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEmojiChange?.(notizia.id, '');
+                      closeMenu();
+                    }}
+                    className="w-full mt-1 py-1.5 text-[11px] font-sans text-[#E57373] hover:text-[#C62828] hover:bg-red-50 rounded-[10px] transition-colors flex items-center justify-center gap-1"
+                  >
+                    ✕ Rimuovi emoji
+                  </button>
+                )}
+              </div>
+
               {/* COLORE CARD */}
               <div className="flex flex-col">
-                <span className="text-[9px] uppercase tracking-[0.12em] text-[#9B9B95] font-sans font-medium mb-2">Colore Card</span>
+                <span className="text-[9px] uppercase tracking-[0.12em] text-[#9B9B95] font-sans font-medium mb-1.5">Colore Card</span>
                 <div className="grid grid-cols-8 gap-[6px]">
                   <button
                     onClick={() => {
@@ -361,23 +336,65 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
                   ))}
                 </div>
                 <div className="mt-2">
-                  <label className="text-[10px] text-[var(--text-secondary)] font-sans font-medium cursor-pointer hover:underline flex items-center gap-1">
-                    Altro colore...
-                    <input 
-                      type="color" 
-                      className="sr-only" 
-                      onChange={(e) => {
-                        onColorChange?.(notizia.id, e.target.value);
-                        closeMenu();
-                      }}
-                    />
-                  </label>
+                  {/* Custom color picker + save */}
+                  <div className="mt-2 flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 cursor-pointer group">
+                      <div
+                        className="w-6 h-6 rounded-full border border-black/10 overflow-hidden relative"
+                        style={{ backgroundColor: customColorValue || '#ffffff' }}
+                      >
+                        <input
+                          type="color"
+                          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                          value={customColorValue || '#ffffff'}
+                          onChange={(e) => setCustomColorValue(e.target.value)}
+                        />
+                      </div>
+                      <span className="text-[10px] text-[var(--text-secondary)] font-sans font-medium group-hover:underline">
+                        Altro colore...
+                      </span>
+                    </label>
+                    {customColorValue && (
+                      <button
+                        onClick={() => {
+                          onColorChange?.(notizia.id, customColorValue);
+                          addColor(customColorValue);
+                          closeMenu();
+                        }}
+                        className="text-[10px] px-2 py-0.5 bg-[#1A1A18] text-white rounded-full font-sans font-medium"
+                      >
+                        Salva
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Saved custom colors */}
+                  {favorites.length > 0 && (
+                    <div className="mt-2">
+                      <span className="text-[9px] uppercase tracking-[0.12em] text-[#9B9B95] font-sans font-medium block mb-1.5">
+                        Salvati
+                      </span>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {favorites.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => { onColorChange?.(notizia.id, color); closeMenu(); }}
+                            className={cn(
+                              "w-6 h-6 rounded-full border border-black/5 transition-transform hover:scale-110",
+                              notizia.card_color === color && "ring-2 ring-offset-1 ring-gray-400"
+                            )}
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* COMMENTO RAPIDO */}
-              <div className="flex flex-col pt-4 border-t border-[var(--border-light)]">
-                <span className="text-[9px] uppercase tracking-[0.12em] text-[#9B9B95] font-sans font-medium mb-2">Commento Rapido</span>
+              <div className="flex flex-col pt-2 border-t border-[var(--border-light)]">
+                <span className="text-[9px] uppercase tracking-[0.12em] text-[#9B9B95] font-sans font-medium mb-1.5">Commento Rapido</span>
                 <textarea
                   rows={2}
                   placeholder="Aggiungi commento..."
@@ -389,36 +406,38 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
                       handleSendComment();
                     }
                   }}
-                  className="w-full bg-[#EFEEEA] border-0 rounded-[10px] p-[8px_10px] text-[12px] font-sans resize-none outline-none"
+                  className="w-full bg-[#EFEEEA] border-0 rounded-[10px] p-[6px_8px] text-[12px] font-sans resize-none outline-none"
                 />
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-[10px] text-[var(--text-muted)]">Invio con ↵</span>
-                  {showCommentSuccess ? (
-                    <span className="h-7 flex items-center text-emerald-600 text-[11px] font-sans font-medium">
-                      ✓ Salvato
-                    </span>
-                  ) : (
-                    <button
-                      onClick={handleSendComment}
-                      className="h-7 px-3 bg-[#1A1A18] text-white rounded-full flex items-center gap-1.5 transition-transform active:scale-95"
-                    >
-                      <span className="text-[11px] font-sans font-medium">Invia</span>
-                      <SendHorizontal size={14} />
-                    </button>
-                  )}
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[9px] text-[var(--text-muted)]">Invio con ↵</span>
+                  <button
+                    onClick={handleSendComment}
+                    className="h-6 px-2.5 bg-[#1A1A18] text-white rounded-full flex items-center gap-1.5 transition-transform active:scale-95"
+                  >
+                    <span className="text-[10px] font-sans font-medium">Invia</span>
+                    <SendHorizontal size={12} />
+                  </button>
                 </div>
               </div>
 
               {/* ELIMINA */}
-              <div className="pt-4 border-t border-[#F5A0B0]/20">
+              <div className="pt-2 border-t border-[#F5A0B0]/20">
+                {notizia.emoji && notizia.emoji !== '' && (
+                  <button
+                    onClick={() => { onEmojiChange?.(notizia.id, ''); closeMenu(); }}
+                    className="flex items-center gap-2 text-[11px] font-sans text-[#9B9B95] hover:text-[#E57373] transition-colors mb-2"
+                  >
+                    ✕ Rimuovi emoji
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     onDelete?.(notizia.id);
                     closeMenu();
                   }}
-                  className="flex items-center gap-2 text-[#E57373] hover:text-[#C62828] transition-colors text-[12px] font-sans font-medium"
+                  className="flex items-center gap-2 text-[#E57373] hover:text-[#C62828] transition-colors text-[11px] font-sans font-medium"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={12} />
                   Elimina notizia
                 </button>
               </div>

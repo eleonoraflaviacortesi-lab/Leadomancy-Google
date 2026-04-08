@@ -196,6 +196,9 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
       if (finalUpdates.telefono !== undefined) {
         finalUpdates.Telefono = finalUpdates.telefono;
       }
+      if (finalUpdates.emoji !== undefined) {
+        finalUpdates.Emoji = finalUpdates.emoji;
+      }
       
       await updateRow(SHEETS.clienti, rowIndex, finalUpdates);
       return { id, silent };
@@ -215,12 +218,10 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
       toast.error("Errore durante il salvataggio");
     },
     onSuccess: (data, variables, context) => {
-      if (!context?.silent) {
-        toast.success("Salvato");
-      }
+      // No toast success message
     },
     onSettled: () => {
-      setTimeout(() => queryClient.invalidateQueries({ queryKey }), 10000);
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 

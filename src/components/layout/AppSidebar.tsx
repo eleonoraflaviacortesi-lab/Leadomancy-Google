@@ -1,32 +1,33 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { motion } from "motion/react";
 import {
   LayoutDashboard,
-  Building2,
-  Users,
+  Home,
+  UserSearch,
   CalendarDays,
-  MessageSquare,
-  ClipboardList,
-  BarChart3,
-  Settings,
+  MessageCircle,
+  TrendingUp,
+  Briefcase,
+  Settings2,
   ChevronLeft,
   ChevronRight,
   LogOut,
   Plus,
-  Calendar
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { useAuth } from "@/src/hooks/useAuth";
+import { useLocalStorage } from "@/src/hooks/useLocalStorage";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", path: "/", icon: LayoutDashboard },
-  { label: "Notizie", path: "/properties", icon: Building2 },
-  { label: "Buyers", path: "/contacts", icon: Users },
-  { label: "Calendario", path: "/activities", icon: CalendarDays },
-  { label: "Chat", path: "/chat", icon: MessageSquare },
-  { label: "Produzione", path: "/inserisci", icon: ClipboardList },
-  { label: "Ufficio", path: "/office", icon: BarChart3 },
-  { label: "Impostazioni", path: "/settings", icon: Settings },
+  { label: "Dashboard", path: "/", icon: LayoutDashboard, group: 1 },
+  { label: "Notizie", path: "/properties", icon: Home, group: 2 },
+  { label: "Buyers", path: "/contacts", icon: UserSearch, group: 2 },
+  { label: "Calendario", path: "/activities", icon: CalendarDays, group: 2 },
+  { label: "Chat", path: "/chat", icon: MessageCircle, group: 3 },
+  { label: "Produzione", path: "/inserisci", icon: TrendingUp, group: 3 },
+  { label: "Ufficio", path: "/office", icon: Briefcase, group: 3 },
+  { label: "Impostazioni", path: "/settings", icon: Settings2, group: 4 },
 ];
 
 interface AppSidebarProps {
@@ -38,7 +39,6 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
   const { user, signOut } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const navigate = useNavigate();
-
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -52,56 +52,70 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
   }, []);
 
   const menuItems = [
-    { icon: Building2, label: "Nuova Notizia", action: () => { window.dispatchEvent(new CustomEvent('leadomancy:open-add-notizia')); setIsDropdownOpen(false); } },
-    { icon: Users, label: "Nuovo Buyer", action: () => { window.dispatchEvent(new CustomEvent('leadomancy:open-add-cliente')); setIsDropdownOpen(false); } },
-    { icon: ClipboardList, label: "Nuovo Ciclo", action: () => { navigate('/inserisci'); setIsDropdownOpen(false); } },
-    { icon: Calendar, label: "Nuova Riunione", action: () => { navigate('/office'); setIsDropdownOpen(false); } },
+    { icon: Home, label: "Nuova Notizia", action: () => { window.dispatchEvent(new CustomEvent('leadomancy:open-add-notizia')); setIsDropdownOpen(false); } },
+    { icon: UserSearch, label: "Nuovo Buyer", action: () => { window.dispatchEvent(new CustomEvent('leadomancy:open-add-cliente')); setIsDropdownOpen(false); } },
+    { icon: TrendingUp, label: "Nuovo Ciclo", action: () => { navigate('/inserisci'); setIsDropdownOpen(false); } },
+    { icon: CalendarDays, label: "Nuova Riunione", action: () => { navigate('/office'); setIsDropdownOpen(false); } },
   ];
 
+  const renderLabel = (label: string) => (
+    <motion.span
+      animate={{ 
+        opacity: isCollapsed ? 0 : 1,
+        width: isCollapsed ? 0 : 'auto'
+      }}
+      transition={{ duration: 0.2, delay: isCollapsed ? 0 : 0.05 }}
+      style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}
+      className="font-outfit text-[13px] font-medium"
+    >
+      {label}
+    </motion.span>
+  );
+
   return (
-    <aside
-      className={cn(
-        "flex flex-col fixed left-0 top-[34px] h-screen bg-[var(--bg-surface)] border-r border-[var(--border-light)] transition-all duration-200 ease-in-out z-50",
-        isCollapsed ? "w-[52px]" : "w-[220px]"
-      )}
+    <motion.div
+      animate={{ width: isCollapsed ? 64 : 220 }}
+      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+      className="fixed left-0 top-0 h-screen bg-[#F5F4F0] z-50 flex flex-col"
+      style={{ boxShadow: '1px 0 0 rgba(0,0,0,0.06)' }}
     >
       {/* Header */}
-      <div className="py-[15px] flex items-center px-[10px] gap-3">
-        <div className="w-7 h-7 bg-black rounded-full flex-shrink-0 flex items-center justify-center">
-          <svg viewBox="0 0 24 24" fill="white" style={{ width: 16, height: 16 }}>
-            <path d="M12 1 L13.5 8.5 L20.5 6 L16 12 L22 14.5 L15 15.5 L17 22.5 L12 18 L7 22.5 L9 15.5 L2 14.5 L8 12 L3.5 6 L10.5 8.5 Z" />
-          </svg>
+      <div className="p-5 pb-4 flex items-center gap-3">
+        <div className="w-9 h-9 bg-[#1A1A18] rounded-full flex-shrink-0 flex items-center justify-center text-white">
+          ✦
         </div>
-        {!isCollapsed && (
-          <span className="font-bold text-[15px] uppercase tracking-[0.15em] text-[var(--text-primary)]">
-            ALTAIR
-          </span>
-        )}
+        <motion.span
+          animate={{ opacity: isCollapsed ? 0 : 1 }}
+          transition={{ duration: 0.2 }}
+          className="font-bold text-[15px] tracking-wider text-[#1A1A18]"
+        >
+          ALTAIR
+        </motion.span>
       </div>
 
       {/* Quick Add */}
-      <div className="px-2 relative" ref={dropdownRef}>
+      <div className="px-3 mb-4 relative" ref={dropdownRef}>
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           className={cn(
-            "flex items-center justify-center bg-[#202020] text-white rounded-full h-[34px] transition-all hover:opacity-85",
-            isCollapsed ? "w-[34px]" : "w-full gap-2"
+            "flex items-center bg-[#1A1A18] text-white rounded-full transition-all hover:opacity-90",
+            isCollapsed ? "w-10 h-10 justify-center" : "w-full h-10 px-4 gap-2"
           )}
         >
-          <Plus size={isCollapsed ? 16 : 14} />
-          {!isCollapsed && <span className="font-outfit font-semibold text-[11px] uppercase tracking-[0.1em]">AGGIUNGI</span>}
+          <Plus size={18} />
+          {!isCollapsed && <span className="font-outfit font-semibold text-[12px] uppercase tracking-wide">AGGIUNGI</span>}
         </button>
 
         {isDropdownOpen && (
-          <div className="absolute left-2 top-[42px] w-[200px] bg-white border border-[var(--border-light)] rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.12)] p-1.5 z-[200]">
+          <div className="absolute left-3 top-12 w-[200px] bg-white border border-[rgba(0,0,0,0.06)] rounded-xl shadow-xl p-1.5 z-[200]">
             {menuItems.map((item, index) => (
               <button
                 key={index}
                 onClick={item.action}
-                className="w-full h-[36px] flex items-center gap-10 px-3 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+                className="w-full h-9 flex items-center gap-3 px-3 rounded-lg hover:bg-[rgba(0,0,0,0.04)] transition-colors"
               >
-                <item.icon size={15} className="text-[var(--text-secondary)]" />
-                <span className="font-outfit text-[13px] text-[var(--text-primary)]">{item.label}</span>
+                <item.icon size={16} className="text-[#1A1A18]" />
+                <span className="font-outfit text-[13px]">{item.label}</span>
               </button>
             ))}
           </div>
@@ -109,64 +123,68 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-2 py-4 space-y-1">
-        {NAV_ITEMS.map((item, index) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center h-[34px] rounded-full px-2 gap-[10px] transition-colors",
-                isActive
-                  ? "bg-[var(--bg-subtle)] text-[var(--text-primary)] font-medium"
-                  : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]",
-                index === 7 && "mt-1"
-              )
-            }
-          >
-            <item.icon size={15} className={cn("flex-shrink-0 ml-[3px]", index === 0 && "pl-0 mr-0")} />
-            {!isCollapsed && <span className="text-[12px]">{item.label}</span>}
-          </NavLink>
+      <nav className="flex-1 px-3 space-y-1">
+        {[1, 2, 3, 4].map((group) => (
+          <React.Fragment key={group}>
+            {NAV_ITEMS.filter(item => item.group === group).map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center h-10 rounded-full transition-all duration-200",
+                    isCollapsed ? "w-10 justify-center" : "w-full px-3 gap-2.5",
+                    isActive
+                      ? "bg-[#1A1A18] text-white font-bold"
+                      : "text-[rgba(0,0,0,0.35)] hover:bg-[rgba(0,0,0,0.06)]"
+                  )
+                }
+              >
+                <item.icon size={20} />
+                {renderLabel(item.label)}
+              </NavLink>
+            ))}
+            {group < 4 && <div className="h-[1px] bg-[rgba(0,0,0,0.06)] mx-2 my-2" />}
+          </React.Fragment>
         ))}
       </nav>
 
       {/* Footer */}
-      <div className="p-2 border-t border-[var(--border-light)] space-y-1">
-        {!isCollapsed && user && (
-          <NavLink
-            to="/profile"
-            className={({ isActive }) => cn(
-              "flex items-center gap-3 px-2 py-3 mb-1 rounded-full transition-colors",
-              isActive ? "bg-[var(--bg-subtle)]" : "hover:bg-[var(--bg-hover)]"
+      <div className="p-3 border-t border-[rgba(0,0,0,0.06)] space-y-3">
+        {user && (
+          <div className={cn("flex items-center gap-3", isCollapsed ? "justify-center" : "px-1")}>
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#1A1A18] to-[#444] flex items-center justify-center text-white text-[16px] font-bold">
+              {user.avatar_emoji || user.full_name?.[0]?.toUpperCase()}
+            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col overflow-hidden">
+                <span className="font-outfit font-bold text-[13px] truncate">{user.full_name}</span>
+                <span className="font-outfit text-[10px] text-[#6366f1] uppercase tracking-wide truncate">{user.sede}</span>
+              </div>
             )}
-          >
-            <div className="w-8 h-8 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-lg border border-[var(--border-light)]">
-              {user.avatar_emoji}
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-[11px] font-bold truncate text-[var(--text-primary)]">{user.full_name}</span>
-              <span className="text-[10px] text-[var(--text-muted)] font-medium truncate uppercase tracking-wider">{user.sede}</span>
-            </div>
-          </NavLink>
+          </div>
         )}
 
-        <button
-          onClick={() => signOut()}
-          className={cn(
-            "flex items-center h-[34px] w-full rounded-full px-2 gap-[10px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
-          )}
-        >
-          <LogOut size={18} className="flex-shrink-0 ml-0" />
-          {!isCollapsed && <span className="text-[12px]">Esci</span>}
-        </button>
+        <div className="flex items-center justify-between gap-2">
+          <button
+            onClick={() => signOut()}
+            className={cn(
+              "flex items-center justify-center text-[rgba(0,0,0,0.4)] hover:text-[#1A1A18] transition-colors",
+              isCollapsed ? "w-10 h-10" : "h-10 px-3 gap-2"
+            )}
+          >
+            <LogOut size={18} />
+            {!isCollapsed && <span className="font-outfit text-[13px]">Esci</span>}
+          </button>
 
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="flex items-center justify-center h-[34px] w-full rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-hover)] transition-colors"
-        >
-          {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-        </button>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="w-7 h-7 rounded-full bg-white border border-[rgba(0,0,0,0.08)] shadow-sm flex items-center justify-center text-[rgba(0,0,0,0.6)] hover:bg-[rgba(0,0,0,0.02)] transition-colors"
+          >
+            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
+        </div>
       </div>
-    </aside>
+    </motion.div>
   );
 }

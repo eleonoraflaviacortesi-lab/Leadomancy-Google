@@ -107,6 +107,7 @@ export function useNotizie() {
         comments: [],
         is_online: false,
         status: newNotizia.status || 'new',
+        emoji: newNotizia.emoji || '',
       } as Notizia;
 
       await appendRow(SHEETS.notizie, noticia);
@@ -195,6 +196,9 @@ export function useNotizie() {
         if (finalUpdates.provincia !== undefined) {
           finalUpdates.Provincia = finalUpdates.provincia;
         }
+        if (finalUpdates.emoji !== undefined) {
+          finalUpdates.Emoji = finalUpdates.emoji;
+        }
         
         console.log("[useNotizie] Final updates:", finalUpdates);
         
@@ -220,14 +224,10 @@ export function useNotizie() {
       toast.error("Errore durante il salvataggio");
     },
     onSuccess: (data, variables, context) => {
-      if (!context?.silent) {
-        toast.success("Salvato");
-      }
+      // No toast success message
     },
     onSettled: () => {
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey });
-      }, 10000);
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 

@@ -9,13 +9,16 @@ import {
   Heart,
   Laugh,
   Sunrise,
-  Frown
+  Frown,
+  Plus,
+  Mic
 } from "lucide-react";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useProfiles } from "@/src/hooks/useProfiles";
 import { useClienti } from "@/src/hooks/useClienti";
 import { useNotizie } from "@/src/hooks/useNotizie";
 import { useDetail } from "@/src/context/DetailContext";
+import { useLocalStorage } from "@/src/hooks/useLocalStorage";
 import { getSheetData, appendRow, updateRow, SHEETS, findRowIndex } from "@/src/lib/googleSheets";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isYesterday, parseISO } from "date-fns";
@@ -29,7 +32,7 @@ interface ChatMessage {
   message: string;
   sede: string;
   mentions: string[]; // userIds
-  attachments: { type: 'notizia' | 'cliente', id: string }[];
+  attachments: { type: 'notizia' | 'cliente' | 'file' | 'audio', id: string, url?: string, name?: string }[];
   reactions: Record<string, string[]>; // emoji -> userIds[]
   created_at: string;
   _rowIndex?: number;
@@ -44,13 +47,73 @@ export const OfficeChatPage: React.FC = () => {
   const { notizie } = useNotizie();
   const { openDetail } = useDetail();
   const queryClient = useQueryClient();
+  const [isCollapsed] = useLocalStorage("sidebar-collapsed", false);
   const [inputValue, setInputValue] = useState("");
   const [showMentions, setShowMentions] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
   const [attachmentQuery, setAttachmentQuery] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      
+      mediaRecorderRef.current.ondataavailable = (e) => {
+        audioChunksRef.current.push(e.data);
+      };
+      
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Error accessing microphone:", err);
+      toast.error("Impossibile accedere al microfono");
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      setPendingFiles(prev => [...prev, ...Array.from(files)]);
+      toast.success(`${files.length} file selezionati`);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      setPendingFiles(prev => [...prev, ...Array.from(files)]);
+      toast.success(`${files.length} file rilasciati`);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+      
+      mediaRecorderRef.current.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setAudioBlob(audioBlob);
+        toast.success("Audio registrato! Premi invio per inviare.");
+      };
+    }
+  };
 
   const { data: messages = [] } = useQuery({
     queryKey: ['chat_messages', user?.sede],
@@ -73,13 +136,22 @@ export const OfficeChatPage: React.FC = () => {
         .filter(p => text.includes(`@${p.full_name}`))
         .map(p => p.id);
         
-      const attachments: { type: 'notizia' | 'cliente', id: string }[] = [];
+      const attachments: { type: 'notizia' | 'cliente' | 'file' | 'audio', id: string, url?: string, name?: string }[] = [];
       notizie.forEach(n => {
         if (text.includes(`#${n.name}`)) attachments.push({ type: 'notizia', id: n.id });
       });
       clienti.forEach(c => {
         if (text.includes(`#${c.nome} ${c.cognome}`)) attachments.push({ type: 'cliente', id: c.id });
       });
+      
+      // Add manual attachments
+      pendingFiles.forEach(f => {
+        attachments.push({ type: 'file', id: crypto.randomUUID(), name: f.name });
+      });
+      
+      if (audioBlob) {
+        attachments.push({ type: 'audio', id: crypto.randomUUID(), name: 'audio.webm' });
+      }
 
       const id = crypto.randomUUID();
       const newMessage: ChatMessage = {
@@ -147,9 +219,31 @@ export const OfficeChatPage: React.FC = () => {
     setShouldAutoScroll(isAtBottom);
   };
 
-  const handleSend = () => {
-    if (!inputValue.trim()) return;
-    sendMessageMutation.mutate(inputValue.trim());
+  const handleSend = async () => {
+    if (!inputValue.trim() && pendingFiles.length === 0 && !audioBlob) return;
+    
+    const attachments: { type: 'notizia' | 'cliente' | 'file' | 'audio', id: string, url?: string, name?: string }[] = [];
+    
+    // Existing attachment logic
+    notizie.forEach(n => {
+      if (inputValue.includes(`#${n.name}`)) attachments.push({ type: 'notizia', id: n.id });
+    });
+    clienti.forEach(c => {
+      if (inputValue.includes(`#${c.nome} ${c.cognome}`)) attachments.push({ type: 'cliente', id: c.id });
+    });
+    
+    // New attachment logic
+    pendingFiles.forEach(f => {
+      attachments.push({ type: 'file', id: crypto.randomUUID(), name: f.name });
+    });
+    
+    if (audioBlob) {
+      attachments.push({ type: 'audio', id: crypto.randomUUID(), name: 'audio.webm' });
+    }
+    
+    await sendMessageMutation.mutateAsync(inputValue.trim());
+    setPendingFiles([]);
+    setAudioBlob(null);
   };
 
   const groupMessagesByDate = (msgs: ChatMessage[]) => {
@@ -172,14 +266,14 @@ export const OfficeChatPage: React.FC = () => {
   const messageGroups = groupMessagesByDate(messages);
 
   return (
-    <div className="flex flex-col h-full md:h-[calc(100vh-90px)] px-4 sm:px-0">
+    <div className="flex flex-col h-full md:h-[calc(100vh-90px)] px-4 sm:px-0" onDragOver={handleDragOver} onDrop={handleDrop}>
       {/* Header Section */}
       <div className="flex flex-col mb-4">
         <p className="text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-4 sm:mt-6">
           ALTAIR / Chat
         </p>
         <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
-          Chat di Sede
+          Chat di Sede {user?.sede ? `- ${user.sede}` : ''}
         </h1>
       </div>
 
@@ -187,7 +281,7 @@ export const OfficeChatPage: React.FC = () => {
       <div 
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto py-4 flex flex-col gap-6"
+        className="flex-1 overflow-y-auto py-4 flex flex-col gap-6 pb-24"
       >
         {Object.entries(messageGroups).map(([date, msgs]) => (
           <div key={date} className="flex flex-col gap-4">
@@ -308,9 +402,32 @@ export const OfficeChatPage: React.FC = () => {
       </div>
 
       {/* Input Area */}
-      <div className="bg-white border-t border-[var(--border-light)] mt-auto w-full">
-        <div className="relative w-full">
-          <div className="flex items-center gap-2 md:gap-3 bg-[var(--bg-subtle)] border-t border-[var(--border-light)] px-0 py-0 focus-within:ring-1 focus-within:ring-black/5 transition-all">
+      <div className={cn(
+        "bg-white border-t border-[var(--border-light)] fixed bottom-0 left-0 w-full z-40 p-4 transition-all duration-200 ease-in-out",
+        isCollapsed ? "md:pl-[52px]" : "md:pl-[220px]"
+      )}>
+        <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" multiple />
+        
+        {/* Preview Area */}
+        {(pendingFiles.length > 0 || audioBlob) && (
+          <div className="flex gap-2 mb-2 overflow-x-auto pb-2">
+            {pendingFiles.map((file, idx) => (
+              <div key={idx} className="bg-[var(--bg-subtle)] px-3 py-1 rounded-full text-[12px] flex items-center gap-2">
+                <span>{file.name}</span>
+                <button onClick={() => setPendingFiles(prev => prev.filter((_, i) => i !== idx))}><Plus size={12} className="rotate-45" /></button>
+              </div>
+            ))}
+            {audioBlob && (
+              <div className="bg-[var(--bg-subtle)] px-3 py-1 rounded-full text-[12px] flex items-center gap-2">
+                <span>Audio registrato</span>
+                <button onClick={() => setAudioBlob(null)}><Plus size={12} className="rotate-45" /></button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="relative w-full max-w-7xl mx-auto border border-[var(--border-light)] rounded-full bg-white">
+          <div className="flex items-center gap-2 md:gap-3 bg-[var(--bg-subtle)] px-4 py-2 rounded-full focus-within:ring-1 focus-within:ring-black/5 transition-all">
             <input 
               type="text"
               value={inputValue}
@@ -340,16 +457,31 @@ export const OfficeChatPage: React.FC = () => {
                 }
               }}
               placeholder="Scrivi un messaggio..."
-              className="flex-1 bg-transparent border-0 outline-none font-outfit text-[14px] py-3 px-4 min-w-0"
+              className="flex-1 bg-transparent border-0 outline-none font-outfit text-[14px] py-1 px-2 min-w-0"
             />
             
-            <div className="flex items-center gap-1 pr-4 shrink-0">
+            <div className="flex items-center gap-1 pr-2 shrink-0">
+              <button 
+                className="p-2 rounded-full hover:bg-[var(--border-light)] text-[var(--text-muted)] transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Plus size={20} />
+              </button>
               <button className="p-2 rounded-full hover:bg-[var(--border-light)] text-[var(--text-muted)] transition-colors hidden sm:block">
                 <Smile size={20} />
               </button>
               <button 
+                className={cn(
+                  "p-2 rounded-full transition-colors",
+                  isRecording ? "bg-red-100 text-red-600" : "hover:bg-[var(--border-light)] text-[var(--text-muted)]"
+                )}
+                onClick={isRecording ? stopRecording : startRecording}
+              >
+                <Mic size={20} />
+              </button>
+              <button 
                 onClick={handleSend}
-                disabled={!inputValue.trim() || sendMessageMutation.isPending}
+                disabled={(!inputValue.trim() && pendingFiles.length === 0 && !audioBlob) || sendMessageMutation.isPending}
                 className="w-9 h-9 bg-black text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-all disabled:opacity-30"
               >
                 <SendHorizontal size={18} />

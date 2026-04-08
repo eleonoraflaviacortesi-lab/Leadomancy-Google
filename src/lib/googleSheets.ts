@@ -225,6 +225,7 @@ function colIndexToLetter(index: number): string {
 export async function getSheetData<T>(sheetName: string): Promise<T[]> {
   try {
     const headers = await getHeaders(sheetName);
+    console.log(`[GoogleSheets] Headers for ${sheetName}:`, headers);
     if (headers.length === 0) {
       console.warn(`[GoogleSheets] No headers found for ${sheetName}, returning empty array.`);
       return [];
@@ -295,8 +296,8 @@ export async function updateRow(sheetName: string, rowIndex: number, updates: an
       // Robust header matching using normalization
       const normalizedKey = normalizeKey(key);
       const colIndex = headers.findIndex(h => normalizeKey(h) === normalizedKey);
-      
       if (colIndex === -1) {
+        toast.error(`Key '${key}' not found in headers: ${headers.join(', ')}`);
         console.warn(`[GoogleSheets] Key '${key}' (normalized: '${normalizedKey}') not found in headers, skipping update for this field.`);
         continue;
       }
@@ -353,7 +354,7 @@ export async function deleteRow(sheetName: string, rowIndex: number): Promise<vo
 
     console.log(`[GoogleSheets] Attempting deleteRow for ${sheetName} row ${rowIndex}, sheetId: ${sheetId}`);
     try {
-      await (window as any).gapi.client.sheets.spreadsheets.batchUpdate({
+      const response = await (window as any).gapi.client.sheets.spreadsheets.batchUpdate({
         spreadsheetId: SPREADSHEET_ID,
         resource: {
           requests: [
@@ -393,10 +394,13 @@ export async function findRowIndex(sheetName: string, id: string | number): Prom
 
     // Get headers to find the correct column for 'id'
     const headers = await getHeaders(sheetName);
-    const idColIndex = headers.findIndex(h => normalizeKey(h) === 'id');
+    console.log(`[GoogleSheets] findRowIndex: headers for ${sheetName}:`, headers);
+    let idColIndex = headers.findIndex(h => normalizeKey(h) === 'id');
+    if (idColIndex === -1) {
+      idColIndex = headers.findIndex(h => normalizeKey(h).includes('id'));
+    }
     const colLetter = idColIndex >= 0 ? colIndexToLetter(idColIndex) : 'A';
-
-    console.log(`[GoogleSheets] findRowIndex: searching '${id}' in ${sheetName} column ${colLetter} (index ${idColIndex})`);
+    console.log(`[GoogleSheets] findRowIndex: idColIndex: ${idColIndex}, colLetter: ${colLetter}`);
 
     const response = await (window as any).gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
