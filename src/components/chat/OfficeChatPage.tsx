@@ -268,11 +268,11 @@ export const OfficeChatPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full md:h-[calc(100vh-90px)] px-4 sm:px-0" onDragOver={handleDragOver} onDrop={handleDrop}>
       {/* Header Section */}
-      <div className="flex flex-col mb-4">
-        <p className="text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-4 sm:mt-6">
+      <div className="flex flex-col">
+        <p className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-[0.1em] mb-1 mt-8">
           ALTAIR / Chat
         </p>
-        <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
+        <h1 className="text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
           Chat di Sede {user?.sede ? `- ${user.sede}` : ''}
         </h1>
       </div>

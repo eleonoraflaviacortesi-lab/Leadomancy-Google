@@ -594,13 +594,13 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-4 pb-6 w-full px-4 sm:px-0">
+    <div className="flex flex-col gap-4 pb-6 w-full">
       {/* Header Section */}
       <div className="flex flex-col">
-        <p className="text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-4 sm:mt-6">
+        <p className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-[0.1em] mb-1 mt-8">
           ALTAIR / Impostazioni
         </p>
-        <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
+        <h1 className="text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
           Impostazioni
         </h1>
       </div>
@@ -750,9 +750,9 @@ export const SettingsPage: React.FC = () => {
 
         <div className="flex flex-col items-center gap-2 py-6">
           <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center mb-2">
-          <svg viewBox="0 0 24 24" fill="white" style={{ width: 16, height: 16 }}>
-            <path d="M12 1 L13.5 8.5 L20.5 6 L16 12 L22 14.5 L15 15.5 L17 22.5 L12 18 L7 22.5 L9 15.5 L2 14.5 L8 12 L3.5 6 L10.5 8.5 Z" />
-          </svg>
+            <svg viewBox="0 0 24 24" fill="white" style={{ width: 22, height: 22 }}>
+              <path d="M12,2 L13.5,8.5 L19,6 L15.5,10.5 L22,12 L15.5,13.5 L19,18 L13.5,15.5 L12,22 L10.5,15.5 L5,18 L8.5,13.5 L2,12 L8.5,10.5 L5,6 L10.5,8.5 Z" />
+            </svg>
           </div>
           <span className="font-outfit font-bold text-[14px] uppercase tracking-widest">LEADOMANCY</span>
           <span className="text-[11px] font-outfit font-medium text-[var(--text-muted)]">Version 1.0.0 — Build 2026.03.25</span>

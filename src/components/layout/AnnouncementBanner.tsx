@@ -6,7 +6,7 @@ import { generateDailyQuote } from '@/src/lib/gemini';
 
 const Star8 = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="h-2.5 w-2.5 mx-3 opacity-80">
-    <path d="M12 0 L14.1 8.5 L21.6 4.4 L16.5 11 L24 12 L16.5 13 L21.6 19.6 L14.1 15.5 L12 24 L9.9 15.5 L2.4 19.6 L7.5 13 L0 12 L7.5 11 L2.4 4.4 L9.9 8.5 Z" />
+    <path d="M12,2 L13.5,8.5 L19,6 L15.5,10.5 L22,12 L15.5,13.5 L19,18 L13.5,15.5 L12,22 L10.5,15.5 L5,18 L8.5,13.5 L2,12 L8.5,10.5 L5,6 L10.5,8.5 Z" />
   </svg>
 );
 

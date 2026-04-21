@@ -45,11 +45,15 @@ import { useNotizie } from "@/src/hooks/useNotizie";
 import { useSwipeGesture } from "@/src/hooks/useSwipeGesture";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useGoogleCalendar } from "@/src/hooks/useGoogleCalendar";
+import { useCategoryColors } from "@/src/hooks/useCategoryColors";
+import { useEventOverrides } from "@/src/hooks/useEventOverrides";
 import { Appointment, Cliente, Notizia } from "@/src/types";
 import { AddAppointmentDialog } from "./AddAppointmentDialog";
 import { CalendarSidebar } from "./CalendarSidebar";
 import { EventDetailsDialog } from "./EventDetailsDialog";
-import { cn, formatCurrency } from "@/src/lib/utils";
+import { CalendarContextMenu } from "./CalendarContextMenu";
+import { useLongPress } from "@/src/hooks/useLongPress";
+import { cn, formatCurrency, getContrastColor } from "@/src/lib/utils";
 import { toast } from "sonner";
 
 type ViewMode = 'day' | '3days' | 'week' | 'month';
@@ -87,8 +91,23 @@ export const CalendarPage: React.FC = () => {
     if (saved !== null) return JSON.parse(saved);
     return window.innerWidth < 1280; // Only collapse by default on smaller screens
   });
+  const { user } = useAuth();
+  const localVisibilityKey = useMemo(() => 
+    user?.email ? `leadomancy-visible-local-types-${user.email}` : 'leadomancy-visible-local-types'
+  , [user?.email]);
+
+  const [visibleLocalTypes, setVisibleLocalTypes] = useState<string[]>(['appointment', 'task', 'cliente_reminder', 'notizia_reminder']);
+  const isInitialLoadRef = useRef(true);
+  const lastKeyRef = useRef<string | null>(null);
+  const { colors } = useCategoryColors();
+  const { overrides, updateEventOverride } = useEventOverrides();
   const { appointments, updateAppointment, toggleComplete } = useAppointments();
   const [showSchemaWarning, setShowSchemaWarning] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    event: CalendarEvent | null;
+  } | null>(null);
 
   // Check for schema update
   useEffect(() => {
@@ -108,8 +127,8 @@ export const CalendarPage: React.FC = () => {
     error: googleError,
     updateEvent: updateGoogleEvent
   } = useGoogleCalendar();
-  const { clienti } = useClienti();
-  const { notizie } = useNotizie();
+  const { clienti, updateCliente } = useClienti();
+  const { notizie, updateNotizia } = useNotizie();
   const { isAuthenticated } = useAuth();
 
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -118,6 +137,25 @@ export const CalendarPage: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('leadomancy-calendar-sidebar-collapsed', JSON.stringify(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
+
+  // Local visibility persistence
+  useEffect(() => {
+    if (isInitialLoadRef.current || lastKeyRef.current !== localVisibilityKey) return;
+    localStorage.setItem(localVisibilityKey, JSON.stringify(visibleLocalTypes));
+  }, [visibleLocalTypes, localVisibilityKey]);
+
+  // Update local visibility when user changes
+  useEffect(() => {
+    if (!user?.email) return;
+    const saved = localStorage.getItem(localVisibilityKey);
+    if (saved) {
+      setVisibleLocalTypes(JSON.parse(saved));
+    } else {
+      setVisibleLocalTypes(['appointment', 'task', 'cliente_reminder', 'notizia_reminder']);
+    }
+    lastKeyRef.current = localVisibilityKey;
+    isInitialLoadRef.current = false;
+  }, [localVisibilityKey, user?.email]);
 
   // Event listeners for opening details
   useEffect(() => {
@@ -175,7 +213,11 @@ export const CalendarPage: React.FC = () => {
     // Appointments
     appointments.forEach(app => {
       const isTask = app.type === 'task';
+      const type = isTask ? 'task' : 'appointment';
+      if (!visibleLocalTypes.includes(type)) return;
+
       const calendar = calendars.find(c => c.id === app.calendar_id);
+      const override = overrides[app.id];
       events.push({
         id: app.id,
         title: app.title,
@@ -185,6 +227,7 @@ export const CalendarPage: React.FC = () => {
         allDay: false,
         originalData: {
           ...app,
+          card_color: override?.card_color !== undefined ? override.card_color : app.card_color,
           calendarColor: calendar?.backgroundColor || '#1A1A18',
           calendarSummary: calendar?.summary || 'ALTAIR'
         }
@@ -196,6 +239,7 @@ export const CalendarPage: React.FC = () => {
       if (!googleEventIdsInLocal.has(gEvent.id)) {
         const start = gEvent.start.dateTime ? parseISO(gEvent.start.dateTime) : parseISO(gEvent.start.date);
         const end = gEvent.end.dateTime ? parseISO(gEvent.end.dateTime) : parseISO(gEvent.end.date);
+        const override = overrides[gEvent.id];
         
         events.push({
           id: gEvent.id,
@@ -206,6 +250,7 @@ export const CalendarPage: React.FC = () => {
           allDay: !gEvent.start.dateTime,
           originalData: {
             ...gEvent,
+            card_color: override?.card_color || null,
             calendarId: gEvent.organizer?.email || 'primary'
           }
         });
@@ -214,8 +259,9 @@ export const CalendarPage: React.FC = () => {
 
     // Cliente Reminders
     clienti.forEach(c => {
-      if (c.reminder_date) {
+      if (c.reminder_date && visibleLocalTypes.includes('cliente_reminder')) {
         const date = parseISO(c.reminder_date);
+        const override = overrides[`c-${c.id}`];
         events.push({
           id: `c-${c.id}`,
           title: `Reminder: ${c.nome} ${c.cognome}`,
@@ -223,15 +269,19 @@ export const CalendarPage: React.FC = () => {
           end: endOfDay(date),
           type: 'cliente_reminder',
           allDay: true,
-          originalData: c
+          originalData: {
+            ...c,
+            card_color: override?.card_color !== undefined ? override.card_color : c.card_color
+          }
         });
       }
     });
 
     // Notizia Reminders
     notizie.forEach(n => {
-      if (n.reminder_date) {
+      if (n.reminder_date && visibleLocalTypes.includes('notizia_reminder')) {
         const date = parseISO(n.reminder_date);
+        const override = overrides[`n-${n.id}`];
         events.push({
           id: `n-${n.id}`,
           title: `Reminder: ${n.nome || n.name}`,
@@ -239,13 +289,16 @@ export const CalendarPage: React.FC = () => {
           end: endOfDay(date),
           type: 'notizia_reminder',
           allDay: true,
-          originalData: n
+          originalData: {
+            ...n,
+            card_color: override?.card_color !== undefined ? override.card_color : n.card_color
+          }
         });
       }
     });
 
     return events;
-  }, [appointments, googleEvents, clienti, notizie]);
+  }, [appointments, googleEvents, clienti, notizie, overrides]);
 
   // Sync selectedEvent with the latest allEvents after every refetch
   useEffect(() => {
@@ -308,6 +361,56 @@ export const CalendarPage: React.FC = () => {
     }
   };
 
+  const handleContextMenu = (e: React.MouseEvent | React.TouchEvent, event: CalendarEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    let clientX, clientY;
+    if ('clientX' in e) {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    } else {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    }
+
+    setContextMenu({
+      x: clientX,
+      y: clientY,
+      event
+    });
+  };
+
+  const handleColorSelect = (color: string | null) => {
+    if (contextMenu?.event) {
+      const event = contextMenu.event;
+      
+      // Always update local override for persistence
+      updateEventOverride(event.id, { card_color: color });
+
+      if (event.type === 'appointment' || event.type === 'task') {
+        updateAppointment({
+          id: event.id,
+          card_color: color
+        });
+      } else if (event.type === 'cliente_reminder') {
+        const clienteId = event.id.replace('c-', '');
+        updateCliente({
+          id: clienteId,
+          card_color: color || undefined
+        });
+      } else if (event.type === 'notizia_reminder') {
+        const notiziaId = event.id.replace('n-', '');
+        updateNotizia({
+          id: notiziaId,
+          card_color: color || undefined
+        });
+      }
+      
+      toast.success("Colore aggiornato con successo");
+    }
+  };
+
   const handleTimeRangeSelect = (date: Date, startTime: string, endTime: string) => {
     setSelectedDate(date);
     setInitialStartTime(startTime);
@@ -324,13 +427,13 @@ export const CalendarPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex flex-col border-b border-[var(--border-light)] pb-3 gap-3">
+      <div className="flex flex-col gap-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex flex-col">
-            <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
+            <p className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-[0.1em] mb-1 mt-8">
               ALTAIR / Attività
             </p>
-            <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', margin: 0, textTransform: 'capitalize' }}>
+            <h1 className="text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0 capitalize">
               {format(currentDate, 'MMMM yyyy', { locale: it })}
             </h1>
           </div>
@@ -373,7 +476,7 @@ export const CalendarPage: React.FC = () => {
                   onClick={() => setViewMode(mode)}
                   className={cn(
                     "px-3 py-1 rounded-full font-outfit text-[12px] transition-all uppercase whitespace-nowrap",
-                    viewMode === mode ? "bg-[#1A1A18] text-white shadow-sm" : "text-[var(--text-secondary)] hover:bg-black/5"
+                    viewMode === mode ? "bg-[#1A1A18] text-white" : "text-[var(--text-secondary)] hover:bg-black/5"
                   )}
                 >
                   {mode === 'day' ? 'G' : mode === '3days' ? '3G' : mode === 'week' ? 'S' : 'M'}
@@ -387,7 +490,7 @@ export const CalendarPage: React.FC = () => {
                   setDefaultType('task');
                   setIsAddDialogOpen(true);
                 }}
-                className="flex items-center justify-center w-[38px] h-[38px] sm:w-auto sm:h-auto sm:px-5 sm:py-2 bg-[var(--bg-subtle)] text-[var(--text-primary)] rounded-full font-outfit font-medium text-[13px] hover:bg-black/5 transition-all shadow-sm border border-[var(--border-light)]"
+                className="flex items-center justify-center w-[38px] h-[38px] sm:w-auto sm:h-auto sm:px-5 sm:py-2 bg-[var(--bg-subtle)] text-[var(--text-primary)] rounded-full font-outfit font-medium text-[13px] hover:bg-black/5 transition-all border border-[var(--border-light)]"
                 title="Nuovo Task"
               >
                 <CheckCircle2 size={16} className="sm:mr-2" />
@@ -399,7 +502,7 @@ export const CalendarPage: React.FC = () => {
                   setDefaultType('visit');
                   setIsAddDialogOpen(true);
                 }}
-                className="flex items-center justify-center w-[38px] h-[38px] sm:w-auto sm:h-auto sm:px-5 sm:py-2 bg-[#1A1A18] text-white rounded-full font-outfit font-medium text-[13px] hover:bg-black transition-all shadow-sm"
+                className="flex items-center justify-center w-[38px] h-[38px] sm:w-auto sm:h-auto sm:px-5 sm:py-2 bg-[#1A1A18] text-white rounded-full font-outfit font-medium text-[13px] hover:bg-black transition-all"
                 title="Nuovo Appuntamento"
               >
                 <Plus size={16} className="sm:mr-2" />
@@ -414,7 +517,11 @@ export const CalendarPage: React.FC = () => {
         <CalendarSidebar 
           calendars={calendars}
           visibleCalendarIds={visibleCalendarIds}
+          visibleLocalTypes={visibleLocalTypes}
           onToggle={toggleCalendar}
+          onToggleLocal={(type) => setVisibleLocalTypes(prev => 
+            prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+          )}
           onToggleAll={toggleAll}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -435,11 +542,13 @@ export const CalendarPage: React.FC = () => {
                 <MonthView 
                   currentDate={currentDate} 
                   events={allEvents} 
+                  colors={colors}
                   onDayClick={(date) => {
                     setCurrentDate(date);
                     setViewMode('day');
                   }}
                   onEventClick={handleEventClick}
+                  onContextMenu={handleContextMenu}
                   toggleComplete={toggleComplete}
                 />
               ) : (
@@ -447,7 +556,9 @@ export const CalendarPage: React.FC = () => {
                   currentDate={currentDate} 
                   events={allEvents} 
                   viewMode={viewMode}
+                  colors={colors}
                   onEventClick={handleEventClick}
+                  onContextMenu={handleContextMenu}
                   onTimeRangeSelect={handleTimeRangeSelect}
                   onEventDrop={handleEventDrop}
                   toggleComplete={toggleComplete}
@@ -477,18 +588,78 @@ export const CalendarPage: React.FC = () => {
         onClose={() => setIsDetailsOpen(false)}
         calendars={calendars}
       />
+
+      <CalendarContextMenu
+        x={contextMenu?.x || 0}
+        y={contextMenu?.y || 0}
+        isOpen={!!contextMenu}
+        onClose={() => setContextMenu(null)}
+        onColorSelect={handleColorSelect}
+      />
     </div>
   );
 };
 
 // --- Month View Component ---
+const MonthEventItem: React.FC<{
+  event: CalendarEvent;
+  colors: any;
+  onEventClick: (event: CalendarEvent) => void;
+  onContextMenu: (e: React.MouseEvent | React.TouchEvent, event: CalendarEvent) => void;
+}> = ({ event, colors, onEventClick, onContextMenu }) => {
+  const longPressProps = useLongPress(
+    (e) => onContextMenu(e, event),
+    () => onEventClick(event)
+  );
+
+  const backgroundColor = event.originalData?.card_color || (
+    event.type === 'task' 
+      ? (event.originalData?.completed ? 'var(--bg-subtle)' : colors.task)
+      : (
+          event.originalData?.cliente_id ? colors.cliente_reminder :
+          event.originalData?.notizia_id ? colors.notizia_reminder :
+          event.originalData?.calendarColor || (
+            event.type === 'appointment' ? colors.appointment :
+            event.type === 'cliente_reminder' ? colors.cliente_reminder :
+            event.type === 'notizia_reminder' ? colors.notizia_reminder :
+            '#1A1A18'
+          )
+        )
+  );
+
+  const textColor = getContrastColor(backgroundColor);
+
+  return (
+    <div
+      {...longPressProps}
+      onContextMenu={(e) => onContextMenu(e, event)}
+      className={cn(
+        "h-5 px-1.5 rounded-[4px] text-[11px] font-outfit font-medium truncate flex items-center"
+      )}
+      style={{ 
+        backgroundColor,
+        color: textColor === 'white' ? '#FFFFFF' : (
+          event.type === 'cliente_reminder' ? '#3B2B8A' :
+          event.type === 'notizia_reminder' ? '#5C3800' :
+          event.type === 'task' ? '#2B3A5C' : '#1A1A18'
+        )
+      }}
+    >
+      {event.type === 'task' && (event.originalData?.completed ? '✓ ' : '○ ')}
+      {!event.allDay && format(event.start, 'HH:mm')} {event.title}
+    </div>
+  );
+};
+
 const MonthView: React.FC<{ 
   currentDate: Date; 
   events: CalendarEvent[];
+  colors: any;
   onDayClick: (date: Date) => void;
   onEventClick: (event: CalendarEvent) => void;
+  onContextMenu: (e: React.MouseEvent | React.TouchEvent, event: CalendarEvent) => void;
   toggleComplete: (args: { id: string; completed: boolean }) => void;
-}> = ({ currentDate, events, onDayClick, onEventClick, toggleComplete }) => {
+}> = ({ currentDate, events, colors, onDayClick, onEventClick, onContextMenu, toggleComplete }) => {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -536,29 +707,13 @@ const MonthView: React.FC<{
 
             <div className="flex flex-col gap-0.5 mt-1">
               {displayedEvents.map(event => (
-                <div
+                <MonthEventItem
                   key={event.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEventClick(event);
-                  }}
-                  className={cn(
-                    "h-5 px-1.5 rounded-[4px] text-[11px] font-outfit font-medium truncate flex items-center",
-                    event.type === 'appointment' && "text-white",
-                    event.type === 'google_calendar' && "text-white",
-                    event.type === 'cliente_reminder' && "bg-[#EDE8FD] text-[#3B2B8A]",
-                    event.type === 'notizia_reminder' && "bg-[#FEF5D0] text-[#5C3800]",
-                    event.type === 'task' && "text-[#2B3A5C]"
-                  )}
-                  style={{ 
-                    backgroundColor: event.type === 'task' 
-                      ? (event.originalData?.card_color || (event.originalData?.completed ? 'var(--bg-subtle)' : '#EEF1F8'))
-                      : (event.originalData?.card_color || event.originalData?.calendarColor || '#1A1A18')
-                  }}
-                >
-                  {event.type === 'task' && (event.originalData?.completed ? '✓ ' : '○ ')}
-                  {!event.allDay && format(event.start, 'HH:mm')} {event.title}
-                </div>
+                  event={event}
+                  colors={colors}
+                  onEventClick={onEventClick}
+                  onContextMenu={onContextMenu}
+                />
               ))}
               {overflowCount > 0 && (
                 <div className="h-5 px-1.5 rounded-[4px] bg-[var(--bg-subtle)] text-[var(--text-muted)] text-[10px] font-outfit font-medium flex items-center">
@@ -574,15 +729,141 @@ const MonthView: React.FC<{
 };
 
 // --- Time Grid View (Week, 3-Day, Day) ---
+const TimeGridEventItem: React.FC<{
+  event: CalendarEvent;
+  layout: Map<string, { left: number; width: number; zIndex: number }>;
+  getEventStyle: (event: CalendarEvent) => any;
+  colors: any;
+  onEventClick: (event: CalendarEvent) => void;
+  onContextMenu: (e: React.MouseEvent | React.TouchEvent, event: CalendarEvent) => void;
+  toggleComplete: (args: { id: string; completed: boolean }) => void;
+}> = ({ event, layout, getEventStyle, colors, onEventClick, onContextMenu, toggleComplete }) => {
+  const longPressProps = useLongPress(
+    (e) => onContextMenu(e, event),
+    () => onEventClick(event)
+  );
+
+  if (event.type === 'task') {
+    const backgroundColor = event.originalData?.card_color || (event.originalData?.completed ? 'var(--bg-subtle)' : colors.task);
+    const textColor = getContrastColor(backgroundColor);
+
+    return (
+      <div
+        key={event.id}
+        draggable={true}
+        {...longPressProps}
+        onContextMenu={(e) => onContextMenu(e, event)}
+        style={(() => {
+          const pos = layout.get(event.id) || { left: 2, width: 96, zIndex: 10 };
+          return {
+            ...getEventStyle(event),
+            background: backgroundColor,
+            borderLeft: '3px solid #6DC88A',
+            borderRadius: 6,
+            padding: '3px 7px',
+            display: 'flex', alignItems: 'center', gap: 5,
+            opacity: event.originalData?.completed ? 0.5 : 1,
+            cursor: 'pointer',
+            overflow: 'hidden',
+            position: 'absolute' as const,
+            left: `${pos.left}%`,
+            width: `${pos.width}%`,
+            right: 'unset',
+            zIndex: pos.zIndex,
+            color: textColor === 'white' ? '#FFFFFF' : '#2B3A5C'
+          };
+        })()}
+      >
+        <button
+          type="button"
+          onClick={(e) => { 
+            e.stopPropagation(); 
+            toggleComplete({ id: event.id, completed: !event.originalData?.completed });
+          }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+        >
+          {event.originalData?.completed
+            ? <CheckCircle2 size={12} style={{ color: textColor === 'white' ? '#FFFFFF' : '#6DC88A' }} />
+            : <Circle size={12} style={{ color: textColor === 'white' ? 'rgba(255,255,255,0.6)' : 'var(--text-muted)' }} />
+          }
+        </button>
+        <span style={{
+          fontSize: 11, fontFamily: 'Outfit', fontWeight: 500,
+          textDecoration: event.originalData?.completed ? 'line-through' : 'none',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          flex: 1
+        }}>
+          {event.originalData?.notizia_id ? '🏠 ' : event.originalData?.cliente_id ? '👤 ' : ''}
+          {event.title}
+        </span>
+      </div>
+    );
+  }
+
+  const backgroundColor = event.originalData?.card_color || (
+    event.originalData?.cliente_id ? colors.cliente_reminder :
+    event.originalData?.notizia_id ? colors.notizia_reminder :
+    event.originalData?.calendarColor || (
+      event.type === 'appointment' ? colors.appointment :
+      event.type === 'cliente_reminder' ? colors.cliente_reminder :
+      event.type === 'notizia_reminder' ? colors.notizia_reminder :
+      '#1A1A18'
+    )
+  );
+  const textColor = getContrastColor(backgroundColor);
+
+  return (
+    <div
+      key={event.id}
+      draggable={event.type === 'appointment' || event.type === 'google_calendar'}
+      {...longPressProps}
+      onContextMenu={(e) => onContextMenu(e, event)}
+      className={cn(
+        "rounded-[6px] p-1 px-2 shadow-sm border-l-[3px] overflow-hidden transition-transform active:scale-[0.98] cursor-pointer",
+        textColor === 'white' ? "border-white/20" : "border-black/10"
+      )}
+      style={(() => {
+        const pos = layout.get(event.id) || { left: 2, width: 96, zIndex: 10 };
+        return {
+          ...getEventStyle(event),
+          position: 'absolute' as const,
+          left: `${pos.left}%`,
+          width: `${pos.width}%`,
+          right: 'unset',
+          zIndex: pos.zIndex,
+          backgroundColor,
+          color: textColor === 'white' ? '#FFFFFF' : (
+            event.type === 'cliente_reminder' ? '#3B2B8A' :
+            event.type === 'notizia_reminder' ? '#5C3800' :
+            '#1A1A18'
+          )
+        };
+      })()}
+    >
+      <div className="font-outfit font-semibold text-[11px] leading-tight truncate">
+        {event.title}
+      </div>
+      <div className="flex items-center gap-1 mt-0.5 opacity-80">
+        <Clock size={10} />
+        <span className="text-[9px] font-outfit">
+          {format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 const TimeGridView: React.FC<{
   currentDate: Date;
   events: CalendarEvent[];
   viewMode: ViewMode;
+  colors: any;
   onEventClick: (event: CalendarEvent) => void;
+  onContextMenu: (e: React.MouseEvent | React.TouchEvent, event: CalendarEvent) => void;
   onTimeRangeSelect: (date: Date, start: string, end: string) => void;
   onEventDrop: (eventId: string, start: Date, end: Date) => void;
   toggleComplete: (args: { id: string; completed: boolean }) => void;
-}> = ({ currentDate, events, viewMode, onEventClick, onTimeRangeSelect, onEventDrop, toggleComplete }) => {
+}> = ({ currentDate, events, viewMode, colors, onEventClick, onContextMenu, onTimeRangeSelect, onEventDrop, toggleComplete }) => {
   const hours = Array.from({ length: 17 }, (_, i) => i + 6); // 06:00 to 22:00
   const HOUR_HEIGHT = 64;
 
@@ -942,101 +1223,18 @@ const TimeGridView: React.FC<{
                   ))}
 
                   {/* Events */}
-                  {dayEvents.map(event => {
-                    if (event.type === 'task') {
-                      return (
-                        <div
-                          key={event.id}
-                          draggable={true}
-                          onDragStart={(e) => handleDragStart(e, event.id)}
-                          onDragEnd={handleDragEnd}
-                          onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
-                          style={(() => {
-                            const pos = layout.get(event.id) || { left: 2, width: 96, zIndex: 10 };
-                            return {
-                              ...getEventStyle(event),
-                              background: event.originalData?.card_color || (event.originalData?.completed ? 'var(--bg-subtle)' : 'white'),
-                              borderLeft: '3px solid #6DC88A',
-                              borderRadius: 6,
-                              padding: '3px 7px',
-                              display: 'flex', alignItems: 'center', gap: 5,
-                              opacity: event.originalData?.completed ? 0.5 : 1,
-                              cursor: 'pointer',
-                              overflow: 'hidden',
-                              position: 'absolute' as const,
-                              left: `${pos.left}%`,
-                              width: `${pos.width}%`,
-                              right: 'unset',
-                              zIndex: pos.zIndex,
-                            };
-                          })()}
-                        >
-                          <button
-                            type="button"
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              toggleComplete({ id: event.id, completed: !event.originalData?.completed });
-                            }}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
-                          >
-                            {event.originalData?.completed
-                              ? <CheckCircle2 size={12} style={{ color: '#6DC88A' }} />
-                              : <Circle size={12} style={{ color: 'var(--text-muted)' }} />
-                            }
-                          </button>
-                          <span style={{
-                            fontSize: 11, fontFamily: 'Outfit', fontWeight: 500,
-                            color: 'var(--text-primary)',
-                            textDecoration: event.originalData?.completed ? 'line-through' : 'none',
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            flex: 1
-                          }}>
-                            {event.originalData?.notizia_id ? '🏠 ' : event.originalData?.cliente_id ? '👤 ' : ''}
-                            {event.title}
-                          </span>
-                        </div>
-                      );
-                    }
-                      return (
-                      <div
-                        key={event.id}
-                        draggable={event.type === 'appointment' || event.type === 'google_calendar'}
-                        onDragStart={(e) => handleDragStart(e, event.id)}
-                        onDragEnd={handleDragEnd}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEventClick(event);
-                        }}
-                        className={cn(
-                          "rounded-[6px] p-1 px-2 shadow-sm border-l-[3px] overflow-hidden transition-transform active:scale-[0.98] cursor-pointer",
-                          event.type === 'appointment' && "text-white border-white/20",
-                          event.type === 'google_calendar' && "text-white border-white/20"
-                        )}
-                        style={(() => {
-                          const pos = layout.get(event.id) || { left: 2, width: 96, zIndex: 10 };
-                          return {
-                            ...getEventStyle(event),
-                            position: 'absolute' as const,
-                            left: `${pos.left}%`,
-                            width: `${pos.width}%`,
-                            right: 'unset',
-                            zIndex: pos.zIndex,
-                            backgroundColor: event.originalData?.card_color || event.originalData?.calendarColor || '#1A1A18',
-                          };
-                        })()}
-                      >
-                        <div className="font-outfit font-semibold text-[11px] leading-tight truncate">
-                          {event.title}
-                        </div>
-                        <div className="flex items-center gap-1 mt-0.5 opacity-80">
-                          <Clock size={10} />
-                          <span className="text-[9px] font-outfit">
-                            {format(event.start, 'HH:mm')} - {format(event.end, 'HH:mm')}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {dayEvents.map(event => (
+                    <TimeGridEventItem
+                      key={event.id}
+                      event={event}
+                      layout={layout}
+                      getEventStyle={getEventStyle}
+                      colors={colors}
+                      onEventClick={onEventClick}
+                      onContextMenu={onContextMenu}
+                      toggleComplete={toggleComplete}
+                    />
+                  ))}
                 </div>
               );
             })}

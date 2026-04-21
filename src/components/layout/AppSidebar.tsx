@@ -27,7 +27,6 @@ const NAV_ITEMS = [
   { label: "Chat", path: "/chat", icon: MessageCircle, group: 3 },
   { label: "Produzione", path: "/inserisci", icon: TrendingUp, group: 3 },
   { label: "Ufficio", path: "/office", icon: Briefcase, group: 3 },
-  { label: "Impostazioni", path: "/settings", icon: Settings2, group: 4 },
 ];
 
 interface AppSidebarProps {
@@ -66,7 +65,7 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
       }}
       transition={{ duration: 0.2, delay: isCollapsed ? 0 : 0.05 }}
       style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}
-      className="font-outfit text-[13px] font-medium"
+      className="font-outfit text-[13px] font-medium leading-none"
     >
       {label}
     </motion.span>
@@ -76,38 +75,57 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
     <motion.div
       animate={{ width: isCollapsed ? 64 : 220 }}
       transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-      className="fixed left-0 top-0 h-screen bg-[#F5F4F0] z-50 flex flex-col"
-      style={{ boxShadow: '1px 0 0 rgba(0,0,0,0.06)' }}
+      className="fixed left-0 top-[40px] h-[calc(100vh-40px)] bg-[#F5F4F0] z-50 flex flex-col"
     >
-      {/* Header */}
-      <div className="p-5 pb-4 flex items-center gap-3">
-        <div className="w-9 h-9 bg-[#1A1A18] rounded-full flex-shrink-0 flex items-center justify-center text-white">
-          ✦
+      {/* Header with Logo */}
+      <div className="p-3 pb-2 flex items-center gap-3">
+        <div 
+          onClick={() => navigate('/')}
+          className="w-10 h-10 bg-[#1A1A18] rounded-full flex-shrink-0 flex items-center justify-center text-white cursor-pointer"
+        >
+          <svg viewBox="0 0 24 24" fill="white" style={{ width: 22, height: 22 }}>
+            <path d="M12,2 L13.5,8.5 L19,6 L15.5,10.5 L22,12 L15.5,13.5 L19,18 L13.5,15.5 L12,22 L10.5,15.5 L5,18 L8.5,13.5 L2,12 L8.5,10.5 L5,6 L10.5,8.5 Z" />
+          </svg>
         </div>
         <motion.span
           animate={{ opacity: isCollapsed ? 0 : 1 }}
           transition={{ duration: 0.2 }}
-          className="font-bold text-[15px] tracking-wider text-[#1A1A18]"
+          className="font-extrabold text-[13px] tracking-[0.12em] text-[#1A1A18] leading-none"
         >
           ALTAIR
         </motion.span>
       </div>
 
       {/* Quick Add */}
-      <div className="px-3 mb-4 relative" ref={dropdownRef}>
-        <button
+      <div className="px-3 mb-3 relative" ref={dropdownRef}>
+        <motion.button
+          layout
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          animate={{ 
+            width: isCollapsed ? 40 : '100%',
+          }}
+          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
           className={cn(
-            "flex items-center bg-[#1A1A18] text-white rounded-full transition-all hover:opacity-90",
-            isCollapsed ? "w-10 h-10 justify-center" : "w-full h-10 px-4 gap-2"
+            "flex items-center bg-white text-[rgba(0,0,0,0.5)] rounded-full transition-colors hover:text-[rgba(0,0,0,0.8)] h-10 overflow-hidden",
+            isCollapsed ? "justify-center" : "px-0 gap-3"
           )}
         >
-          <Plus size={18} />
-          {!isCollapsed && <span className="font-outfit font-semibold text-[12px] uppercase tracking-wide">AGGIUNGI</span>}
-        </button>
+          <div className="flex items-center justify-center w-10 h-10 shrink-0">
+            <Plus size={18} className="text-black" />
+          </div>
+          {!isCollapsed && (
+            <motion.span 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="font-outfit font-semibold text-[11px] uppercase tracking-[0.1em] leading-none whitespace-nowrap"
+            >
+              AGGIUNGI
+            </motion.span>
+          )}
+        </motion.button>
 
         {isDropdownOpen && (
-          <div className="absolute left-3 top-12 w-[200px] bg-white border border-[rgba(0,0,0,0.06)] rounded-xl shadow-xl p-1.5 z-[200]">
+          <div className="absolute left-3 top-12 w-[200px] bg-white rounded-xl shadow-xl p-1.5 z-[200]">
             {menuItems.map((item, index) => (
               <button
                 key={index}
@@ -123,67 +141,118 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 space-y-1">
-        {[1, 2, 3, 4].map((group) => (
+      <nav className="flex-1 px-3 space-y-0.5">
+        {[1, 2, 3].map((group) => (
           <React.Fragment key={group}>
             {NAV_ITEMS.filter(item => item.group === group).map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center h-10 rounded-full transition-all duration-200",
-                    isCollapsed ? "w-10 justify-center" : "w-full px-3 gap-2.5",
-                    isActive
-                      ? "bg-[#1A1A18] text-white font-bold"
-                      : "text-[rgba(0,0,0,0.35)] hover:bg-[rgba(0,0,0,0.06)]"
-                  )
-                }
+                className="block"
               >
-                <item.icon size={20} />
-                {renderLabel(item.label)}
+                {({ isActive }) => (
+                  <motion.div
+                    layout
+                    initial={false}
+                    animate={{ 
+                      width: isCollapsed ? 40 : '100%',
+                      backgroundColor: isActive ? '#1A1A18' : 'transparent',
+                      borderRadius: isCollapsed ? '9999px' : '9999px'
+                    }}
+                    whileHover={{ 
+                      backgroundColor: isActive ? '#1A1A18' : '#FFFFFF'
+                    }}
+                    transition={{ 
+                      duration: 0.25, 
+                      ease: [0.4, 0, 0.2, 1],
+                      layout: { duration: 0.25, ease: [0.4, 0, 0.2, 1] }
+                    }}
+                    className={cn(
+                      "flex items-center h-10 transition-colors relative overflow-hidden",
+                      isCollapsed ? "justify-center" : "px-0 gap-3",
+                      isActive ? "text-white" : "text-[rgba(0,0,0,0.5)] hover:text-[rgba(0,0,0,0.8)]"
+                    )}
+                  >
+                    <div className="flex items-center justify-center w-10 h-10 shrink-0">
+                      <item.icon size={18} />
+                    </div>
+                    {!isCollapsed && (
+                      <div className="flex items-center h-10 flex-1">
+                        {renderLabel(item.label)}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
               </NavLink>
             ))}
-            {group < 4 && <div className="h-[1px] bg-[rgba(0,0,0,0.06)] mx-2 my-2" />}
+            {group < 3 && <div className="h-0" />}
           </React.Fragment>
         ))}
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-[rgba(0,0,0,0.06)] space-y-3">
-        {user && (
-          <div className={cn("flex items-center gap-3", isCollapsed ? "justify-center" : "px-1")}>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#1A1A18] to-[#444] flex items-center justify-center text-white text-[16px] font-bold">
-              {user.avatar_emoji || user.full_name?.[0]?.toUpperCase()}
-            </div>
-            {!isCollapsed && (
-              <div className="flex flex-col overflow-hidden">
-                <span className="font-outfit font-bold text-[13px] truncate">{user.full_name}</span>
-                <span className="font-outfit text-[10px] text-[#6366f1] uppercase tracking-wide truncate">{user.sede}</span>
-              </div>
-            )}
+      <div className="p-3 mt-auto space-y-1">
+        {/* Collapse Toggle */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className={cn(
+            "flex items-center h-10 transition-all duration-200 w-full mb-1",
+            isCollapsed ? "justify-center" : "px-0 gap-3"
+          )}
+        >
+          <div className="flex items-center justify-center w-10 h-10 shrink-0 text-[rgba(0,0,0,0.25)] hover:text-black transition-colors">
+            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
           </div>
-        )}
+          {!isCollapsed && (
+            <span className="font-outfit text-[13px] font-medium text-[rgba(0,0,0,0.3)]">Comprimi</span>
+          )}
+        </button>
 
-        <div className="flex items-center justify-between gap-2">
-          <button
-            onClick={() => signOut()}
-            className={cn(
-              "flex items-center justify-center text-[rgba(0,0,0,0.4)] hover:text-[#1A1A18] transition-colors",
-              isCollapsed ? "w-10 h-10" : "h-10 px-3 gap-2"
-            )}
-          >
-            <LogOut size={18} />
-            {!isCollapsed && <span className="font-outfit text-[13px]">Esci</span>}
-          </button>
-
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="w-7 h-7 rounded-full bg-white border border-[rgba(0,0,0,0.08)] shadow-sm flex items-center justify-center text-[rgba(0,0,0,0.6)] hover:bg-[rgba(0,0,0,0.02)] transition-colors"
-          >
-            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          </button>
+        {/* User Profile Section */}
+        <div 
+          onClick={() => navigate('/settings')}
+          className={cn(
+            "flex items-center gap-3 p-2 rounded-xl hover:bg-white transition-colors cursor-pointer mb-2",
+            isCollapsed && "justify-center"
+          )}
+        >
+          <div className="w-8 h-8 bg-white border border-black/10 rounded-full flex items-center justify-center text-[16px] flex-shrink-0 shadow-sm">
+            {user?.avatar_emoji || '👤'}
+          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col overflow-hidden">
+              <span className="font-outfit font-bold text-[12px] text-[#1A1A18] truncate uppercase tracking-wide">
+                {user?.nome?.split(' ')[0]}
+              </span>
+              <span className="font-outfit text-[10px] text-black/40 uppercase tracking-wider truncate">
+                {user?.sede}
+              </span>
+            </div>
+          )}
         </div>
+
+        <motion.button
+          layout
+          onClick={() => signOut()}
+          animate={{ 
+            width: isCollapsed ? 40 : '100%',
+          }}
+          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+          className={cn(
+            "flex items-center h-10 rounded-full transition-colors relative overflow-hidden",
+            isCollapsed ? "justify-center" : "px-0 gap-3",
+            "bg-transparent text-[rgba(0,0,0,0.5)] hover:bg-white hover:text-[rgba(0,0,0,0.8)]"
+          )}
+        >
+          <div className="flex items-center justify-center w-10 h-10 shrink-0">
+            <LogOut size={16} />
+          </div>
+          {!isCollapsed && (
+            <div className="flex items-center h-10 flex-1">
+              <span className="font-outfit text-[13px] font-medium leading-none whitespace-nowrap">Esci</span>
+            </div>
+          )}
+        </motion.button>
       </div>
     </motion.div>
   );

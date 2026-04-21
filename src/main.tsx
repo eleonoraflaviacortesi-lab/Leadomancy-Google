@@ -22,8 +22,26 @@ migrateStorage();
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
+if (!clientId) {
+  console.error("VITE_GOOGLE_CLIENT_ID is not defined. Please set it in the Secrets panel.");
+}
+
 createRoot(document.getElementById('root')!).render(
-  <GoogleOAuthProvider clientId={clientId}>
-    <App />
-  </GoogleOAuthProvider>,
+  <StrictMode>
+    {clientId ? (
+      <GoogleOAuthProvider clientId={clientId}>
+        <App />
+      </GoogleOAuthProvider>
+    ) : (
+      <div className="min-h-screen flex items-center justify-center bg-red-50 p-4 text-center">
+        <div className="max-w-md bg-white p-8 rounded-2xl shadow-xl border border-red-100">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Configurazione Mancante</h1>
+          <p className="text-gray-600 mb-6">
+            Il <strong>Google Client ID</strong> non è stato configurato. 
+            Aggiungi <code>VITE_GOOGLE_CLIENT_ID</code> nei Secrets di AI Studio.
+          </p>
+        </div>
+      </div>
+    )}
+  </StrictMode>,
 );

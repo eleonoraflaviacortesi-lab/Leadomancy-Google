@@ -287,7 +287,6 @@ export const NotiziaCard: React.FC<NotiziaCardProps> = ({
                     </button>
                   ))}
                 </div>
-                {console.log('Notizia emoji:', notizia.emoji)}
                 {notizia.emoji && notizia.emoji !== '' && (
                   <button
                     onClick={(e) => {

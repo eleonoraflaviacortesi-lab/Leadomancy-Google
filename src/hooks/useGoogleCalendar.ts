@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { gapi } from 'gapi-script';
 import { useAuth } from '@/src/hooks/useAuth';
 
@@ -26,19 +26,22 @@ export interface GoogleCalendarEvent {
 }
 
 export function useGoogleCalendar() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [calendars, setCalendars] = useState<GoogleCalendar[]>([]);
-  const [visibleCalendarIds, setVisibleCalendarIds] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('leadomancy-visible-calendars');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  
+  const storageKey = useMemo(() => 
+    user?.email ? `leadomancy-visible-calendars-${user.email}` : 'leadomancy-visible-calendars'
+  , [user?.email]);
+
+  const [visibleCalendarIds, setVisibleCalendarIds] = useState<string[]>([]);
   const [events, setEvents] = useState<GoogleCalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<any>(null);
   const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
   
+  // Ref to track if we have loaded the initial state for the current storageKey
+  const lastLoadedKeyRef = useRef<string | null>(null);
+
   // Ref to always have latest calendars without stale closure
   const calendarsRef = useRef<GoogleCalendar[]>([]);
   calendarsRef.current = calendars;
@@ -108,14 +111,22 @@ export function useGoogleCalendar() {
       setCalendars(list);
       setError(null);
 
-      // Initialize visible IDs on first load only
-      const saved = localStorage.getItem('leadomancy-visible-calendars');
-      if (!saved && list.length > 0) {
+      // If we haven't initialized visible IDs for this user yet, do it now
+      const saved = localStorage.getItem(storageKey);
+      if (!saved && list.length > 0 && lastLoadedKeyRef.current === storageKey) {
         const ids = list.map(c => c.id);
         setVisibleCalendarIds(ids);
-        localStorage.setItem('leadomancy-visible-calendars', JSON.stringify(ids));
-        return list;
+        localStorage.setItem(storageKey, JSON.stringify(ids));
+      } else if (saved && list.length > 0 && lastLoadedKeyRef.current === storageKey) {
+        // Ensure saved IDs still exist
+        const savedIds = JSON.parse(saved) as string[];
+        const validIds = savedIds.filter(id => list.some(c => c.id === id));
+        if (validIds.length !== savedIds.length) {
+          setVisibleCalendarIds(validIds);
+          localStorage.setItem(storageKey, JSON.stringify(validIds));
+        }
       }
+      
       return list;
     } catch (err: any) {
       const status = err?.status || err?.result?.error?.code;
@@ -123,14 +134,32 @@ export function useGoogleCalendar() {
       setHasAttemptedFetch(true);
       return [];
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, storageKey]);
 
   // EFFECT 1: fetch calendars on auth
   useEffect(() => {
     if (isAuthenticated) {
       fetchCalendars();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchCalendars]);
+
+  // Update visible IDs when storageKey changes (e.g. user logs in)
+  useEffect(() => {
+    if (!isAuthenticated || !user?.email) return;
+    
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        setVisibleCalendarIds(JSON.parse(saved));
+      } else {
+        // Default to empty until calendars are fetched
+        setVisibleCalendarIds([]);
+      }
+      lastLoadedKeyRef.current = storageKey;
+    } catch (err) {
+      console.error("Error loading calendar visibility:", err);
+    }
+  }, [storageKey, isAuthenticated, user?.email]);
 
   // EFFECT 2: fetch events whenever visibleCalendarIds OR calendars changes
   // This is the KEY fix — both must be in the dependency array
@@ -154,17 +183,17 @@ export function useGoogleCalendar() {
       const next = prev.includes(id)
         ? prev.filter(cid => cid !== id)
         : [...prev, id];
-      localStorage.setItem('leadomancy-visible-calendars', JSON.stringify(next));
+      localStorage.setItem(storageKey, JSON.stringify(next));
       return next;
     });
     // NOTE: no need to call fetchEventsForIds here — EFFECT 2 handles it
-  }, []);
+  }, [storageKey]);
 
   const toggleAll = useCallback((show: boolean) => {
     const next = show ? calendars.map(c => c.id) : [];
     setVisibleCalendarIds(next);
-    localStorage.setItem('leadomancy-visible-calendars', JSON.stringify(next));
-  }, [calendars]);
+    localStorage.setItem(storageKey, JSON.stringify(next));
+  }, [calendars, storageKey]);
 
   const refreshEvents = useCallback(() => {
     fetchEventsForIds(visibleCalendarIds, calendarsRef.current);

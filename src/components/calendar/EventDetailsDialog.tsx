@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Calendar as CalendarIcon, Clock, MapPin, Trash2, ExternalLink,
   CheckCircle2, Circle, ChevronLeft, Edit2, Save, Link2, Loader2, Palette } from "lucide-react";
@@ -7,6 +7,7 @@ import { useAppointments } from "@/src/hooks/useAppointments";
 import { useClienti } from "@/src/hooks/useClienti";
 import { useNotizie } from "@/src/hooks/useNotizie";
 import { useDetail } from "@/src/context/DetailContext";
+import { useFavoriteColors } from "@/src/hooks/useFavoriteColors";
 import { GoogleCalendar } from "@/src/hooks/useGoogleCalendar";
 import { updateCalendarEvent } from "@/src/lib/googleCalendar";
 import { format, isValid } from "date-fns";
@@ -48,6 +49,7 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
   const { clienti } = useClienti();
   const { notizie } = useNotizie();
   const { openDetail } = useDetail();
+  const { favorites, addColor } = useFavoriteColors();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -61,6 +63,9 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
 
+  const [localCardColor, setLocalCardColor] = useState<string | null>(event?.originalData?.card_color ?? null);
+  const colorInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (event) {
       setEditTitle(event.title || '');
@@ -71,6 +76,7 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
       setEditLocation(event.originalData?.location || '');
       setEditClienteId(event.originalData?.cliente_id || '');
       setEditNotiziaId(event.originalData?.notizia_id || '');
+      setLocalCardColor(event.originalData?.card_color ?? null);
       setIsEditing(false);
       setShowColorPicker(false);
     }
@@ -129,12 +135,11 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
   };
 
   const handleDelete = async () => {
-    if (!isTask ? 'Eliminare questa task?' : 'Eliminare questo appuntamento?') {
-      onDelete(isTask);
+    if (confirm(isTask ? 'Eliminare questa task?' : 'Eliminare questo appuntamento?')) {
+      await deleteAppointment(event.id);
+      toast.success('Eliminato');
+      onClose();
     }
-    await deleteAppointment(event.id);
-    toast.success('Eliminato');
-    onClose();
   };
 
   const handleToggleComplete = () => {
@@ -144,6 +149,7 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
   };
 
   const handleColorChange = (color: string | null) => {
+    setLocalCardColor(color);
     updateAppointment({ id: event.id, card_color: color, silent: true } as any);
     setShowColorPicker(false);
   };
@@ -209,6 +215,27 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
                               />
                             ))}
                           </div>
+
+                          {favorites.length > 0 && (
+                            <>
+                              <p className="font-outfit font-bold text-[9px] uppercase tracking-wider text-[var(--text-muted)] mb-2 mt-3">Colori salvati</p>
+                              <div className="grid grid-cols-6 gap-1.5 mb-2">
+                                {favorites.map(c => (
+                                  <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => handleColorChange(c)}
+                                    className={cn(
+                                      "w-7 h-7 rounded-full border-2 transition-all hover:scale-110",
+                                      event.originalData?.card_color === c ? "border-black scale-110" : "border-transparent"
+                                    )}
+                                    style={{ background: c }}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          )}
+
                           <button
                             onClick={() => handleColorChange(null)}
                             className="w-full text-[10px] font-outfit text-[var(--text-muted)] hover:text-[var(--text-primary)] text-center py-1 rounded-lg hover:bg-[var(--bg-subtle)] transition-colors"
@@ -475,6 +502,69 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
                         </span>
                       </div>
                     ) : null}
+                  </div>
+                )}
+
+                {/* Color Picker for Local Events */}
+                {isLocal && (
+                  <div className="flex flex-col gap-3 pt-4 border-t border-[var(--border-light)]">
+                    <span className="text-[10px] font-outfit font-bold text-[var(--text-muted)] uppercase tracking-widest">
+                      Colore Scheda
+                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {COLORS.map(color => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => handleColorChange(color)}
+                          className="w-7 h-7 rounded-full border-none cursor-pointer shrink-0 transition-all hover:scale-110 active:scale-95"
+                          style={{
+                            backgroundColor: color,
+                            outline: localCardColor === color ? '2px solid #1A1A18' : '1.5px solid rgba(0,0,0,0.05)',
+                            outlineOffset: localCardColor === color ? 2 : 0,
+                          }}
+                        />
+                      ))}
+
+                      {favorites.map(color => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => handleColorChange(color)}
+                          className="w-7 h-7 rounded-full border-none cursor-pointer shrink-0 transition-all hover:scale-110 active:scale-95"
+                          style={{
+                            backgroundColor: color,
+                            outline: localCardColor === color ? '2px solid #1A1A18' : '1.5px solid rgba(0,0,0,0.05)',
+                            outlineOffset: localCardColor === color ? 2 : 0,
+                          }}
+                        />
+                      ))}
+                      
+                      {/* Custom color picker button */}
+                      <button
+                        type="button"
+                        onClick={() => colorInputRef.current?.click()}
+                        className="w-7 h-7 rounded-full border-2 border-dashed border-[var(--border-medium)] bg-transparent cursor-pointer shrink-0 flex items-center justify-center text-[18px] text-[var(--text-muted)] leading-none hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors"
+                      >+</button>
+                      
+                      <input
+                        ref={colorInputRef}
+                        type="color"
+                        value={localCardColor || '#ffffff'}
+                        onChange={e => handleColorChange(e.target.value)}
+                        className="absolute opacity-0 w-0 h-0 pointer-events-none"
+                      />
+                    </div>
+                    
+                    {localCardColor && (
+                      <button
+                        type="button"
+                        onClick={() => handleColorChange(null)}
+                        className="text-[11px] text-[var(--text-muted)] bg-transparent border-none cursor-pointer p-0 hover:underline text-left font-medium w-fit"
+                      >
+                        × Rimuovi colore
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

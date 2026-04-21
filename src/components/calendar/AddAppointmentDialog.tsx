@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Search, Check, Calendar as CalendarIcon, Clock, MapPin, User, Building2, ChevronDown, Save } from "lucide-react";
+import { X, Search, Check, Calendar as CalendarIcon, Clock, MapPin, User, Building2, ChevronDown, Save, Palette } from "lucide-react";
 import { useAppointments } from "@/src/hooks/useAppointments";
 import { useClienti } from "@/src/hooks/useClienti";
 import { useNotizie } from "@/src/hooks/useNotizie";
+import { useFavoriteColors } from "@/src/hooks/useFavoriteColors";
 import { Appointment, Cliente } from "@/src/types";
 import { GoogleCalendar } from "@/src/hooks/useGoogleCalendar";
 import { format } from "date-fns";
@@ -44,6 +45,7 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
   const { addAppointment } = useAppointments();
   const { clienti } = useClienti();
   const { notizie } = useNotizie();
+  const { favorites } = useFavoriteColors();
 
   const [formData, setFormData] = useState<Partial<Appointment>>({
     title: '',
@@ -56,7 +58,8 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
     cliente_id: '',
     notizia_id: '',
     completed: false,
-    type: defaultType
+    type: defaultType,
+    card_color: null
   });
 
   const [startTime, setStartTime] = useState(initialStartTime || '10:00');
@@ -123,7 +126,8 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
       start_time: start.toISOString(),
       end_time: end.toISOString(),
       time: startTime, // Legacy field
-      calendar_id: isTask ? 'task' : selectedCalendarId
+      calendar_id: isTask ? 'task' : selectedCalendarId,
+      card_color: formData.card_color
     });
 
     onClose();
@@ -136,9 +140,16 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
       location: '',
       cliente_id: '',
       completed: false,
-      type: 'visit'
+      type: 'visit',
+      card_color: null
     });
   };
+
+  const COLORS = [
+    '#FCD34D', '#6EE7B7', '#93C5FD', '#C4B5FD',
+    '#F9A8D4', '#FCA5A5', '#86EFAC', '#67E8F9',
+    '#FDE68A', '#A5B4FC', '#F0ABFC', '#FB923C',
+  ];
 
   return (
     <AnimatePresence>
@@ -445,6 +456,55 @@ export const AddAppointmentDialog: React.FC<AddAppointmentDialogProps> = ({
                     className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm"
                   />
                 </button>
+              </div>
+
+              {/* Color Picker */}
+              <div className="flex flex-col gap-3 p-4 bg-[var(--bg-subtle)] rounded-[16px]">
+                <div className="flex items-center gap-2">
+                  <Palette size={14} className="text-[var(--text-muted)]" />
+                  <span className="text-[10px] font-outfit font-bold text-[var(--text-muted)] uppercase tracking-widest">
+                    Colore Scheda
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {COLORS.map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, card_color: color })}
+                      className="w-7 h-7 rounded-full border-none cursor-pointer shrink-0 transition-all hover:scale-110 active:scale-95"
+                      style={{
+                        backgroundColor: color,
+                        outline: formData.card_color === color ? '2px solid #1A1A18' : '1.5px solid rgba(0,0,0,0.05)',
+                        outlineOffset: formData.card_color === color ? 2 : 0,
+                      }}
+                    />
+                  ))}
+
+                  {favorites.map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, card_color: color })}
+                      className="w-7 h-7 rounded-full border-none cursor-pointer shrink-0 transition-all hover:scale-110 active:scale-95"
+                      style={{
+                        backgroundColor: color,
+                        outline: formData.card_color === color ? '2px solid #1A1A18' : '1.5px solid rgba(0,0,0,0.05)',
+                        outlineOffset: formData.card_color === color ? 2 : 0,
+                      }}
+                    />
+                  ))}
+                </div>
+                
+                {formData.card_color && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, card_color: null })}
+                    className="text-[11px] text-[var(--text-muted)] bg-transparent border-none cursor-pointer p-0 hover:underline text-left font-medium w-fit"
+                  >
+                    × Rimuovi colore
+                  </button>
+                )}
               </div>
 
               {/* Submit */}

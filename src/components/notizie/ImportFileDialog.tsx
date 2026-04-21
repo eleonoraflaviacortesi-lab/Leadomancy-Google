@@ -148,7 +148,6 @@ export const ImportFileDialog: React.FC<ImportFileDialogProps> = ({ isOpen, onCl
         budget_max: ['budget_max', 'budget', 'max budget', 'massimo', 'maximum', 'budget massimo'],
         regioni: ['regioni', 'regione', 'region', 'regions', 'area', 'zone'],
         tipologia: ['tipologia', 'type', 'tipo', 'property type', 'categoria'],
-        status: ['status', 'stato', 'state', 'fase'],
         note_extra: ['note_extra', 'note', 'notes', 'commenti', 'description', 'descrizione'],
         property_name: ['property_name', 'proprietà', 'property', 'immobile', 'nome proprietà'],
         ref_number: ['ref_number', 'ref', 'reference', 'codice', 'rif', 'rif.', 'numero rif'],

@@ -140,13 +140,13 @@ export const UfficioPage: React.FC = () => {
   }, [allData, user, isAdmin]);
 
   return (
-    <div className="flex flex-col gap-4 pb-6 w-full px-4 sm:px-0">
+    <div className="flex flex-col gap-4 pb-6 w-full">
       {/* Header Section */}
       <div className="flex flex-col">
-        <p className="text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-4 sm:mt-6">
+        <p className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-[0.1em] mb-1 mt-8">
           ALTAIR / Ufficio
         </p>
-        <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
+        <h1 className="text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
           Ufficio {user?.sede}
         </h1>
       </div>

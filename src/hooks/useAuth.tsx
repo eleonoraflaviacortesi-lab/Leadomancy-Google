@@ -242,7 +242,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       await fetchUserProfile(tokenResponse.access_token);
     },
-    onError: (error) => console.error("Auth error (GoogleLogin):", error),
+    onError: (error) => {
+      console.error("Auth error (GoogleLogin):", error);
+      toast.error(`Errore di autenticazione: ${error.error_description || error.error || 'Errore sconosciuto'}. Verifica la configurazione del Client ID.`);
+    },
     scope: SCOPES,
   });
 

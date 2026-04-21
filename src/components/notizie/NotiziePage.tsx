@@ -134,10 +134,10 @@ export const NotiziePage: React.FC = () => {
     <div className="flex flex-col gap-4 pb-6 w-full">
       {/* Breadcrumb & Title */}
       <div className="flex flex-col">
-        <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, marginTop: 6 }}>
+        <p className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-[0.1em] mb-1 mt-8">
           ALTAIR / Notizie
         </p>
-        <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 0 }}>
+        <h1 className="text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
           Notizie
         </h1>
       </div>

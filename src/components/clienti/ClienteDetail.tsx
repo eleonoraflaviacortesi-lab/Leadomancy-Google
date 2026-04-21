@@ -609,8 +609,20 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
   };
 
   const [isStatusEditing, setIsStatusEditing] = useState(false);
-  const [isAssignedEditing, setIsAssignedEditing] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [localCardColor, setLocalCardColor] = useState<string | null>(cliente?.card_color ?? null);
+  const colorInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync when cliente changes
+  useEffect(() => {
+    setLocalCardColor(cliente?.card_color ?? null);
+  }, [cliente?.card_color]);
+
+  const COLOR_OPTIONS = [
+    '#FFF0F0','#FFF8E7','#F0FFF4','#F0F8FF',
+    '#F5F0FF','#FFF0F8','#FFEBCC','#E8F5E9',
+    '#E3F2FD','#FCE4EC','#F3E5F5','#E0F7FA'
+  ];
 
   const prevStatusRef = useRef<string | undefined>(cliente?.status);
 
@@ -1107,6 +1119,49 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
                           <ExternalLink size={12} />
                         </a>
                       </div>
+                    </Section>
+
+                    <Section title="COLORE SCHEDA">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {COLOR_OPTIONS.map(color => (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => { setLocalCardColor(color); onUpdate?.(cliente.id, { card_color: color }); }}
+                            className="w-7 h-7 rounded-full border-none cursor-pointer shrink-0 transition-all hover:scale-110 active:scale-95"
+                            style={{
+                              backgroundColor: color,
+                              outline: localCardColor === color ? '2px solid #1A1A18' : '1.5px solid rgba(0,0,0,0.05)',
+                              outlineOffset: localCardColor === color ? 2 : 0,
+                            }}
+                          />
+                        ))}
+                        
+                        {/* Custom color picker button */}
+                        <button
+                          type="button"
+                          onClick={() => colorInputRef.current?.click()}
+                          className="w-7 h-7 rounded-full border-2 border-dashed border-[var(--border-medium)] bg-transparent cursor-pointer shrink-0 flex items-center justify-center text-[18px] text-[var(--text-muted)] leading-none hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors"
+                        >+</button>
+                        
+                        <input
+                          ref={colorInputRef}
+                          type="color"
+                          value={localCardColor || '#ffffff'}
+                          onChange={e => { setLocalCardColor(e.target.value); onUpdate?.(cliente.id, { card_color: e.target.value }); }}
+                          className="absolute opacity-0 w-0 h-0 pointer-events-none"
+                        />
+                      </div>
+                      
+                      {localCardColor && (
+                        <button
+                          type="button"
+                          onClick={() => { setLocalCardColor(null); onUpdate?.(cliente.id, { card_color: null }); }}
+                          className="mt-3 text-[11px] text-[var(--text-muted)] bg-transparent border-none cursor-pointer p-0 hover:underline text-left font-medium"
+                        >
+                          × Rimuovi colore
+                        </button>
+                      )}
                     </Section>
                   </div>
                 </div>

@@ -147,13 +147,13 @@ export const ClientiPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full w-full">
       {/* Header Section */}
-      <div className="flex flex-col gap-4 pb-0 px-4 sm:px-0">
+      <div className="flex flex-col gap-4 pb-0">
         <div className="flex flex-col">
-          <p className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-widest mb-1 mt-6">
-          ALTAIR / Buyers
+          <p className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-[0.1em] mb-1 mt-8">
+            ALTAIR / Buyers
           </p>
-          <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
-            Luxury Buyers
+          <h1 className="text-[28px] font-semibold tracking-tight text-[var(--text-primary)] mb-0">
+            Buyers
           </h1>
         </div>
 
@@ -262,7 +262,7 @@ export const ClientiPage: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden pt-6 pb-6 gap-6 relative px-4 sm:px-0">
+      <div className="flex flex-1 overflow-hidden pt-6 pb-6 gap-6 relative">
         {/* Filter Sidebar (Collapsible) */}
         <AnimatePresence>
           {isFilterSidebarOpen && (

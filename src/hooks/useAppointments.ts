@@ -90,9 +90,37 @@ export function useAppointments() {
       
       return appointment;
     },
+    onMutate: async (newApp) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<Appointment[]>(queryKey);
+      
+      const optimisticApp: Appointment = {
+        ...newApp,
+        id: 'temp-' + Date.now(),
+        user_id: user?.user_id || user?.id || '',
+        completed: false,
+        google_calendar_synced: false,
+        google_event_id: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as Appointment;
+
+      queryClient.setQueryData<Appointment[]>(queryKey, old => 
+        [...(old || []), optimisticApp].sort((a, b) => 
+          new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+        )
+      );
+
+      return { previous };
+    },
+    onError: (_, __, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+      toast.error("Errore nell'aggiunta dell'appuntamento");
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey });
-      await queryClient.refetchQueries({ queryKey });
       toast.success("Appuntamento aggiunto");
     },
   });
