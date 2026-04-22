@@ -277,9 +277,9 @@ export async function appendRow(sheetName: string, record: any): Promise<void> {
       throw new Error(`Sheets API error: ${response.statusText || 'Unknown error'}`);
     }
     console.log('[GoogleSheets] appendRow success');
-  } catch (error) {
+  } catch (error: any) {
     console.error('[GoogleSheets] appendRow failed:', error);
-    throw new Error(`Failed to append row to sheet: ${sheetName}`);
+    throw new Error(`Failed to append row to sheet: ${sheetName} - ${error.message || JSON.stringify(error)}`);
   }
 }
 

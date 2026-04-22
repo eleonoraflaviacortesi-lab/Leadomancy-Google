@@ -9,25 +9,70 @@ export async function searchPropertiesOnline(
   if (!GEMINI_API_KEY) throw new Error('Gemini API Key missing');
   
   const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-  
-  // Use Google Search Grounding to actually search the web
+
+  // Fetch the site's property listing page via backend proxy (to avoid CORS)
+  let siteContent = '';
+  const urlsToTry = [
+    'https://cortesiluxuryrealestate.com/ricerca/?post_type=immobili',
+    'https://cortesiluxuryrealestate.com/immobili/',
+    'https://cortesiluxuryrealestate.com/'
+  ];
+
+  for (const targetUrl of urlsToTry) {
+    try {
+      const res = await fetch(`/api/proxy-fetch?url=${encodeURIComponent(targetUrl)}`);
+      if (res.ok) {
+        const html = await res.text();
+        console.log(`[Gemini] Raw HTML length from ${targetUrl}:`, html.length);
+        
+        // Basic check: if HTML is tiny, it might be a block or empty page
+        if (html.length < 500) continue;
+
+        // Extract text content, focusing on what looks like property info
+        // (Removing scripts, styles, and tags, then normalizing spaces)
+        let processed = html
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[\s\S]*?<\/style>/gi, '')
+          .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+          .replace(/<header[\s\S]*?<\/header>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        if (processed.length > 500) {
+          siteContent = processed.slice(0, 10000); // Increased to 10k
+          console.log(`[Gemini] Using content from ${targetUrl}`);
+          break;
+        }
+      }
+    } catch (e) {
+      console.warn(`[Gemini] Failed to fetch ${targetUrl}`, e);
+    }
+  }
+
+  if (!siteContent) {
+    siteContent = 'Impossibile accedere al catalogo aggiornato del sito in questo momento.';
+  }
+
   const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
-    contents: [{ 
-      role: 'user', 
-      parts: [{ text: clienteProfile }] 
+    model: 'gemini-3-flash-preview',
+    contents: [{
+      role: 'user',
+      parts: [{ text: `${clienteProfile}\n\nCONTENUTO PAGINA SITO:\n${siteContent}` }]
     }],
     config: {
-      tools: [{ googleSearch: {} }],
-      systemInstruction: `Sei un consulente immobiliare. 
-Cerca su cortesiluxuryrealestate.com le proprietà reali disponibili.
-Usa Google Search per trovare proprietà REALI con URL REALI dal sito.
-Non inventare mai URL o proprietà che non esistono sul sito.
-Rispondi SOLO con un array JSON valido.`,
+      systemInstruction: `Sei un consulente immobiliare di Cortesi Luxury Real Estate.
+Analizza il contenuto del sito fornito e trova le proprietà più adatte al profilo cliente riportato nel prompt.
+Usa SOLO le proprietà che trovi realmente nel testo fornito (cerca titoli, prezzi, zone).
+Ritorna i dati in lingua italiana.
+Se non trovi proprietà adatte tra quelle elencate nel testo, restituisci un array vuoto [].
+Non inventare mai dati o link.`,
+      responseMimeType: 'application/json',
     },
   });
-  
-  return response.text || '';
+
+  console.log('[Gemini] Raw response:', response.text);
+  return response.text || '[]';
 }
 
 interface GeminiMessage {

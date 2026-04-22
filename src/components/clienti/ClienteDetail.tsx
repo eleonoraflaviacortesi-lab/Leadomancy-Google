@@ -602,7 +602,7 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
       
     } catch (err: any) {
       console.error('Property match error:', err);
-      setMatchError('Impossibile trovare proprietà. Riprova tra qualche secondo.');
+      setMatchError(err.message || 'Impossibile trovare proprietà. Riprova tra qualche secondo.');
     } finally {
       setIsSearching(false);
     }
@@ -695,7 +695,7 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
   };
 
   const handleWhatsAppShare = (match: PropertyMatch) => {
-    const phoneClean = cliente.telefono?.replace(/\D/g, '') || '';
+    const phoneClean = String(cliente.telefono || '').replace(/\D/g, '');
     const text = `Ciao ${cliente.nome}! Ho trovato questa proprietà che potrebbe interessarti:\n\n🏠 *${match.titolo}*\n📍 ${match.zona || ''}\n💰 ${match.prezzo || ''}\n\n🔗 ${match.url}`;
     const url = `https://wa.me/${phoneClean}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');

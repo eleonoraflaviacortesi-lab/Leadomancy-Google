@@ -13,34 +13,33 @@ async function startServer() {
 
   // API route for property search
   app.post('/api/search-properties', async (req, res) => {
-    const { prompt } = req.body;
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    // ... existing search logic if needed
+  });
 
-    if (!apiKey) {
-      return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+  app.get('/api/proxy-fetch', async (req, res) => {
+    const { url } = req.query;
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: 'URL missing' });
     }
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
+      const response = await fetch(url, {
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 2000,
-          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          messages: [{ role: 'user', content: prompt }]
-        })
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+          'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
       });
-
-      const data = await response.json();
-      res.json(data);
-    } catch (err) {
-      console.error('Anthropic API error:', err);
-      res.status(500).json({ error: 'Failed to search properties' });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+      }
+      const html = await response.text();
+      res.send(html);
+    } catch (err: any) {
+      console.error('Proxy fetch error:', err);
+      res.status(500).send(`Error fetching content: ${err.message}`);
     }
   });
 

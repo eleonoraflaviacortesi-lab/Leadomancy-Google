@@ -3,7 +3,7 @@ import { useGoogleLogin, TokenResponse } from "@react-oauth/google";
 import { gapi } from "gapi-script";
 import { toast } from "sonner";
 import { Profile } from "@/src/types/index";
-import { getSheetData, appendRow, SHEETS, clearHeaderCache } from "@/src/lib/googleSheets";
+import { getSheetData, appendRow, SHEETS, clearHeaderCache, findRowIndex, updateRow } from "@/src/lib/googleSheets";
 
 interface AuthContextType {
   user: Profile | null;
@@ -168,11 +168,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const users = await getSheetData<Profile>(SHEETS.users);
       console.log("[Auth] Step 2 Success: Received", users.length, "users from sheet");
       
-      let profile = users.find(u => u.email === email);
+      let profile = users.find(u => 
+        u.email?.toLowerCase().trim() === email.toLowerCase().trim()
+      );
 
       if (!profile) {
         console.log("[Auth] Step 3: Profile not found in sheet, attempting to create default...");
-        profile = {
+        const newProfile: Profile = {
           id: crypto.randomUUID(),
           user_id: userInfo.sub,
           email: email,
@@ -180,20 +182,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           cognome: userInfo.family_name || '',
           full_name: userInfo.name || '',
           role: 'agente',
-          sede: 'Firenze',
+          sede: import.meta.env.VITE_DEFAULT_SEDE || 'Firenze',
           sedi: null,
-          avatar_emoji: '👤'
+          avatar_emoji: '⭐',
         };
-        
         try {
-          await appendRow(SHEETS.users, profile);
-          console.log("[Auth] Step 3 Success: Default profile created in sheet");
+          await appendRow(SHEETS.users, {
+            ...newProfile,
+            sedi: '',
+          });
+          toast.success('Profilo creato automaticamente. Benvenuto in Altair!');
+          setIsUsingFallback(false);
         } catch (appendErr) {
-          console.error("[Auth] Step 3 Failed: Error appending profile to sheet:", appendErr);
-          console.log("[Auth] Proceeding with local profile (fallback mode)");
+          console.error('[Auth] Failed to create profile in sheet:', appendErr);
+          toast.error('Profilo temporaneo — controlla la connessione al foglio');
           setIsUsingFallback(true);
         }
+        profile = newProfile;
       } else {
+        if (profile && profile.user_id !== userInfo.sub) {
+          try {
+            const rowIndex = await findRowIndex(SHEETS.users, profile.user_id || profile.id);
+            if (rowIndex) {
+              await updateRow(SHEETS.users, rowIndex, { user_id: userInfo.sub });
+            }
+            (profile as any).user_id = userInfo.sub;
+          } catch (e) {
+            console.warn('[Auth] Could not update user_id in sheet:', e);
+          }
+        }
         console.log("[Auth] Step 3 Success: Profile found in sheet");
         setIsUsingFallback(false);
       }
