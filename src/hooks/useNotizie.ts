@@ -26,9 +26,7 @@ export function useNotizie() {
     queryKey,
     queryFn: async () => {
       if (!user) return [];
-      console.log('Current user.user_id:', user?.user_id);
       const data = await getSheetData<Notizia>(SHEETS.notizie);
-      console.log('All notizie from sheet after refetch:', data.map(n => n.user_id));
       
       const uniqueNotizie: Notizia[] = [];
       const seenIds = new Set<string>();
@@ -140,7 +138,6 @@ export function useNotizie() {
       toast.error("Errore durante l'aggiunta della notizia");
     },
     onSuccess: (newNotizia) => {
-      console.log('New notizia user_id being set:', newNotizia.user_id);
       toast.success("Notizia aggiunta");
     },
     onSettled: () => {
@@ -152,10 +149,8 @@ export function useNotizie() {
 
   const updateNotiziaMutation = useMutation({
     mutationFn: async ({ id, silent, ...updates }: Partial<Notizia> & { id: string; silent?: boolean }) => {
-      console.log("[useNotizie] Updating notizia:", id, updates);
       try {
         const rowIndex = await findRowIndex(SHEETS.notizie, id);
-        console.log("[useNotizie] Row index found:", rowIndex);
         if (!rowIndex) throw new Error("Notizia non trovata");
         
         const finalUpdates: any = {
@@ -200,7 +195,6 @@ export function useNotizie() {
           finalUpdates.Emoji = finalUpdates.emoji;
         }
         
-        console.log("[useNotizie] Final updates:", finalUpdates);
         
         await updateRow(SHEETS.notizie, rowIndex, finalUpdates);
         return { id, silent };

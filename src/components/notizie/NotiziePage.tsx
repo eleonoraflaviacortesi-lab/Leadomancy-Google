@@ -22,7 +22,7 @@ export const NotiziePage: React.FC = () => {
   const { undo, redo, canUndo, canRedo } = useUndoRedo();
   
   const [viewMode, setViewMode] = useState<'kanban' | 'sheet'>(() => {
-    return (localStorage.getItem('leadomancy-notizie-view') as 'kanban' | 'sheet') || 'kanban';
+    return (localStorage.getItem('altair-notizie-view') as 'kanban' | 'sheet') || 'kanban';
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -96,13 +96,13 @@ export const NotiziePage: React.FC = () => {
 
   useEffect(() => {
     const handler = () => setIsAddDialogOpen(true);
-    window.addEventListener('leadomancy:open-add-notizia', handler);
-    return () => window.removeEventListener('leadomancy:open-add-notizia', handler);
+    window.addEventListener('altair:open-add-notizia', handler);
+    return () => window.removeEventListener('altair:open-add-notizia', handler);
   }, []);
 
   const toggleViewMode = (mode: 'kanban' | 'sheet') => {
     setViewMode(mode);
-    localStorage.setItem('leadomancy-notizie-view', mode);
+    localStorage.setItem('altair-notizie-view', mode);
   };
 
   const filteredNotizie = useMemo(() => {

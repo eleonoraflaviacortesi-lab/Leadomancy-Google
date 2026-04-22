@@ -140,9 +140,8 @@ export default function AppLayout() {
                  onClose={closeDetail}
                  onUpdate={(id, updates) => updateCliente({ id, ...updates })}
                  onDelete={(id) => {
-                   if (window.confirm('Eliminare questo cliente?')) {
-                     deleteCliente(id);
-                   }
+                   if (!window.confirm('Eliminare questo buyer?')) return;
+                   deleteCliente(id);
                    closeDetail();
                  }}
                />

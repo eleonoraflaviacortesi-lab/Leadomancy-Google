@@ -25,7 +25,7 @@ export function useBannerSettings() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem('leadomancy-banner-settings');
+    const saved = localStorage.getItem('altair-banner-settings');
     if (saved) {
       try {
         setSettings(JSON.parse(saved));
@@ -39,7 +39,7 @@ export function useBannerSettings() {
   const updateSettings = (newSettings: Partial<BannerSettings>) => {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
-    localStorage.setItem('leadomancy-banner-settings', JSON.stringify(updated));
+    localStorage.setItem('altair-banner-settings', JSON.stringify(updated));
   };
 
   return { settings, updateSettings, isLoading };

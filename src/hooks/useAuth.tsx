@@ -44,23 +44,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAndRefreshScopes = async (token: string) => {
     try {
-      console.log("[Auth] Checking granted scopes...");
       const response = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${token}`);
       const info = await response.json();
       
       if (info.error) {
         console.error("[Auth] Token info error:", info.error);
-        localStorage.removeItem('leadomancy_access_token');
+        localStorage.removeItem('altair_access_token');
         return false;
       }
 
       const grantedScopes = info.scope || "";
-      console.log("[Auth] Granted scopes:", grantedScopes);
 
       // Check if 'calendar' scope is present (either full or events)
       if (!grantedScopes.includes('https://www.googleapis.com/auth/calendar')) {
         console.warn("[Auth] Calendar scope missing. Forcing re-login.");
-        localStorage.removeItem('leadomancy_access_token');
+        localStorage.removeItem('altair_access_token');
         toast.error("Effettua di nuovo il login per abilitare il calendario");
         setUser(null);
         return false;
@@ -75,7 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initClient = async () => {
       try {
-        console.log("[Auth] Initializing gapi client...");
         await waitForGapi();
         
         const g = (window as any).gapi;
@@ -85,7 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         g.load('client', async () => {
           try {
-            console.log("[Auth] gapi.load('client') callback started");
             
             // We use init to load discovery docs. 
             // Note: We don't necessarily need clientId/apiKey here if we use setToken later,
@@ -94,7 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               discoveryDocs: DISCOVERY_DOCS,
             });
             
-            console.log("[Auth] gapi.client.init finished");
             
             // Explicitly load APIs as a secondary measure
             const loadApi = (name: string, version: string) => {
@@ -104,15 +99,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             };
 
             if (!g.client.sheets) {
-              console.log("[Auth] Sheets API not found after init, loading via name/version...");
               await loadApi('sheets', 'v4');
             }
             if (!g.client.calendar) {
-              console.log("[Auth] Calendar API not found after init, loading via name/version...");
               await loadApi('calendar', 'v3');
             }
             
-            console.log("[Auth] API check - Sheets:", !!g.client.sheets, "Calendar:", !!g.client.calendar);
             
             clearHeaderCache();
             
@@ -120,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.warn("[Auth] Sheets API still not found in gapi.client after load");
             }
 
-            const token = localStorage.getItem('leadomancy_access_token');
+            const token = localStorage.getItem('altair_access_token');
             if (token) {
               const scopesOk = await checkAndRefreshScopes(token);
               if (scopesOk) {
@@ -146,11 +138,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchUserProfile = async (accessToken: string) => {
-    console.log("[Auth] Starting fetchUserProfile...");
     setIsLoading(true);
     let userInfo: any = null;
     try {
-      console.log("[Auth] Step 1: Fetching userinfo from Google...");
       const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
@@ -160,20 +150,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       userInfo = await userInfoResponse.json();
-      console.log("[Auth] Step 1 Success: Userinfo received:", userInfo.email);
       
       const email = userInfo.email;
 
-      console.log("[Auth] Step 2: Fetching profile from sheet 'users'...");
       const users = await getSheetData<Profile>(SHEETS.users);
-      console.log("[Auth] Step 2 Success: Received", users.length, "users from sheet");
       
       let profile = users.find(u => 
         u.email?.toLowerCase().trim() === email.toLowerCase().trim()
       );
 
       if (!profile) {
-        console.log("[Auth] Step 3: Profile not found in sheet, attempting to create default...");
         const newProfile: Profile = {
           id: crypto.randomUUID(),
           user_id: userInfo.sub,
@@ -211,19 +197,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.warn('[Auth] Could not update user_id in sheet:', e);
           }
         }
-        console.log("[Auth] Step 3 Success: Profile found in sheet");
         setIsUsingFallback(false);
       }
 
-      console.log("[Auth] Final Step: Setting user profile...");
       setUser(profile);
       clearHeaderCache();
-      console.log('[Auth] Header cache cleared on login');
     } catch (error) {
       console.error("[Auth] CRITICAL ERROR in fetchUserProfile:", error);
       
       if (userInfo) {
-        console.log("[Auth] Using fallback profile due to error...");
         const fallbackProfile: Profile = {
           id: accessToken.slice(0, 8),
           user_id: userInfo.sub,
@@ -240,19 +222,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsUsingFallback(true);
       } else {
         console.error("[Auth] No userInfo available, clearing token.");
-        localStorage.removeItem('leadomancy_access_token');
+        localStorage.removeItem('altair_access_token');
         setUser(null);
       }
     } finally {
-      console.log("[Auth] fetchUserProfile finished, setting isLoading to false");
       setIsLoading(false);
     }
   };
 
   const signIn = useGoogleLogin({
     onSuccess: async (tokenResponse: TokenResponse) => {
-      console.log("OAuth success, token:", tokenResponse);
-      localStorage.setItem('leadomancy_access_token', tokenResponse.access_token);
+      localStorage.setItem('altair_access_token', tokenResponse.access_token);
       
       await waitForGapi();
       gapi.client.setToken({ access_token: tokenResponse.access_token });
@@ -267,8 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const signOut = async () => {
-    console.log("[Auth] Signing out...");
-    localStorage.removeItem('leadomancy_access_token');
+    localStorage.removeItem('altair_access_token');
     try {
       const g = (window as any).gapi;
       if (g?.client) g.client.setToken(null);

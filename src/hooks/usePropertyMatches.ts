@@ -24,7 +24,7 @@ export function usePropertyMatches(clienteId: string) {
   const [matches, setMatches] = useState<PropertyMatch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const storageKey = `leadomancy-matches-${clienteId}`;
+  const storageKey = `altair-matches-${clienteId}`;
 
   const loadMatches = useCallback(() => {
     setIsLoading(true);

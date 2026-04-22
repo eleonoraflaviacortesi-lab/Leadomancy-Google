@@ -20,30 +20,31 @@ export async function searchPropertiesOnline(
 
   for (const targetUrl of urlsToTry) {
     try {
-      const res = await fetch(`/api/proxy-fetch?url=${encodeURIComponent(targetUrl)}`);
-      if (res.ok) {
-        const html = await res.text();
-        console.log(`[Gemini] Raw HTML length from ${targetUrl}:`, html.length);
-        
-        // Basic check: if HTML is tiny, it might be a block or empty page
-        if (html.length < 500) continue;
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+      const res = await fetch(proxyUrl);
+      if (!res.ok) continue;
+      const json = await res.json();
+      const html = json.contents || '';
+      console.log(`[Gemini] Raw HTML length from ${targetUrl}:`, html.length);
+      
+      // Basic check: if HTML is tiny, it might be a block or empty page
+      if (html.length < 500) continue;
 
-        // Extract text content, focusing on what looks like property info
-        // (Removing scripts, styles, and tags, then normalizing spaces)
-        let processed = html
-          .replace(/<script[\s\S]*?<\/script>/gi, '')
-          .replace(/<style[\s\S]*?<\/style>/gi, '')
-          .replace(/<footer[\s\S]*?<\/footer>/gi, '')
-          .replace(/<header[\s\S]*?<\/header>/gi, '')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
+      // Extract text content, focusing on what looks like property info
+      // (Removing scripts, styles, and tags, then normalizing spaces)
+      let processed = html
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+        .replace(/<header[\s\S]*?<\/header>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-        if (processed.length > 500) {
-          siteContent = processed.slice(0, 10000); // Increased to 10k
-          console.log(`[Gemini] Using content from ${targetUrl}`);
-          break;
-        }
+      if (processed.length > 500) {
+        siteContent = processed.slice(0, 10000); // Increased to 10k
+        console.log(`[Gemini] Using content from ${targetUrl}`);
+        break;
       }
     } catch (e) {
       console.warn(`[Gemini] Failed to fetch ${targetUrl}`, e);
@@ -55,7 +56,7 @@ export async function searchPropertiesOnline(
   }
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-2.5-flash-preview-04-17',
     contents: [{
       role: 'user',
       parts: [{ text: `${clienteProfile}\n\nCONTENUTO PAGINA SITO:\n${siteContent}` }]
@@ -94,7 +95,7 @@ export async function callGemini(
   const fetchWithRetry = async (retryCount = 0): Promise<string> => {
     try {
       const response: GenerateContentResponse = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash-preview-04-17",
         contents: messages,
         config: {
           systemInstruction: systemInstruction,

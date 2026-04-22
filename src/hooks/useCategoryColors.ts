@@ -20,7 +20,7 @@ const DEFAULT_COLORS: CategoryColors = {
 export const useCategoryColors = () => {
   const { user } = useAuth();
   const storageKey = useMemo(() => 
-    user?.email ? `leadomancy-category-colors-${user.email}` : 'leadomancy-category-colors'
+    user?.email ? `altair-category-colors-${user.email}` : 'altair-category-colors'
   , [user?.email]);
 
   const [colors, setColors] = useState<CategoryColors>(() => {

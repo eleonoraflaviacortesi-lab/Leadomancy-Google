@@ -51,8 +51,8 @@ export default function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarPr
   }, []);
 
   const menuItems = [
-    { icon: Home, label: "Nuova Notizia", action: () => { window.dispatchEvent(new CustomEvent('leadomancy:open-add-notizia')); setIsDropdownOpen(false); } },
-    { icon: UserSearch, label: "Nuovo Buyer", action: () => { window.dispatchEvent(new CustomEvent('leadomancy:open-add-cliente')); setIsDropdownOpen(false); } },
+    { icon: Home, label: "Nuova Notizia", action: () => { window.dispatchEvent(new CustomEvent('altair:open-add-notizia')); setIsDropdownOpen(false); } },
+    { icon: UserSearch, label: "Nuovo Buyer", action: () => { window.dispatchEvent(new CustomEvent('altair:open-add-cliente')); setIsDropdownOpen(false); } },
     { icon: TrendingUp, label: "Nuovo Ciclo", action: () => { navigate('/inserisci'); setIsDropdownOpen(false); } },
     { icon: CalendarDays, label: "Nuova Riunione", action: () => { navigate('/office'); setIsDropdownOpen(false); } },
   ];

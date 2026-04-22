@@ -8,7 +8,7 @@ interface EventOverrides {
 
 export const useEventOverrides = () => {
   const [overrides, setOverrides] = useState<EventOverrides>(() => {
-    const saved = localStorage.getItem('leadomancy-event-overrides');
+    const saved = localStorage.getItem('altair-event-overrides');
     return saved ? JSON.parse(saved) : {};
   });
 
@@ -21,7 +21,7 @@ export const useEventOverrides = () => {
       }
     };
     setOverrides(newOverrides);
-    localStorage.setItem('leadomancy-event-overrides', JSON.stringify(newOverrides));
+    localStorage.setItem('altair-event-overrides', JSON.stringify(newOverrides));
   };
 
   return { overrides, updateEventOverride };

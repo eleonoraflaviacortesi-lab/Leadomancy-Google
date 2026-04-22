@@ -23,7 +23,7 @@ export const ClientiPage: React.FC = () => {
   const { undo, redo, canUndo, canRedo } = useUndoRedo();
   
   const [viewMode, setViewMode] = useState<'kanban' | 'sheet'>(() => {
-    return (localStorage.getItem('leadomancy-clienti-view') as 'kanban' | 'sheet') || 'kanban';
+    return (localStorage.getItem('altair-clienti-view') as 'kanban' | 'sheet') || 'kanban';
   });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [initialStatus, setInitialStatus] = useState<ClienteStatus | undefined>();
@@ -112,13 +112,13 @@ export const ClientiPage: React.FC = () => {
 
   useEffect(() => {
     const handler = () => setIsAddDialogOpen(true);
-    window.addEventListener('leadomancy:open-add-cliente', handler);
-    return () => window.removeEventListener('leadomancy:open-add-cliente', handler);
+    window.addEventListener('altair:open-add-cliente', handler);
+    return () => window.removeEventListener('altair:open-add-cliente', handler);
   }, []);
 
   const toggleViewMode = (mode: 'kanban' | 'sheet') => {
     setViewMode(mode);
-    localStorage.setItem('leadomancy-clienti-view', mode);
+    localStorage.setItem('altair-clienti-view', mode);
   };
 
   const handleClienteClick = (cliente: Cliente) => {
@@ -346,7 +346,10 @@ export const ClientiPage: React.FC = () => {
                   agents={[]} // Add agents if available
                   onCardClick={handleClienteClick}
                   onUpdate={async (id, updates) => updateCliente({ id, ...updates })}
-                  onDelete={async (id) => deleteCliente(id)}
+                  onDelete={async (id) => {
+                    if (!window.confirm('Eliminare questo buyer?')) return;
+                    deleteCliente(id);
+                  }}
                   onDuplicate={handleDuplicate}
                   searchQuery={filters.search || ""}
                   onAddNew={() => setIsAddDialogOpen(true)}
@@ -371,6 +374,7 @@ export const ClientiPage: React.FC = () => {
         onClose={() => setIsDetailOpen(false)}
         onUpdate={(id, updates) => updateCliente({ id, ...updates })}
         onDelete={(id) => {
+          if (!window.confirm('Eliminare questo buyer?')) return;
           deleteCliente(id);
           setIsDetailOpen(false);
         }}

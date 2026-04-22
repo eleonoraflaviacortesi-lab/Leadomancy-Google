@@ -30,7 +30,7 @@ export function useGoogleCalendar() {
   const [calendars, setCalendars] = useState<GoogleCalendar[]>([]);
   
   const storageKey = useMemo(() => 
-    user?.email ? `leadomancy-visible-calendars-${user.email}` : 'leadomancy-visible-calendars'
+    user?.email ? `altair-visible-calendars-${user.email}` : 'altair-visible-calendars'
   , [user?.email]);
 
   const [visibleCalendarIds, setVisibleCalendarIds] = useState<string[]>([]);

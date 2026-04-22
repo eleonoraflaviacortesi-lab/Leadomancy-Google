@@ -873,7 +873,7 @@ const RowContextMenu: React.FC<{
       <div className="p-1">
         <ContextMenuItem icon={<CopyIcon size={14} />} label="Duplica cliente" onClick={() => { onDuplicate?.(); onClose(); }} />
         <div className="h-px bg-gray-100 my-1" />
-        <ContextMenuItem icon={<Trash2 size={14} />} label="Elimina cliente" onClick={() => { if(confirm("Eliminare?")) onDelete?.(); onClose(); }} className="text-red-500" />
+        <ContextMenuItem icon={<Trash2 size={14} />} label="Elimina cliente" onClick={() => { if(!window.confirm('Eliminare questo buyer?')) return; onDelete?.(); onClose(); }} className="text-red-500" />
       </div>
     </motion.div>
   </>

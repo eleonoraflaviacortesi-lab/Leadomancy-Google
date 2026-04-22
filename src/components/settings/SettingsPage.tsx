@@ -574,16 +574,16 @@ const SettingRow = ({ icon: Icon, label, description, action }: any) => (
 export const SettingsPage: React.FC = () => {
   const { user, signOut } = useAuth();
   const queryClient = useQueryClient();
-  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('leadomancy_theme') === 'dark');
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('altair_theme') === 'dark');
   const [language, setLanguage] = useState('IT');
 
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('leadomancy_theme', 'dark');
+      localStorage.setItem('altair_theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('leadomancy_theme', 'light');
+      localStorage.setItem('altair_theme', 'light');
     }
   }, [isDarkMode]);
 
@@ -754,7 +754,7 @@ export const SettingsPage: React.FC = () => {
               <path d="M12,2 L13.5,8.5 L19,6 L15.5,10.5 L22,12 L15.5,13.5 L19,18 L13.5,15.5 L12,22 L10.5,15.5 L5,18 L8.5,13.5 L2,12 L8.5,10.5 L5,6 L10.5,8.5 Z" />
             </svg>
           </div>
-          <span className="font-outfit font-bold text-[14px] uppercase tracking-widest">LEADOMANCY</span>
+          <span className="font-outfit font-bold text-[14px] uppercase tracking-widest">ALTAIR</span>
           <span className="text-[11px] font-outfit font-medium text-[var(--text-muted)]">Version 1.0.0 — Build 2026.03.25</span>
         </div>
       </div>

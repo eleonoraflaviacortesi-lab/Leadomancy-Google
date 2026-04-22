@@ -165,7 +165,10 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
                       onEmojiChange={(id, emoji) => updateCliente({ id, emoji })}
                       onColorChange={(id, card_color) => updateCliente({ id, card_color })}
                       onUpdate={(id, updates) => updateCliente({ id, ...updates, silent: true })}
-                      onDelete={(id) => deleteCliente(id)}
+                      onDelete={(id) => {
+                        if (!window.confirm('Eliminare questo buyer?')) return;
+                        deleteCliente(id);
+                      }}
                       isDragging={snapshot.isDragging}
                     />
                   </div>

@@ -22,7 +22,7 @@ export const AnnouncementBanner: React.FC = () => {
   useEffect(() => {
     const today = new Date().toDateString();
     try {
-      const cached = sessionStorage.getItem('leadomancy_quote_v3');
+      const cached = sessionStorage.getItem('altair_quote_v3');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed.date === today && parsed.text) { 
@@ -37,7 +37,7 @@ export const AnnouncementBanner: React.FC = () => {
         const text = q.quote;
         const author = q.author || 'Unknown';
         setQuote({ text, author });
-        sessionStorage.setItem('leadomancy_quote_v3', 
+        sessionStorage.setItem('altair_quote_v3', 
           JSON.stringify({ date: today, text, author }));
       }
     });

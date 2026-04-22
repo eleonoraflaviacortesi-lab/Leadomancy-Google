@@ -20,12 +20,12 @@ const DEFAULT_COLUMNS: KanbanColumn[] = [
 
 export function useClientKanbanColumns() {
   const [columns, setColumns] = useState<KanbanColumn[]>(() => {
-    const saved = localStorage.getItem('leadomancy-client-kanban-columns');
+    const saved = localStorage.getItem('altair-client-kanban-columns');
     return saved ? JSON.parse(saved) : DEFAULT_COLUMNS;
   });
 
   useEffect(() => {
-    localStorage.setItem('leadomancy-client-kanban-columns', JSON.stringify(columns));
+    localStorage.setItem('altair-client-kanban-columns', JSON.stringify(columns));
   }, [columns]);
 
   const addColumn = ({ label, color }: { label: string; color: string }) => {

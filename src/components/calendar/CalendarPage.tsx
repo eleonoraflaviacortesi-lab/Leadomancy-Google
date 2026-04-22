@@ -71,7 +71,7 @@ interface CalendarEvent {
 export const CalendarPage: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    const saved = localStorage.getItem('leadomancy-calendar-view');
+    const saved = localStorage.getItem('altair-calendar-view');
     if (saved) return saved as ViewMode;
     return window.innerWidth < 768 ? '3days' : 'week';
   });
@@ -84,16 +84,16 @@ export const CalendarPage: React.FC = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [calendarError, setCalendarError] = useState<string | null>(null);
   const [isErrorDismissed, setIsErrorDismissed] = useState(() => {
-    return localStorage.getItem('leadomancy-calendar-error-dismissed') === 'true';
+    return localStorage.getItem('altair-calendar-error-dismissed') === 'true';
   });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
-    const saved = localStorage.getItem('leadomancy-calendar-sidebar-collapsed');
+    const saved = localStorage.getItem('altair-calendar-sidebar-collapsed');
     if (saved !== null) return JSON.parse(saved);
     return window.innerWidth < 1280; // Only collapse by default on smaller screens
   });
   const { user } = useAuth();
   const localVisibilityKey = useMemo(() => 
-    user?.email ? `leadomancy-visible-local-types-${user.email}` : 'leadomancy-visible-local-types'
+    user?.email ? `altair-visible-local-types-${user.email}` : 'altair-visible-local-types'
   , [user?.email]);
 
   const [visibleLocalTypes, setVisibleLocalTypes] = useState<string[]>(['appointment', 'task', 'cliente_reminder', 'notizia_reminder']);
@@ -135,7 +135,7 @@ export const CalendarPage: React.FC = () => {
 
   // Sidebar persistence
   useEffect(() => {
-    localStorage.setItem('leadomancy-calendar-sidebar-collapsed', JSON.stringify(isSidebarCollapsed));
+    localStorage.setItem('altair-calendar-sidebar-collapsed', JSON.stringify(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
 
   // Local visibility persistence
@@ -166,12 +166,12 @@ export const CalendarPage: React.FC = () => {
       window.location.href = `/notizie/${e.detail.id}`;
     };
 
-    window.addEventListener('leadomancy:open-cliente', handleOpenCliente as EventListener);
-    window.addEventListener('leadomancy:open-notizia', handleOpenNotizia as EventListener);
+    window.addEventListener('altair:open-cliente', handleOpenCliente as EventListener);
+    window.addEventListener('altair:open-notizia', handleOpenNotizia as EventListener);
 
     return () => {
-      window.removeEventListener('leadomancy:open-cliente', handleOpenCliente as EventListener);
-      window.removeEventListener('leadomancy:open-notizia', handleOpenNotizia as EventListener);
+      window.removeEventListener('altair:open-cliente', handleOpenCliente as EventListener);
+      window.removeEventListener('altair:open-notizia', handleOpenNotizia as EventListener);
     };
   }, []);
 
@@ -193,12 +193,12 @@ export const CalendarPage: React.FC = () => {
 
   const handleDismissError = () => {
     setIsErrorDismissed(true);
-    localStorage.setItem('leadomancy-calendar-error-dismissed', 'true');
+    localStorage.setItem('altair-calendar-error-dismissed', 'true');
   };
 
   // View Mode persistence
   useEffect(() => {
-    localStorage.setItem('leadomancy-calendar-view', viewMode);
+    localStorage.setItem('altair-calendar-view', viewMode);
   }, [viewMode]);
 
   // Combine all events

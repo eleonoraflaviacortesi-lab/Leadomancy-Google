@@ -43,7 +43,7 @@ export const GeminiAdviceCard: React.FC<GeminiAdviceCardProps> = ({
     setIsLoading(true);
     setError(null);
 
-    const cacheKey = 'leadomancy_gemini_advice';
+    const cacheKey = 'altair_gemini_advice';
     
     if (!force) {
       // Check sessionStorage cache first

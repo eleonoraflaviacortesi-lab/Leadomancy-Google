@@ -70,6 +70,7 @@ const MergeClienteDialog: React.FC<MergeClienteDialogProps> = ({
           .filter(Boolean).join('\n\n---\n\n');
       }
       await updateCliente({ id: cliente.id, ...merged });
+      if (!window.confirm('Eliminare questo buyer?')) return;
       await deleteCliente(target.id);
       toast.success(`Unito con ${target.nome}`);
       onMerged();

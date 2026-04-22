@@ -227,9 +227,6 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
 
   const deleteClienteMutation = useMutation({
     mutationFn: async (id: string) => {
-      if (!window.confirm('Eliminare questo buyer?')) {
-        throw new Error('Eliminazione annullata');
-      }
       const rowIndex = await findRowIndex(SHEETS.clienti, id);
       if (!rowIndex) throw new Error("Cliente non trovato");
       await deleteRow(SHEETS.clienti, rowIndex);
@@ -241,9 +238,11 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
       queryClient.setQueryData<Cliente[]>(queryKey, (old) => old?.filter(c => c.id !== id));
       return { previousClienti };
     },
-    onError: (err, id, context) => {
+    onError: (err: any, id, context) => {
       queryClient.setQueryData(queryKey, context?.previousClienti);
-      toast.error("Errore durante l'eliminazione");
+      if (err?.message !== 'Eliminazione annullata') {
+        toast.error("Errore durante l'eliminazione");
+      }
     },
     onSuccess: () => {
       toast.success("Buyer eliminato");

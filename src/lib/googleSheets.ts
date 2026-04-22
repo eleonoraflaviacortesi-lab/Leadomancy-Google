@@ -32,13 +32,11 @@ async function ensureSheetsApi(): Promise<void> {
   
   if (g?.client?.sheets) return;
   
-  console.log("[GoogleSheets] Sheets API not ready, checking gapi...");
   
   if (!g) {
     console.warn("[GoogleSheets] gapi not found on window, waiting...");
   } else if (g.client) {
     if (!g.client.sheets) {
-      console.log("[GoogleSheets] gapi.client found but sheets missing, attempting manual load...");
       try {
         const loadApi = (name: string, version: string) => {
           return new Promise((resolve) => {
@@ -60,7 +58,6 @@ async function ensureSheetsApi(): Promise<void> {
         }
 
         if (g.client.sheets) {
-          console.log("[GoogleSheets] Sheets API loaded manually.");
           return;
         }
       } catch (e) {
@@ -69,11 +66,9 @@ async function ensureSheetsApi(): Promise<void> {
     }
   }
 
-  console.log("[GoogleSheets] Still waiting for Sheets API...");
   for (let i = 0; i < 100; i++) { // Wait up to 10 seconds
     await new Promise(resolve => setTimeout(resolve, 100));
     if ((window as any).gapi?.client?.sheets) {
-      console.log("[GoogleSheets] Sheets API loaded successfully.");
       return;
     }
   }
@@ -107,7 +102,6 @@ async function getHeaders(sheetName: string): Promise<string[]> {
     });
 
     const headers = response.result.values?.[0] || [];
-    console.log(`[GoogleSheets] Headers for ${sheetName}:`, headers);
     // Debug: write headers to a file
     // (This is a hack, but I need to see the headers)
     // Actually, I cannot write to a file easily from here.
@@ -227,7 +221,6 @@ function colIndexToLetter(index: number): string {
 export async function getSheetData<T>(sheetName: string): Promise<T[]> {
   try {
     const headers = await getHeaders(sheetName);
-    console.log(`[GoogleSheets] Headers for ${sheetName}:`, headers);
     if (headers.length === 0) {
       console.warn(`[GoogleSheets] No headers found for ${sheetName}, returning empty array.`);
       return [];
@@ -241,7 +234,6 @@ export async function getSheetData<T>(sheetName: string): Promise<T[]> {
     });
 
     const rows = response.result.values || [];
-    console.log(`[GoogleSheets] Data for ${sheetName}:`, rows.length, "rows");
     return rows.map((row: any[], index: number) => 
       rowToObject<T>(headers, row, index + 2) // Row index starts at 2 (1-based, row 1 is headers)
     );
@@ -257,7 +249,6 @@ export async function getSheetData<T>(sheetName: string): Promise<T[]> {
  * @param record The object to append.
  */
 export async function appendRow(sheetName: string, record: any): Promise<void> {
-  console.log('[GoogleSheets] appendRow called:', sheetName, record);
   try {
     const headers = await getHeaders(sheetName);
     const row = objectToRow(headers, record);
@@ -272,11 +263,9 @@ export async function appendRow(sheetName: string, record: any): Promise<void> {
         values: [row],
       },
     });
-    console.log('Sheets API response:', JSON.stringify(response));
     if (response.status !== 200) {
       throw new Error(`Sheets API error: ${response.statusText || 'Unknown error'}`);
     }
-    console.log('[GoogleSheets] appendRow success');
   } catch (error: any) {
     console.error('[GoogleSheets] appendRow failed:', error);
     throw new Error(`Failed to append row to sheet: ${sheetName} - ${error.message || JSON.stringify(error)}`);
@@ -323,7 +312,6 @@ export async function updateRow(sheetName: string, rowIndex: number, updates: an
     
     await ensureSheetsApi();
 
-    console.log(`[GoogleSheets] Attempting batchUpdate for ${sheetName} row ${rowIndex}, data length: ${data.length}`);
     try {
       await (window as any).gapi.client.sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: SPREADSHEET_ID,
@@ -332,7 +320,6 @@ export async function updateRow(sheetName: string, rowIndex: number, updates: an
           data: data,
         },
       });
-      console.log(`[GoogleSheets] batchUpdate successful for ${sheetName} row ${rowIndex}`);
     } catch (apiError) {
       console.error(`[GoogleSheets] batchUpdate API error for ${sheetName} row ${rowIndex}:`, apiError);
       throw apiError;
@@ -354,7 +341,6 @@ export async function deleteRow(sheetName: string, rowIndex: number): Promise<vo
 
     await ensureSheetsApi();
 
-    console.log(`[GoogleSheets] Attempting deleteRow for ${sheetName} row ${rowIndex}, sheetId: ${sheetId}`);
     try {
       const response = await (window as any).gapi.client.sheets.spreadsheets.batchUpdate({
         spreadsheetId: SPREADSHEET_ID,
@@ -373,7 +359,6 @@ export async function deleteRow(sheetName: string, rowIndex: number): Promise<vo
           ],
         },
       });
-      console.log(`[GoogleSheets] deleteRow successful for ${sheetName} row ${rowIndex}`);
     } catch (apiError) {
       console.error(`[GoogleSheets] deleteRow API error for ${sheetName} row ${rowIndex}:`, apiError);
       throw apiError;
@@ -396,13 +381,11 @@ export async function findRowIndex(sheetName: string, id: string | number): Prom
 
     // Get headers to find the correct column for 'id'
     const headers = await getHeaders(sheetName);
-    console.log(`[GoogleSheets] findRowIndex: headers for ${sheetName}:`, headers);
     let idColIndex = headers.findIndex(h => normalizeKey(h) === 'id');
     if (idColIndex === -1) {
       idColIndex = headers.findIndex(h => normalizeKey(h).includes('id'));
     }
     const colLetter = idColIndex >= 0 ? colIndexToLetter(idColIndex) : 'A';
-    console.log(`[GoogleSheets] findRowIndex: idColIndex: ${idColIndex}, colLetter: ${colLetter}`);
 
     const response = await (window as any).gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
@@ -410,16 +393,13 @@ export async function findRowIndex(sheetName: string, id: string | number): Prom
     });
 
     const values = response.result.values || [];
-    console.log(`[GoogleSheets] findRowIndex: found ${values.length} rows.`);
     
     // Debug: log the first 20 rows to see what's happening
-    console.log(`[GoogleSheets] findRowIndex: first 20 rows:`, values.slice(0, 20).map((r: any[]) => r[0]));
 
     // Skip row 0 (header), find matching id
     for (let i = 1; i < values.length; i++) {
       const cellValue = values[i][0];
       if (String(cellValue) === String(id)) {
-        console.log(`[GoogleSheets] findRowIndex: found at row ${i + 1}`);
         return i + 1; // 1-based row index
       }
     }
@@ -453,12 +433,12 @@ export async function diagnoseSheetsConnection(): Promise<void> {
     '3_sheets_exists': !!g?.client?.sheets,
     '4_calendar_exists': !!g?.client?.calendar,
     '5_spreadsheet_id': import.meta.env.VITE_GOOGLE_SPREADSHEET_ID || 'NOT SET',
-    '6_token': localStorage.getItem('leadomancy_access_token') ? 'EXISTS (first 20 chars: ' + localStorage.getItem('leadomancy_access_token')!.slice(0,20) + ')' : 'NOT FOUND',
+    '6_token': localStorage.getItem('altair_access_token') ? 'EXISTS (first 20 chars: ' + localStorage.getItem('altair_access_token')!.slice(0,20) + ')' : 'NOT FOUND',
   };
 
   // Try a direct fetch to Sheets API without gapi
   const spreadsheetId = import.meta.env.VITE_GOOGLE_SPREADSHEET_ID;
-  const token = localStorage.getItem('leadomancy_access_token');
+  const token = localStorage.getItem('altair_access_token');
   
   if (spreadsheetId && token) {
     try {
@@ -476,6 +456,5 @@ export async function diagnoseSheetsConnection(): Promise<void> {
     result['7_direct_fetch'] = 'SKIPPED - missing spreadsheetId or token';
   }
 
-  console.log('=== DIAGNOSIS ===', result);
   alert(JSON.stringify(result, null, 2));
 }
