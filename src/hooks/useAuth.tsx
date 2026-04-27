@@ -55,11 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const grantedScopes = info.scope || "";
 
-      // Check if 'calendar' scope is present (either full or events)
-      if (!grantedScopes.includes('https://www.googleapis.com/auth/calendar')) {
-        console.warn("[Auth] Calendar scope missing. Forcing re-login.");
+      // Check if 'calendar' and 'tasks' scopes are present
+      const hasCalendar = grantedScopes.includes('https://www.googleapis.com/auth/calendar');
+      const hasTasks = grantedScopes.includes('https://www.googleapis.com/auth/tasks');
+
+      if (!hasCalendar || !hasTasks) {
+        console.warn("[Auth] Necessary scopes missing. Forcing re-login.");
         localStorage.removeItem('altair_access_token');
-        toast.error("Effettua di nuovo il login per abilitare il calendario");
+        const missing = !hasCalendar ? "calendario" : "task";
+        toast.error(`Effettua di nuovo il login per abilitare ${missing} di Google`);
         setUser(null);
         return false;
       }

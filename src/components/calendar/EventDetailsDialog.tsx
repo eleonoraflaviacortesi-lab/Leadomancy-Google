@@ -30,6 +30,7 @@ interface EventDetailsDialogProps {
   isOpen: boolean;
   onClose: () => void;
   calendars: GoogleCalendar[];
+  onToggleComplete?: (args: { id: string; completed: boolean }) => void;
 }
 
 const safeFormat = (date: Date | null | undefined, fmt: string, opts?: any) => {
@@ -45,7 +46,7 @@ const COLORS = [
 ];
 
 export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
-  event, isOpen, onClose, calendars
+  event, isOpen, onClose, calendars, onToggleComplete
 }) => {
   const { deleteAppointment, updateAppointment, toggleComplete } = useAppointments();
   const { clienti } = useClienti();
@@ -145,9 +146,12 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
   };
 
   const handleToggleComplete = () => {
-    toggleComplete({ id: event.id, completed: !event.originalData?.completed });
+    if (onToggleComplete) {
+      onToggleComplete({ id: event.id, completed: !event.originalData?.completed });
+    } else {
+      toggleComplete({ id: event.id, completed: !event.originalData?.completed });
+    }
     toast.success(event.originalData?.completed ? 'Riaperto' : 'Completato ✓');
-    // Do NOT close — let user see the updated state
   };
 
   const handleColorChange = (color: string | null) => {

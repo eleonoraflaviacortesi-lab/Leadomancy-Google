@@ -10,6 +10,7 @@ import {
   User, 
   Bell, 
   CheckCircle2, 
+  Check,
   Circle,
   Calendar as CalendarIcon,
   AlertCircle,
@@ -144,25 +145,31 @@ export const CalendarPage: React.FC = () => {
       if (event.originalData?.isGoogleTask) {
         const newStatus = completed ? 'completed' : 'needsAction';
         const taskId = event.originalData.googleTaskId;
+        const taskListId = event.originalData.googleTaskListId;
         try {
-          const listsResp = await (gapi.client as any).request({
-            path: 'https://tasks.googleapis.com/tasks/v1/users/@me/lists',
-            params: { maxResults: 20 }
-          });
-          const lists = listsResp.result.items || [];
-          for (const list of lists) {
-            try {
-              await (gapi.client as any).request({
-                path: `https://tasks.googleapis.com/tasks/v1/lists/${list.id}/tasks/${taskId}`,
-                method: 'PATCH',
-                body: JSON.stringify({ status: newStatus }),
-              });
-              queryClient.invalidateQueries({ queryKey: ['google-tasks'] });
-              fetchGoogleTasks();
-              toast.success(completed ? "Task completato" : "Task riaperto");
-              break;
-            } catch { continue; }
+          if (taskListId) {
+            await (gapi.client as any).tasks.tasks.patch({
+              tasklist: taskListId,
+              task: taskId,
+              resource: { status: newStatus },
+            });
+          } else {
+            // Fallback: prova tutte le liste
+            const listsResp = await (gapi.client as any).tasks.tasklists.list({ maxResults: 20 });
+            const lists = listsResp.result.items || [];
+            for (const list of lists) {
+              try {
+                await (gapi.client as any).tasks.tasks.patch({
+                  tasklist: list.id,
+                  task: taskId,
+                  resource: { status: newStatus },
+                });
+                break;
+              } catch { continue; }
+            }
           }
+          await fetchGoogleTasks();
+          toast.success(completed ? 'Task completato' : 'Task riaperto');
         } catch (e) {
           console.error('[GoogleTasks] toggle failed:', e);
           toast.error('Errore nel completare il task');
@@ -359,6 +366,7 @@ export const CalendarPage: React.FC = () => {
           notes: gTask.notes || '',
           isGoogleTask: true,
           googleTaskId: gTask.id,
+          googleTaskListId: (gTask as any).googleTaskListId,
           calendarColor: '#4285F4',
           type: 'task',
         }
@@ -655,6 +663,7 @@ export const CalendarPage: React.FC = () => {
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         calendars={calendars}
+        onToggleComplete={handleToggleComplete}
       />
 
       <CalendarContextMenu
@@ -674,7 +683,8 @@ const MonthEventItem: React.FC<{
   colors: any;
   onEventClick: (event: CalendarEvent) => void;
   onContextMenu: (e: React.MouseEvent | React.TouchEvent, event: CalendarEvent) => void;
-}> = ({ event, colors, onEventClick, onContextMenu }) => {
+  toggleComplete: (args: { id: string; completed: boolean }) => void;
+}> = ({ event, colors, onEventClick, onContextMenu, toggleComplete }) => {
   const longPressProps = useLongPress(
     (e) => onContextMenu(e, event),
     () => onEventClick(event)
@@ -682,7 +692,7 @@ const MonthEventItem: React.FC<{
 
   const backgroundColor = event.originalData?.card_color || (
     event.type === 'task' 
-      ? (event.originalData?.completed ? 'var(--bg-subtle)' : colors.task)
+      ? (event.originalData?.completed ? 'var(--bg-subtle)' : (event.originalData?.calendarColor || colors.task))
       : (
           event.originalData?.cliente_id ? colors.cliente_reminder :
           event.originalData?.notizia_id ? colors.notizia_reminder :
@@ -702,7 +712,7 @@ const MonthEventItem: React.FC<{
       {...longPressProps}
       onContextMenu={(e) => onContextMenu(e, event)}
       className={cn(
-        "h-5 px-1.5 rounded-[4px] text-[11px] font-outfit font-medium truncate flex items-center"
+        "h-5 px-1.5 rounded-[4px] text-[11px] font-outfit font-medium truncate flex items-center gap-1"
       )}
       style={{ 
         backgroundColor,
@@ -710,11 +720,24 @@ const MonthEventItem: React.FC<{
           event.type === 'cliente_reminder' ? '#3B2B8A' :
           event.type === 'notizia_reminder' ? '#5C3800' :
           event.type === 'task' ? '#2B3A5C' : '#1A1A18'
-        )
+        ),
+        opacity: event.originalData?.completed ? 0.6 : 1
       }}
     >
-      {event.type === 'task' && (event.originalData?.completed ? '✓ ' : '○ ')}
-      {!event.allDay && format(event.start, 'HH:mm')} {event.title}
+      {event.type === 'task' && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleComplete({ id: event.id, completed: !event.originalData?.completed });
+          }}
+          className="flex items-center justify-center p-0.5 bg-white shadow-sm border border-black/10 rounded-sm hover:scale-110 active:scale-95 transition-all cursor-pointer"
+        >
+          {event.originalData?.completed ? <Check size={10} className="text-[#6DC88A]" strokeWidth={3} /> : <div className="w-2 h-2" />}
+        </button>
+      )}
+      <span className={cn(event.originalData?.completed && "line-through")}>
+        {!event.allDay && format(event.start, 'HH:mm')} {event.title}
+      </span>
     </div>
   );
 };
@@ -781,6 +804,7 @@ const MonthView: React.FC<{
                   colors={colors}
                   onEventClick={onEventClick}
                   onContextMenu={onContextMenu}
+                  toggleComplete={toggleComplete}
                 />
               ))}
               {overflowCount > 0 && (
@@ -812,7 +836,7 @@ const TimeGridEventItem: React.FC<{
   );
 
   if (event.type === 'task') {
-    const backgroundColor = event.originalData?.card_color || (event.originalData?.completed ? 'var(--bg-subtle)' : colors.task);
+    const backgroundColor = event.originalData?.card_color || (event.originalData?.completed ? 'var(--bg-subtle)' : (event.originalData?.calendarColor || colors.task));
     const textColor = getContrastColor(backgroundColor);
 
     return (
@@ -826,7 +850,7 @@ const TimeGridEventItem: React.FC<{
           return {
             ...getEventStyle(event),
             background: backgroundColor,
-            borderLeft: '3px solid #6DC88A',
+            borderLeft: event.originalData?.calendarColor ? `3px solid ${event.originalData.calendarColor}` : '3px solid #6DC88A',
             borderRadius: 6,
             padding: '3px 7px',
             display: 'flex', alignItems: 'center', gap: 5,
@@ -838,7 +862,7 @@ const TimeGridEventItem: React.FC<{
             width: `${pos.width}%`,
             right: 'unset',
             zIndex: pos.zIndex,
-            color: textColor === 'white' ? '#FFFFFF' : '#2B3A5C'
+            color: textColor === 'white' ? '#FFFFFF' : (event.originalData?.calendarColor ? '#FFFFFF' : '#2B3A5C')
           };
         })()}
       >
@@ -848,11 +872,12 @@ const TimeGridEventItem: React.FC<{
             e.stopPropagation(); 
             toggleComplete({ id: event.id, completed: !event.originalData?.completed });
           }}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+          className="flex items-center justify-center bg-white shadow-sm border border-black/10 rounded-sm hover:scale-110 active:scale-95 transition-all cursor-pointer"
+          style={{ width: 14, height: 14, flexShrink: 0 }}
         >
           {event.originalData?.completed
-            ? <CheckCircle2 size={12} style={{ color: textColor === 'white' ? '#FFFFFF' : '#6DC88A' }} />
-            : <Circle size={12} style={{ color: textColor === 'white' ? 'rgba(255,255,255,0.6)' : 'var(--text-muted)' }} />
+            ? <Check size={10} className="text-[#6DC88A]" strokeWidth={3} />
+            : <div className="w-2.5 h-2.5 bg-transparent" />
           }
         </button>
         <span style={{
@@ -1115,7 +1140,7 @@ const TimeGridView: React.FC<{
         </div>
         <div className="flex-1 flex divide-x divide-[var(--border-calendar)]">
           {days.map(day => {
-            const dayReminders = events.filter(e => e.allDay && e.type !== 'task' && isSameDay(e.start, day));
+            const dayReminders = events.filter(e => e.allDay && isSameDay(e.start, day));
             return (
               <div 
                 key={day.toISOString()} 
@@ -1131,8 +1156,13 @@ const TimeGridView: React.FC<{
                         style={{
                           display: 'flex', alignItems: 'center', gap: 5,
                           padding: '2px 7px', borderRadius: 6, cursor: 'pointer',
-                          background: 'white', border: '1px solid var(--border-light)',
-                          opacity: rem.originalData?.completed ? 0.5 : 1, marginBottom: 2
+                          background: rem.originalData?.completed ? 'var(--bg-subtle)' : (rem.originalData?.calendarColor || 'white'),
+                          color: rem.originalData?.completed 
+                            ? 'var(--text-muted)' 
+                            : (rem.originalData?.calendarColor ? '#FFFFFF' : 'var(--text-primary)'),
+                          border: rem.originalData?.calendarColor ? 'none' : '1px solid var(--border-light)',
+                          opacity: rem.originalData?.completed ? 0.7 : 1, 
+                          marginBottom: 2
                         }}
                       >
                         <button
@@ -1141,11 +1171,12 @@ const TimeGridView: React.FC<{
                             e.stopPropagation();
                             toggleComplete({ id: rem.id, completed: !rem.originalData?.completed });
                           }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
+                          className="flex items-center justify-center bg-white shadow-sm border border-black/10 rounded-sm hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                          style={{ width: 14, height: 14, flexShrink: 0 }}
                         >
                           {rem.originalData?.completed
-                            ? <CheckCircle2 size={12} style={{ color: '#6DC88A', flexShrink: 0 }} />
-                            : <Circle size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                            ? <Check size={10} className="text-[#6DC88A]" strokeWidth={3} />
+                            : <div className="w-2.5 h-2.5 bg-transparent" />
                           }
                         </button>
                         <span style={{
