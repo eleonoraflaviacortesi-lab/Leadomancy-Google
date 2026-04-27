@@ -10,69 +10,91 @@ export async function searchPropertiesOnline(
   
   const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-  // Fetch the site's property listing page via backend proxy (to avoid CORS)
-  let siteContent = '';
-  const urlsToTry = [
-    'https://cortesiluxuryrealestate.com/ricerca/?post_type=immobili',
-    'https://cortesiluxuryrealestate.com/immobili/',
-    'https://cortesiluxuryrealestate.com/'
+  let propertiesContent = '';
+
+  // Try WordPress REST API first — returns structured JSON, no scraping needed
+  const apiUrls = [
+    'https://cortesiluxuryrealestate.com/wp-json/wp/v2/immobili?per_page=20&_fields=id,title,link,excerpt,meta,acf',
+    'https://cortesiluxuryrealestate.com/wp-json/wp/v2/immobili?per_page=20',
+    'https://api.allorigins.win/get?url=' + encodeURIComponent('https://cortesiluxuryrealestate.com/immobili/'),
   ];
 
-  for (const targetUrl of urlsToTry) {
+  for (const url of apiUrls) {
     try {
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-      const res = await fetch(proxyUrl);
+      const res = await fetch(url, {
+        headers: { 'Accept': 'application/json, text/html' }
+      });
       if (!res.ok) continue;
-      const json = await res.json();
-      const html = json.contents || '';
-      console.log(`[Gemini] Raw HTML length from ${targetUrl}:`, html.length);
-      
-      // Basic check: if HTML is tiny, it might be a block or empty page
-      if (html.length < 500) continue;
 
-      // Extract text content, focusing on what looks like property info
-      // (Removing scripts, styles, and tags, then normalizing spaces)
-      let processed = html
-        .replace(/<script[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[\s\S]*?<\/style>/gi, '')
-        .replace(/<footer[\s\S]*?<\/footer>/gi, '')
-        .replace(/<header[\s\S]*?<\/header>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
+      const contentType = res.headers.get('content-type') || '';
 
-      if (processed.length > 500) {
-        siteContent = processed.slice(0, 10000); // Increased to 10k
-        console.log(`[Gemini] Using content from ${targetUrl}`);
-        break;
+      if (contentType.includes('application/json')) {
+        // WordPress REST API — structured data
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          propertiesContent = data.map((p: any) => {
+            const title = p.title?.rendered || p.title || '';
+            const link = p.link || '';
+            const excerpt = p.excerpt?.rendered || '';
+            const acf = p.acf || {};
+            return [
+              `Titolo: ${title}`,
+              `URL: ${link}`,
+              acf.prezzo ? `Prezzo: ${acf.prezzo}` : '',
+              acf.zona || acf.localita ? `Zona: ${acf.zona || acf.localita}` : '',
+              acf.superficie || acf.mq ? `Mq: ${acf.superficie || acf.mq}` : '',
+              acf.camere ? `Camere: ${acf.camere}` : '',
+              acf.bagni ? `Bagni: ${acf.bagni}` : '',
+              excerpt ? `Descrizione: ${excerpt.replace(/<[^>]+>/g, '').slice(0, 200)}` : '',
+            ].filter(Boolean).join(' | ');
+          }).join('\n\n');
+          break;
+        }
+      } else {
+        // Fallback HTML scraping
+        const text = contentType.includes('application/json')
+          ? (await res.json()).contents || ''
+          : await res.text();
+        const html = typeof text === 'string' ? text : JSON.stringify(text);
+        if (html.length < 500) continue;
+        propertiesContent = html
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[\s\S]*?<\/style>/gi, '')
+          .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+          .replace(/<header[\s\S]*?<\/header>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 10000);
+        if (propertiesContent.length > 500) break;
       }
     } catch (e) {
-      console.warn(`[Gemini] Failed to fetch ${targetUrl}`, e);
+      continue;
     }
   }
 
-  if (!siteContent) {
-    siteContent = 'Impossibile accedere al catalogo aggiornato del sito in questo momento.';
+  if (!propertiesContent) {
+    propertiesContent = 'Catalogo non disponibile al momento.';
   }
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-preview-04-17',
+    model: 'gemini-3-flash-preview',
     contents: [{
       role: 'user',
-      parts: [{ text: `${clienteProfile}\n\nCONTENUTO PAGINA SITO:\n${siteContent}` }]
+      parts: [{ text: `${clienteProfile}\n\nPROPRIETÀ DISPONIBILI NEL CATALOGO:\n${propertiesContent}` }]
     }],
     config: {
       systemInstruction: `Sei un consulente immobiliare di Cortesi Luxury Real Estate.
-Analizza il contenuto del sito fornito e trova le proprietà più adatte al profilo cliente riportato nel prompt.
-Usa SOLO le proprietà che trovi realmente nel testo fornito (cerca titoli, prezzi, zone).
-Ritorna i dati in lingua italiana.
-Se non trovi proprietà adatte tra quelle elencate nel testo, restituisci un array vuoto [].
-Non inventare mai dati o link.`,
+Analizza le proprietà del catalogo fornito e seleziona le TOP 3 più compatibili con le necessità del cliente.
+Usa SOLO proprietà presenti nel catalogo — non inventare mai titoli, URL o prezzi.
+Per l'URL usa il link esatto trovato nel catalogo.
+Se non ci sono proprietà compatibili restituisci [].
+Rispondi ONLY con un array JSON valido, nessun testo prima o dopo:
+[{"titolo":"...","rif":"...","zona":"...","prezzo":"...","mq":"...","camere":"...","bagni":"...","url":"...","immagine":"","motivazione":"...","compatibilita":8}]`,
       responseMimeType: 'application/json',
     },
   });
 
-  console.log('[Gemini] Raw response:', response.text);
   return response.text || '[]';
 }
 
@@ -95,7 +117,7 @@ export async function callGemini(
   const fetchWithRetry = async (retryCount = 0): Promise<string> => {
     try {
       const response: GenerateContentResponse = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-04-17",
+        model: "gemini-3-flash-preview",
         contents: messages,
         config: {
           systemInstruction: systemInstruction,

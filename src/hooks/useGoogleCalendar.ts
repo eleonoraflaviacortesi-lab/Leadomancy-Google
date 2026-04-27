@@ -25,6 +25,16 @@ export interface GoogleCalendarEvent {
   location?: string;
 }
 
+export interface GoogleTask {
+  id: string;
+  title: string;
+  due?: string;        // RFC 3339 date
+  completed?: string;  // RFC 3339 datetime if completed
+  status: 'needsAction' | 'completed';
+  notes?: string;
+  selfLink?: string;
+}
+
 export function useGoogleCalendar() {
   const { isAuthenticated, user } = useAuth();
   const [calendars, setCalendars] = useState<GoogleCalendar[]>([]);
@@ -35,6 +45,7 @@ export function useGoogleCalendar() {
 
   const [visibleCalendarIds, setVisibleCalendarIds] = useState<string[]>([]);
   const [events, setEvents] = useState<GoogleCalendarEvent[]>([]);
+  const [tasks, setTasks] = useState<GoogleTask[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<any>(null);
   const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
@@ -89,6 +100,41 @@ export function useGoogleCalendar() {
     } finally {
       setIsLoading(false);
       setHasAttemptedFetch(true);
+    }
+  }, [isAuthenticated]);
+
+  const fetchGoogleTasks = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      // Get task lists
+      const listsResp = await (gapi.client as any).request({
+        path: 'https://tasks.googleapis.com/tasks/v1/users/@me/lists',
+        params: { maxResults: 20 }
+      });
+      const lists = listsResp.result.items || [];
+
+      // Fetch tasks from all lists
+      const allTasks: GoogleTask[] = [];
+      await Promise.all(lists.map(async (list: any) => {
+        try {
+          const tasksResp = await (gapi.client as any).request({
+            path: `https://tasks.googleapis.com/tasks/v1/lists/${list.id}/tasks`,
+            params: {
+              maxResults: 100,
+              showCompleted: true,
+              showHidden: false,
+              dueMin: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+              dueMax: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+            }
+          });
+          const items = tasksResp.result.items || [];
+          allTasks.push(...items.filter((t: any) => t.due || t.title));
+        } catch { /* skip failing lists */ }
+      }));
+
+      setTasks(allTasks);
+    } catch (e) {
+      console.error('[GoogleTasks] fetch failed:', e);
     }
   }, [isAuthenticated]);
 
@@ -167,16 +213,18 @@ export function useGoogleCalendar() {
     if (!isAuthenticated) return;
     if (calendars.length === 0) return;
     fetchEventsForIds(visibleCalendarIds, calendars);
-  }, [visibleCalendarIds, calendars, isAuthenticated]);
+    fetchGoogleTasks();
+  }, [visibleCalendarIds, calendars, isAuthenticated, fetchGoogleTasks]);
 
   // EFFECT 3: polling every 60s
   useEffect(() => {
     if (!isAuthenticated) return;
     const interval = setInterval(() => {
       fetchEventsForIds(visibleCalendarIds, calendarsRef.current);
+      fetchGoogleTasks();
     }, 60000);
     return () => clearInterval(interval);
-  }, [isAuthenticated, visibleCalendarIds]);
+  }, [isAuthenticated, visibleCalendarIds, fetchGoogleTasks]);
 
   const toggleCalendar = useCallback((id: string) => {
     setVisibleCalendarIds(prev => {
@@ -225,6 +273,7 @@ export function useGoogleCalendar() {
     calendars,
     visibleCalendarIds,
     events,
+    tasks,
     isLoading,
     error,
     hasAttemptedFetch,
@@ -232,5 +281,6 @@ export function useGoogleCalendar() {
     toggleAll,
     refreshEvents,
     updateEvent,
+    fetchGoogleTasks,
   };
 }

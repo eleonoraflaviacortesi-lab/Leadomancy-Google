@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { gapi } from "gapi-script";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -39,6 +40,7 @@ import {
   subWeeks
 } from "date-fns";
 import { it } from "date-fns/locale";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAppointments } from "@/src/hooks/useAppointments";
 import { useClienti } from "@/src/hooks/useClienti";
 import { useNotizie } from "@/src/hooks/useNotizie";
@@ -92,6 +94,7 @@ export const CalendarPage: React.FC = () => {
     return window.innerWidth < 1280; // Only collapse by default on smaller screens
   });
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const localVisibilityKey = useMemo(() => 
     user?.email ? `altair-visible-local-types-${user.email}` : 'altair-visible-local-types'
   , [user?.email]);
@@ -120,16 +123,55 @@ export const CalendarPage: React.FC = () => {
     calendars, 
     visibleCalendarIds, 
     events: googleEvents, 
+    tasks: googleTasks,
     isLoading: isGoogleLoading,
     hasAttemptedFetch,
     toggleCalendar,
     toggleAll,
     error: googleError,
-    updateEvent: updateGoogleEvent
+    updateEvent: updateGoogleEvent,
+    fetchGoogleTasks
   } = useGoogleCalendar();
   const { clienti, updateCliente } = useClienti();
   const { notizie, updateNotizia } = useNotizie();
   const { isAuthenticated } = useAuth();
+
+  const handleToggleComplete = async ({ id: eventId, completed }: { id: string; completed: boolean }) => {
+    const event = allEvents.find(e => e.id === eventId);
+    if (!event) return;
+
+    if (event.type === 'task') {
+      if (event.originalData?.isGoogleTask) {
+        const newStatus = completed ? 'completed' : 'needsAction';
+        const taskId = event.originalData.googleTaskId;
+        try {
+          const listsResp = await (gapi.client as any).request({
+            path: 'https://tasks.googleapis.com/tasks/v1/users/@me/lists',
+            params: { maxResults: 20 }
+          });
+          const lists = listsResp.result.items || [];
+          for (const list of lists) {
+            try {
+              await (gapi.client as any).request({
+                path: `https://tasks.googleapis.com/tasks/v1/lists/${list.id}/tasks/${taskId}`,
+                method: 'PATCH',
+                body: JSON.stringify({ status: newStatus }),
+              });
+              queryClient.invalidateQueries({ queryKey: ['google-tasks'] });
+              fetchGoogleTasks();
+              toast.success(completed ? "Task completato" : "Task riaperto");
+              break;
+            } catch { continue; }
+          }
+        } catch (e) {
+          console.error('[GoogleTasks] toggle failed:', e);
+          toast.error('Errore nel completare il task');
+        }
+      } else {
+        await toggleComplete({ id: eventId, completed });
+      }
+    }
+  };
 
   const calendarRef = useRef<HTMLDivElement>(null);
 
@@ -297,8 +339,34 @@ export const CalendarPage: React.FC = () => {
       }
     });
 
+    // Google Tasks
+    googleTasks.forEach(gTask => {
+      if (!gTask.due) return;
+      const due = parseISO(gTask.due);
+      
+      events.push({
+        id: `gtask-${gTask.id}`,
+        title: gTask.title || '(Task senza titolo)',
+        start: due,
+        end: due,
+        type: 'task',
+        allDay: true,
+        originalData: {
+          id: `gtask-${gTask.id}`,
+          title: gTask.title,
+          completed: gTask.status === 'completed',
+          card_color: null,
+          notes: gTask.notes || '',
+          isGoogleTask: true,
+          googleTaskId: gTask.id,
+          calendarColor: '#4285F4',
+          type: 'task',
+        }
+      });
+    });
+
     return events;
-  }, [appointments, googleEvents, clienti, notizie, overrides]);
+  }, [appointments, googleEvents, googleTasks, clienti, notizie, overrides, calendars, visibleLocalTypes]);
 
   // Sync selectedEvent with the latest allEvents after every refetch
   useEffect(() => {
@@ -549,7 +617,7 @@ export const CalendarPage: React.FC = () => {
                   }}
                   onEventClick={handleEventClick}
                   onContextMenu={handleContextMenu}
-                  toggleComplete={toggleComplete}
+                  toggleComplete={handleToggleComplete}
                 />
               ) : (
                 <TimeGridView 
@@ -561,7 +629,7 @@ export const CalendarPage: React.FC = () => {
                   onContextMenu={handleContextMenu}
                   onTimeRangeSelect={handleTimeRangeSelect}
                   onEventDrop={handleEventDrop}
-                  toggleComplete={toggleComplete}
+                  toggleComplete={handleToggleComplete}
                 />
               )}
             </motion.div>

@@ -15,6 +15,8 @@ import { it } from "date-fns/locale";
 import { toast } from "sonner";
 import { Appointment } from "@/src/types";
 
+import { ColorPicker } from "@/src/components/ui/ColorPicker";
+
 interface EventDetailsDialogProps {
   event: {
     id: string;
@@ -511,60 +513,22 @@ export const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
                     <span className="text-[10px] font-outfit font-bold text-[var(--text-muted)] uppercase tracking-widest">
                       Colore Scheda
                     </span>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {COLORS.map(color => (
-                        <button
-                          key={color}
-                          type="button"
-                          onClick={() => handleColorChange(color)}
-                          className="w-7 h-7 rounded-full border-none cursor-pointer shrink-0 transition-all hover:scale-110 active:scale-95"
-                          style={{
-                            backgroundColor: color,
-                            outline: localCardColor === color ? '2px solid #1A1A18' : '1.5px solid rgba(0,0,0,0.05)',
-                            outlineOffset: localCardColor === color ? 2 : 0,
-                          }}
-                        />
-                      ))}
-
-                      {favorites.map(color => (
-                        <button
-                          key={color}
-                          type="button"
-                          onClick={() => handleColorChange(color)}
-                          className="w-7 h-7 rounded-full border-none cursor-pointer shrink-0 transition-all hover:scale-110 active:scale-95"
-                          style={{
-                            backgroundColor: color,
-                            outline: localCardColor === color ? '2px solid #1A1A18' : '1.5px solid rgba(0,0,0,0.05)',
-                            outlineOffset: localCardColor === color ? 2 : 0,
-                          }}
-                        />
-                      ))}
-                      
-                      {/* Custom color picker button */}
-                      <button
-                        type="button"
-                        onClick={() => colorInputRef.current?.click()}
-                        className="w-7 h-7 rounded-full border-2 border-dashed border-[var(--border-medium)] bg-transparent cursor-pointer shrink-0 flex items-center justify-center text-[18px] text-[var(--text-muted)] leading-none hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] transition-colors"
-                      >+</button>
-                      
-                      <input
-                        ref={colorInputRef}
-                        type="color"
-                        value={localCardColor || '#ffffff'}
-                        onChange={e => handleColorChange(e.target.value)}
-                        className="absolute opacity-0 w-0 h-0 pointer-events-none"
+                    <div className="flex items-center gap-3">
+                      <ColorPicker 
+                        color={localCardColor || '#F5F5F0'} 
+                        onChange={handleColorChange}
+                        className="flex-1"
                       />
+                      {localCardColor && (
+                        <button
+                          type="button"
+                          onClick={() => handleColorChange(null)}
+                          className="text-[11px] font-bold text-[var(--rose-fg)] hover:underline"
+                        >
+                          Rimuovi
+                        </button>
+                      )}
                     </div>
-                    
-                    {localCardColor && (
-                      <button
-                        type="button"
-                        onClick={() => handleColorChange(null)}
-                        className="text-[11px] text-[var(--text-muted)] bg-transparent border-none cursor-pointer p-0 hover:underline text-left font-medium w-fit"
-                      >
-                        × Rimuovi colore
-                      </button>
-                    )}
                   </div>
                 )}
               </div>

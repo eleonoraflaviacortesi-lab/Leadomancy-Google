@@ -143,7 +143,7 @@ export function useNotizie() {
     onSettled: () => {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey });
-      }, 10000);
+      }, 3000);
     },
   });
 
@@ -303,7 +303,7 @@ export function useNotizie() {
     onSettled: () => {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey });
-      }, 10000);
+      }, 3000);
     },
   });
 

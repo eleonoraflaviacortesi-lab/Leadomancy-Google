@@ -570,13 +570,17 @@ Rispondi SOLO con questo JSON (nessun testo aggiuntivo):
 
       const response = await searchPropertiesOnline(prompt);
       
-      const jsonMatch = response.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) throw new Error('Nessuna proprietà trovata');
-      
-      const results: PropertyMatch[] = JSON.parse(jsonMatch[0]);
-      if (!Array.isArray(results) || results.length === 0) {
-        throw new Error('Nessuna proprietà trovata');
+      let results: PropertyMatch[] = [];
+      try {
+        const cleaned = response.trim();
+        const parsed = JSON.parse(cleaned);
+        results = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        const jsonMatch = response.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) throw new Error('Nessuna proprietà trovata');
+        results = JSON.parse(jsonMatch[0]);
       }
+      if (results.length === 0) throw new Error('Nessuna proprietà trovata');
       
       results.forEach(r => {
         const exists = propertyMatches.some(m => m.url === r.url);

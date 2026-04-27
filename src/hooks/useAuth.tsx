@@ -21,7 +21,7 @@ const DISCOVERY_DOCS = [
   "https://www.googleapis.com/discovery/v1/apis/sheets/v4/rest",
   "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"
 ];
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 
 // Helper to ensure gapi is loaded
 const waitForGapi = (): Promise<void> => {

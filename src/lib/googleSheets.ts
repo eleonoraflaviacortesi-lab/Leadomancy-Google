@@ -425,6 +425,7 @@ export function clearHeaderCache(sheetName?: string): void {
 }
 
 export async function diagnoseSheetsConnection(): Promise<void> {
+  if (import.meta.env.PROD) return;
   const g = (window as any).gapi;
   
   const result: Record<string, any> = {

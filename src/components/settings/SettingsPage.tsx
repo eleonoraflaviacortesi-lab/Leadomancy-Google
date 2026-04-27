@@ -28,6 +28,8 @@ import { useFavoriteColors } from '@/src/hooks/useFavoriteColors';
 import { toast } from "sonner";
 import { cn } from "@/src/lib/utils";
 
+import { ColorPicker } from "@/src/components/ui/ColorPicker";
+
 const KANBAN_COLOR_PALETTE = [
   '#C0C8D8', '#C8B8F5', '#B8E0C8', '#F5E642', '#6DC88A', '#F5C842', '#F5A0B0', '#1A1A18',
   '#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#6366f1', '#ec4899', '#6b7280',
@@ -53,14 +55,12 @@ const FavoriteColorsManager = () => {
         {favorites.map((color) => (
           <div key={color} className="flex items-center gap-3 p-3 bg-white border border-[var(--border-light)] rounded-xl">
             {/* Color preview + edit */}
-            <div className="relative w-8 h-8 rounded-full border border-black/10 overflow-hidden flex-shrink-0" style={{ backgroundColor: color }}>
-              <input
-                type="color"
-                value={color}
-                onChange={(e) => updateColor(color, e.target.value)}
-                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                title="Modifica colore"
-              />
+            <div className="relative w-8 h-8 flex-shrink-0">
+               <ColorPicker 
+                 color={color} 
+                 onChange={(newVal) => updateColor(color, newVal)} 
+                 className="w-8"
+               />
             </div>
             <span className="font-outfit font-mono text-[12px] text-[var(--text-muted)] flex-1">
               {color}
@@ -78,12 +78,11 @@ const FavoriteColorsManager = () => {
 
       {/* Add new color */}
       <div className="flex items-center gap-3">
-        <div className="relative w-8 h-8 rounded-full border border-black/10 overflow-hidden flex-shrink-0" style={{ backgroundColor: newColor }}>
-          <input
-            type="color"
-            value={newColor}
-            onChange={(e) => setNewColor(e.target.value)}
-            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+        <div className="relative w-8 h-8 flex-shrink-0">
+          <ColorPicker 
+            color={newColor} 
+            onChange={setNewColor} 
+            className="w-8"
           />
         </div>
         <span className="font-outfit font-mono text-[12px] text-[var(--text-muted)] flex-1">{newColor}</span>
@@ -484,27 +483,17 @@ const BannerTickerSettings = () => {
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Colore Sfondo</label>
-          <div className="flex items-center gap-2">
-            <input 
-              type="color"
-              value={localSettings.bgColor}
-              onChange={(e) => handleChange('bgColor', e.target.value)}
-              className="w-8 h-8 rounded border-0 p-0 overflow-hidden cursor-pointer"
-            />
-            <span className="text-[12px] font-mono uppercase">{localSettings.bgColor}</span>
-          </div>
+          <ColorPicker 
+            color={localSettings.bgColor} 
+            onChange={(c) => handleChange('bgColor', c)} 
+          />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Colore Testo</label>
-          <div className="flex items-center gap-2">
-            <input 
-              type="color"
-              value={localSettings.textColor}
-              onChange={(e) => handleChange('textColor', e.target.value)}
-              className="w-8 h-8 rounded border-0 p-0 overflow-hidden cursor-pointer"
-            />
-            <span className="text-[12px] font-mono uppercase">{localSettings.textColor}</span>
-          </div>
+          <ColorPicker 
+            color={localSettings.textColor} 
+            onChange={(c) => handleChange('textColor', c)} 
+          />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase">Velocità (secondi per loop)</label>
