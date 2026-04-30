@@ -133,12 +133,13 @@ export function useAppointments() {
         return;
       }
       const appointment = appointments.find(a => a.id === updates.id);
-      const finalUpdates = { ...updates, updated_at: new Date().toISOString() };
+      const { silent, ...cleanUpdates } = updates as any;
+      const finalUpdates = { ...cleanUpdates, updated_at: new Date().toISOString() };
       const promises: Promise<any>[] = [
         updateRow(SHEETS.appointments, rowIndex, finalUpdates)
       ];
-      if (appointment?.google_event_id && !((updates as any).silent)) {
-        promises.push(updateCalendarEvent(appointment.google_event_id, { ...appointment, ...updates } as Appointment));
+      if (appointment?.google_event_id && !silent) {
+        promises.push(updateCalendarEvent(appointment.google_event_id, { ...appointment, ...cleanUpdates } as Appointment));
       }
       await Promise.allSettled(promises);
     },

@@ -288,7 +288,6 @@ export async function updateRow(sheetName: string, rowIndex: number, updates: an
       const normalizedKey = normalizeKey(key);
       const colIndex = headers.findIndex(h => normalizeKey(h) === normalizedKey);
       if (colIndex === -1) {
-        toast.error(`Key '${key}' not found in headers: ${headers.join(', ')}`);
         console.warn(`[GoogleSheets] Key '${key}' (normalized: '${normalizedKey}') not found in headers, skipping update for this field.`);
         continue;
       }
