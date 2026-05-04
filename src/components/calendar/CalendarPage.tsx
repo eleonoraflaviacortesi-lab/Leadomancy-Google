@@ -312,8 +312,14 @@ export const CalendarPage: React.FC = () => {
           originalData: {
             ...gEvent,
             card_color: override?.card_color || null,
-            calendarId: gEvent.organizer?.email || 'primary',
-            completed: false // Default for events that look like tasks but aren't in the Tasks API
+            calendarId: gEvent.calendarId || 'primary',
+            completed: false,
+            ...(isBasicallyTask ? {
+              isGoogleTask: true,
+              googleTaskId: gEvent.id,
+              calendarColor: gEvent.calendarColor || '#4285F4',
+              type: 'task',
+            } : {})
           }
         });
       }
