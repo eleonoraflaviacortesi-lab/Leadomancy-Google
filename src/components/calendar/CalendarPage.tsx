@@ -294,7 +294,7 @@ export const CalendarPage: React.FC = () => {
         // or they might just be in a calendar that is technically for tasks.
         // Also deduplicate: if this event looks exactly like one of our googleTasks, skip it
         // since we prefer the googleTasks data (which has completion status).
-        const isBasicallyTask = (gEvent as any).eventType === 'task';
+        const isBasicallyTask = (gEvent as any).eventType === 'task' || (gEvent as any).calendarId === '@tasks';
         const isDuplicateOfTask = googleTasks.some(t => 
           t.title === gEvent.summary && 
           t.due && isSameDay(parseISO(t.due), start)

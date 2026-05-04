@@ -105,8 +105,29 @@ export function useGoogleCalendar() {
         )
       );
 
+      // Fetcha anche il calendario speciale @tasks
+      let taskCalendarEvents: any[] = [];
+      try {
+        const taskResp = await (gapi.client as any).calendar.events.list({
+          calendarId: '@tasks',
+          timeMin,
+          timeMax,
+          maxResults: 250,
+          singleEvents: true,
+          orderBy: 'startTime'
+        });
+        taskCalendarEvents = (taskResp.result.items || []).map((ev: any) => ({
+          ...ev,
+          calendarId: '@tasks',
+          calendarColor: '#4285F4',
+          eventType: 'task'
+        }));
+      } catch {
+        // @tasks potrebbe non essere disponibile
+      }
+
       const unique = Array.from(
-        new Map(results.flat().map(e => [e.id, e])).values()
+        new Map([...results.flat(), ...taskCalendarEvents].map(e => [e.id, e])).values()
       );
       setEvents(unique);
     } catch (err) {
