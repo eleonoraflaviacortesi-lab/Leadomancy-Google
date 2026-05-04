@@ -23,6 +23,7 @@ export interface GoogleCalendarEvent {
   htmlLink?: string;
   description?: string;
   location?: string;
+  eventType?: 'default' | 'outOfOffice' | 'workingLocation' | 'focusTime' | 'task';
 }
 
 export interface GoogleTask {
@@ -97,7 +98,8 @@ export function useGoogleCalendar() {
             return (resp.result.items || []).map((ev: any) => ({
               ...ev,
               calendarId: id,
-              calendarColor: cal?.backgroundColor || '#1a73e8'
+              calendarColor: cal?.backgroundColor || '#1a73e8',
+              eventType: ev.eventType
             }));
           }).catch(() => [])
         )

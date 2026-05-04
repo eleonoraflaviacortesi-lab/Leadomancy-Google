@@ -77,8 +77,6 @@ async function ensureSheetsApi(): Promise<void> {
   throw new Error("Sheets API not loaded");
 }
 
-// Clear cache on startup
-clearHeaderCache();
 
 /**
  * Fetches and caches the headers (row 1) of a specific sheet.

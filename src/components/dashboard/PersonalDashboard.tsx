@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { format, isSameDay, parseISO, isAfter, endOfDay, formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { Link } from "react-router-dom";
-import { ArrowRight, FileText } from "lucide-react";
+import { ArrowRight, FileText, TriangleAlert } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 import { useAuth } from "@/src/hooks/useAuth";
@@ -209,22 +209,31 @@ export const PersonalDashboard: React.FC = () => {
             ))}
           </div>
           {!hasReportedToday && (
-            <div className="flex items-center gap-2 bg-[#FEF9C3] rounded-[10px] px-3.5 py-2 border border-[#FDE047] justify-center">
-              <span className="text-[16px]">⚠️</span>
-              <span className="text-[12px] font-medium text-[#854D0E] font-outfit">
-                Non hai ancora inserito il report di oggi
-              </span>
-              <Link to="/inserisci" className="text-[11px] font-bold text-[#854D0E] font-outfit underline ml-1 whitespace-nowrap">
-                Inserisci ora →
-              </Link>
+            <div className="flex items-center gap-3 bg-[var(--amber-bg)] rounded-[14px] px-4 py-2.5 border border-[var(--amber)]/30 group shadow-sm">
+              <TriangleAlert className="text-[var(--amber-fg)] shrink-0" size={18} />
+              <div className="flex items-center justify-between w-full gap-4">
+                <span className="text-[13px] font-medium text-[var(--amber-fg)] font-outfit">
+                  Inserisci il report giornaliero
+                </span>
+                <Link 
+                  to="/inserisci" 
+                  className="text-[12px] font-bold text-[var(--amber-fg)] font-outfit underline underline-offset-4 decoration-[var(--amber-fg)]/30 hover:decoration-[var(--amber-fg)] transition-all flex items-center gap-1 whitespace-nowrap"
+                >
+                  Inserisci ora <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+              </div>
             </div>
           )}
 
           {hasReportedToday && (
-            <div className="flex items-center gap-2 bg-[#F0FDF4] rounded-[10px] px-3.5 py-2 border border-[#BBF7D0] justify-center">
-              <span className="text-[16px]">✅</span>
-              <span className="text-[12px] font-medium text-[#166534] font-outfit">
-                Report di oggi inserito
+            <div className="flex items-center gap-3 bg-[var(--sage-bg)] rounded-[14px] px-4 py-2.5 border border-[var(--sage)]/30 shadow-sm">
+              <div className="w-5 h-5 rounded-full bg-[var(--sage-fg)] flex items-center justify-center shrink-0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+              <span className="text-[13px] font-medium text-[var(--sage-fg)] font-outfit">
+                Report giornaliero inserito
               </span>
             </div>
           )}

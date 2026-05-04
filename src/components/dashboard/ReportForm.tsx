@@ -155,10 +155,10 @@ export const ReportForm: React.FC<ReportFormProps> = ({ initialDate }) => {
           <motion.div 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-[#FEF5D0] border border-[#F5C842]/30 rounded-[16px] p-4 flex items-center gap-3 shadow-sm"
+            className="bg-[var(--amber-bg)] border border-[var(--amber)]/30 rounded-[16px] p-4 flex items-center gap-3 shadow-sm"
           >
-            <AlertCircle size={18} className="text-[#5C3800]" />
-            <span className="text-[13px] font-outfit font-bold text-[#5C3800]">
+            <AlertCircle size={18} className="text-[var(--amber-fg)]" />
+            <span className="text-[13px] font-outfit font-bold text-[var(--amber-fg)]">
               Stai modificando il ciclo del {format(parseISO(selectedDate), 'd MMMM yyyy', { locale: it })}
             </span>
           </motion.div>

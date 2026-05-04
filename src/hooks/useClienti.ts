@@ -255,12 +255,12 @@ export function useClienti(options?: { filters?: ClienteFilters }) {
 
   const reorderClientiMutation = useMutation({
     mutationFn: async (reordered: Cliente[]) => {
-      reordered.forEach(async (c) => {
+      await Promise.all(reordered.map(async (c) => {
         const rowIndex = await findRowIndex(SHEETS.clienti, c.id);
         if (rowIndex) {
-          updateRow(SHEETS.clienti, rowIndex, { display_order: c.display_order });
+          await updateRow(SHEETS.clienti, rowIndex, { display_order: c.display_order });
         }
-      });
+      }));
     },
     onMutate: async (reordered) => {
       await queryClient.cancelQueries({ queryKey });

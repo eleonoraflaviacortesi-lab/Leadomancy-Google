@@ -273,7 +273,7 @@ export const CalendarPage: React.FC = () => {
         start: app.start_time && !isNaN(parseISO(app.start_time).getTime()) ? parseISO(app.start_time) : new Date(),
         end: app.end_time && !isNaN(parseISO(app.end_time).getTime()) ? parseISO(app.end_time) : new Date(),
         type: isTask ? 'task' : 'appointment',
-        allDay: false,
+        allDay: isTask ? true : false,
         originalData: {
           ...app,
           card_color: override?.card_color !== undefined ? override.card_color : app.card_color,
@@ -290,17 +290,30 @@ export const CalendarPage: React.FC = () => {
         const end = gEvent.end.dateTime ? parseISO(gEvent.end.dateTime) : parseISO(gEvent.end.date);
         const override = overrides[gEvent.id];
         
+        // Google Tasks often appear as events with eventType 'task'
+        // or they might just be in a calendar that is technically for tasks.
+        // Also deduplicate: if this event looks exactly like one of our googleTasks, skip it
+        // since we prefer the googleTasks data (which has completion status).
+        const isBasicallyTask = (gEvent as any).eventType === 'task';
+        const isDuplicateOfTask = googleTasks.some(t => 
+          t.title === gEvent.summary && 
+          t.due && isSameDay(parseISO(t.due), start)
+        );
+
+        if (isDuplicateOfTask) return;
+
         events.push({
           id: gEvent.id,
           title: gEvent.summary || '(Nessun titolo)',
           start,
           end,
-          type: 'google_calendar',
+          type: isBasicallyTask ? 'task' : 'google_calendar',
           allDay: !gEvent.start.dateTime,
           originalData: {
             ...gEvent,
             card_color: override?.card_color || null,
-            calendarId: gEvent.organizer?.email || 'primary'
+            calendarId: gEvent.organizer?.email || 'primary',
+            completed: false // Default for events that look like tasks but aren't in the Tasks API
           }
         });
       }
@@ -351,13 +364,18 @@ export const CalendarPage: React.FC = () => {
       if (!gTask.due) return;
       const due = parseISO(gTask.due);
       
+      // Google Tasks are all-day if they don't have a time component (usually T00:00:00Z)
+      // or if they are explicitly marked as all-day in some contexts.
+      // Here we check if it's exactly midnight UTC as a heuristic for all-day.
+      const isAllDay = gTask.due.includes('T00:00:00');
+      
       events.push({
         id: `gtask-${gTask.id}`,
         title: gTask.title || '(Task senza titolo)',
         start: due,
-        end: due,
+        end: isAllDay ? due : new Date(due.getTime() + 30 * 60000), // 30 mins duration for timed tasks
         type: 'task',
-        allDay: true,
+        allDay: isAllDay,
         originalData: {
           id: `gtask-${gTask.id}`,
           title: gTask.title,
@@ -690,19 +708,21 @@ const MonthEventItem: React.FC<{
     () => onEventClick(event)
   );
 
-  const backgroundColor = event.originalData?.card_color || (
-    event.type === 'task' 
-      ? (event.originalData?.completed ? 'var(--bg-subtle)' : (event.originalData?.calendarColor || colors.task))
-      : (
-          event.originalData?.cliente_id ? colors.cliente_reminder :
-          event.originalData?.notizia_id ? colors.notizia_reminder :
-          event.originalData?.calendarColor || (
-            event.type === 'appointment' ? colors.appointment :
-            event.type === 'cliente_reminder' ? colors.cliente_reminder :
-            event.type === 'notizia_reminder' ? colors.notizia_reminder :
-            '#1A1A18'
-          )
-        )
+  const isTask = event.type === 'task';
+  const isCompleted = event.originalData?.completed;
+  const accentColor = event.originalData?.calendarColor || '#1A1A18';
+
+  const backgroundColor = isTask ? (isCompleted ? '#F9FAF9' : '#FFF9E1') : (
+    event.originalData?.card_color || (
+      event.originalData?.cliente_id ? colors.cliente_reminder :
+      event.originalData?.notizia_id ? colors.notizia_reminder :
+      event.originalData?.calendarColor || (
+        event.type === 'appointment' ? colors.appointment :
+        event.type === 'cliente_reminder' ? colors.cliente_reminder :
+        event.type === 'notizia_reminder' ? colors.notizia_reminder :
+        '#1A1A18'
+      )
+    )
   );
 
   const textColor = getContrastColor(backgroundColor);
@@ -712,30 +732,39 @@ const MonthEventItem: React.FC<{
       {...longPressProps}
       onContextMenu={(e) => onContextMenu(e, event)}
       className={cn(
-        "h-5 px-1.5 rounded-[4px] text-[11px] font-outfit font-medium truncate flex items-center gap-1"
+        "h-5 px-1.5 rounded-[4px] text-[11px] font-outfit font-medium truncate flex items-center gap-1",
+        isTask && "border border-black/5 shadow-[0_1px_1px_rgba(0,0,0,0.02)]"
       )}
       style={{ 
         backgroundColor,
-        color: textColor === 'white' ? '#FFFFFF' : (
+        color: isTask ? (isCompleted ? '#9CA3AF' : '#1A1A18') : (textColor === 'white' ? '#FFFFFF' : (
           event.type === 'cliente_reminder' ? '#3B2B8A' :
           event.type === 'notizia_reminder' ? '#5C3800' :
-          event.type === 'task' ? '#2B3A5C' : '#1A1A18'
-        ),
-        opacity: event.originalData?.completed ? 0.6 : 1
+          '#1A1A18'
+        )),
+        opacity: isCompleted ? 0.6 : 1,
+        borderLeft: isTask ? `2px solid ${accentColor}` : undefined
       }}
     >
-      {event.type === 'task' && (
+      {isTask && (
         <button
           onClick={(e) => {
             e.stopPropagation();
-            toggleComplete({ id: event.id, completed: !event.originalData?.completed });
+            toggleComplete({ id: event.id, completed: !isCompleted });
           }}
-          className="flex items-center justify-center p-0.5 bg-white shadow-sm border border-black/10 rounded-sm hover:scale-110 active:scale-95 transition-all cursor-pointer"
+          className={cn(
+            "flex items-center justify-center shrink-0 transition-all",
+            isCompleted ? "text-[#6DC88A]" : "text-[#9CA3AF]"
+          )}
         >
-          {event.originalData?.completed ? <Check size={10} className="text-[#6DC88A]" strokeWidth={3} /> : <div className="w-2 h-2" />}
+          {isCompleted ? (
+            <CheckCircle2 size={10} strokeWidth={2.5} />
+          ) : (
+            <Circle size={10} strokeWidth={2.5} />
+          )}
         </button>
       )}
-      <span className={cn(event.originalData?.completed && "line-through")}>
+      <span className={cn(isCompleted && "line-through")}>
         {!event.allDay && format(event.start, 'HH:mm')} {event.title}
       </span>
     </div>
@@ -836,9 +865,9 @@ const TimeGridEventItem: React.FC<{
   );
 
   if (event.type === 'task') {
-    const backgroundColor = event.originalData?.card_color || (event.originalData?.completed ? 'var(--bg-subtle)' : (event.originalData?.calendarColor || colors.task));
-    const textColor = getContrastColor(backgroundColor);
-
+    const isCompleted = event.originalData?.completed;
+    const accentColor = event.originalData?.calendarColor || '#1A1A18';
+    
     return (
       <div
         key={event.id}
@@ -849,20 +878,23 @@ const TimeGridEventItem: React.FC<{
           const pos = layout.get(event.id) || { left: 2, width: 96, zIndex: 10 };
           return {
             ...getEventStyle(event),
-            background: backgroundColor,
-            borderLeft: event.originalData?.calendarColor ? `3px solid ${event.originalData.calendarColor}` : '3px solid #6DC88A',
-            borderRadius: 6,
-            padding: '3px 7px',
-            display: 'flex', alignItems: 'center', gap: 5,
-            opacity: event.originalData?.completed ? 0.5 : 1,
+            backgroundColor: isCompleted ? '#F9FAF9' : '#FFF9E1',
+            border: isCompleted ? '1px solid #E5E7EB' : '1px solid #FDE68A',
+            borderLeft: `3px solid ${accentColor}`,
+            borderRadius: 8,
+            padding: '4px 10px',
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 8,
+            opacity: isCompleted ? 0.6 : 1,
             cursor: 'pointer',
             overflow: 'hidden',
             position: 'absolute' as const,
             left: `${pos.left}%`,
             width: `${pos.width}%`,
-            right: 'unset',
             zIndex: pos.zIndex,
-            color: textColor === 'white' ? '#FFFFFF' : (event.originalData?.calendarColor ? '#FFFFFF' : '#2B3A5C')
+            boxShadow: isCompleted ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
+            color: isCompleted ? '#9CA3AF' : '#1A1A18'
           };
         })()}
       >
@@ -870,25 +902,38 @@ const TimeGridEventItem: React.FC<{
           type="button"
           onClick={(e) => { 
             e.stopPropagation(); 
-            toggleComplete({ id: event.id, completed: !event.originalData?.completed });
+            toggleComplete({ id: event.id, completed: !isCompleted });
           }}
-          className="flex items-center justify-center bg-white shadow-sm border border-black/10 rounded-sm hover:scale-110 active:scale-95 transition-all cursor-pointer"
-          style={{ width: 14, height: 14, flexShrink: 0 }}
+          className={cn(
+            "flex items-center justify-center shrink-0 transition-all",
+            isCompleted ? "text-[#6DC88A]" : "text-[#1A1A18]"
+          )}
+          style={{ width: 18, height: 18 }}
         >
-          {event.originalData?.completed
-            ? <Check size={10} className="text-[#6DC88A]" strokeWidth={3} />
-            : <div className="w-2.5 h-2.5 bg-transparent" />
-          }
+          {isCompleted ? (
+            <CheckCircle2 size={18} strokeWidth={2.5} />
+          ) : (
+            <Circle size={18} strokeWidth={2.5} />
+          )}
         </button>
-        <span style={{
-          fontSize: 11, fontFamily: 'Outfit', fontWeight: 500,
-          textDecoration: event.originalData?.completed ? 'line-through' : 'none',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          flex: 1
-        }}>
-          {event.originalData?.notizia_id ? '🏠 ' : event.originalData?.cliente_id ? '👤 ' : ''}
-          {event.title}
-        </span>
+        <div className="flex flex-col min-w-0 flex-1">
+          <span style={{
+            fontSize: 11, 
+            fontFamily: 'Outfit', 
+            fontWeight: isCompleted ? 400 : 700,
+            textDecoration: isCompleted ? 'line-through' : 'none',
+            overflow: 'hidden', 
+            textOverflow: 'ellipsis', 
+            whiteSpace: 'nowrap',
+          }}>
+            {event.title}
+          </span>
+          {!event.allDay && (
+            <span className="text-[9px] opacity-70 font-outfit">
+              {format(event.start, 'HH:mm')}
+            </span>
+          )}
+        </div>
       </div>
     );
   }
@@ -1149,19 +1194,26 @@ const TimeGridView: React.FC<{
               >
                 {dayReminders.map(rem => {
                   if (rem.type === 'task') {
+                    const isCompleted = rem.originalData?.completed;
+                    const accentColor = rem.originalData?.calendarColor || '#1A1A18';
                     return (
                       <div
                         key={rem.id}
                         onClick={(e) => { e.stopPropagation(); onEventClick(rem); }}
+                        className="group"
                         style={{
-                          display: 'flex', alignItems: 'center', gap: 5,
-                          padding: '2px 7px', borderRadius: 6, cursor: 'pointer',
-                          background: rem.originalData?.completed ? 'var(--bg-subtle)' : (rem.originalData?.calendarColor || 'white'),
-                          color: rem.originalData?.completed 
-                            ? 'var(--text-muted)' 
-                            : (rem.originalData?.calendarColor ? '#FFFFFF' : 'var(--text-primary)'),
-                          border: rem.originalData?.calendarColor ? 'none' : '1px solid var(--border-light)',
-                          opacity: rem.originalData?.completed ? 0.7 : 1, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 6,
+                          padding: '4px 10px', 
+                          borderRadius: 20, 
+                          cursor: 'pointer',
+                          backgroundColor: isCompleted ? '#F9FAF9' : '#FFF9E1',
+                          color: isCompleted ? '#9CA3AF' : '#1A1A18',
+                          border: isCompleted ? '1px solid #E5E7EB' : '1px solid #FDE68A',
+                          borderLeft: `3px solid ${accentColor}`,
+                          boxShadow: isCompleted ? 'none' : '0 1px 2px rgba(0,0,0,0.03)',
+                          opacity: isCompleted ? 0.7 : 1, 
                           marginBottom: 2
                         }}
                       >
@@ -1169,23 +1221,29 @@ const TimeGridView: React.FC<{
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleComplete({ id: rem.id, completed: !rem.originalData?.completed });
+                            toggleComplete({ id: rem.id, completed: !isCompleted });
                           }}
-                          className="flex items-center justify-center bg-white shadow-sm border border-black/10 rounded-sm hover:scale-110 active:scale-95 transition-all cursor-pointer"
-                          style={{ width: 14, height: 14, flexShrink: 0 }}
+                          className={cn(
+                            "flex items-center justify-center shrink-0 transition-all",
+                            isCompleted ? "text-[#6DC88A]" : "#1A1A18"
+                          )}
+                          style={{ width: 16, height: 16 }}
                         >
-                          {rem.originalData?.completed
-                            ? <Check size={10} className="text-[#6DC88A]" strokeWidth={3} />
-                            : <div className="w-2.5 h-2.5 bg-transparent" />
-                          }
+                          {isCompleted ? (
+                            <CheckCircle2 size={16} strokeWidth={2.5} />
+                          ) : (
+                            <Circle size={16} strokeWidth={2.5} />
+                          )}
                         </button>
-                        <span style={{
-                          fontSize: 11, fontFamily: 'Outfit',
-                          color: rem.originalData?.completed ? 'var(--text-muted)' : 'var(--text-primary)',
-                          textDecoration: rem.originalData?.completed ? 'line-through' : 'none',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                        }}>
-                          {rem.originalData?.notizia_id ? '🏠 ' : rem.originalData?.cliente_id ? '👤 ' : ''}
+                          <span style={{
+                            fontSize: 11, 
+                            fontFamily: 'Outfit',
+                            fontWeight: isCompleted ? 400 : 700,
+                            textDecoration: isCompleted ? 'line-through' : 'none',
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis', 
+                            whiteSpace: 'nowrap'
+                          }}>
                           {rem.title}
                         </span>
                       </div>

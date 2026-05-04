@@ -11,6 +11,8 @@ export interface Profile {
   sede: string;
   sedi: string[] | null;
   avatar_emoji: string;
+  photo_url?: string;
+  _rowIndex?: number;
 }
 
 export type ClienteStatus = 'new' | 'contacted' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost';
@@ -20,7 +22,8 @@ export interface ClienteComment {
   text: string;
   author: string;
   authorId: string;
-  createdAt: string;
+  created_at: string;
+  createdAt?: string;
 }
 
 export interface Cliente {
@@ -62,7 +65,7 @@ export interface Cliente {
   display_order: number;
   assigned_to: string;
   emoji: string;
-  card_color: string;
+  card_color: string | null;
   comments: ClienteComment[];
   descrizione: string;
   note_extra: string;
@@ -73,8 +76,10 @@ export interface Cliente {
   row_bg_color: string | null;
   row_text_color: string | null;
   rating: number | null;
+  custom_fields?: Record<string, any>;
   created_at: string;
   updated_at: string;
+  _rowIndex?: number;
 }
 
 export interface ClienteFilters {
@@ -89,7 +94,7 @@ export interface ClienteFilters {
 export type NotiziaStatus = 'new' | 'in_progress' | 'done' | 'on_shot' | 'taken' | 'credit' | 'no' | 'sold' | string;
 
 export interface NotiziaComment {
-  id: string;
+  id?: string;
   text: string;
   created_at: string;
 }
@@ -97,31 +102,40 @@ export interface NotiziaComment {
 export interface Notizia {
   id: string;
   user_id: string;
+  sede: string;
+  emoji: string;
   name: string;
+  nome: string;
   zona: string;
+  telefono: string;
   phone: string;
   type: string;
-  notes: string;
-  status: NotiziaStatus;
-  emoji: string;
-  reminder_date: string | null;
-  created_at: string;
-  updated_at: string;
-  comments: NotiziaComment[];
-  card_color: string;
-  display_order: number;
-  is_online: boolean;
   prezzo_richiesto: number | null;
+  prezzo: number | null;
   valore: number | null;
   rating: number | null;
-  tally_submission_id: string;
-  custom_fields: Record<string, unknown> | null;
+  status: NotiziaStatus;
+  display_order: number;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  reminder_date: string | null;
+  reminder_time?: string;
+  comments: NotiziaComment[];
+  is_online: boolean;
+  card_color: string | null;
+  agent_name?: string;
+  tally_submission_id?: string;
+  custom_fields?: Record<string, unknown> | null;
+  _rowIndex?: number;
 }
 
 export interface Appointment {
   id: string;
   title: string;
   description: string;
+  date?: string;
+  time?: string;
   start_time: string;
   end_time: string;
   location: string;
@@ -135,8 +149,11 @@ export interface Appointment {
   calendar_id: string | null;
   priority?: 'bassa' | 'media' | 'alta' | null;
   card_color?: string | null;
+  tasks?: { id: string, title: string, completed: boolean }[];
+  notes?: string;
   created_at: string;
   updated_at: string;
+  _rowIndex?: number;
 }
 
 export interface DailyReport {
@@ -181,7 +198,9 @@ export interface ChatMessage {
 }
 
 export interface UndoableAction {
-  description: string;
+  type?: string;
+  payload?: any;
+  description?: string;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
 }
