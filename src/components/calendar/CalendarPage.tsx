@@ -884,8 +884,8 @@ const TimeGridEventItem: React.FC<{
           const pos = layout.get(event.id) || { left: 2, width: 96, zIndex: 10 };
           return {
             ...getEventStyle(event),
-            backgroundColor: isCompleted ? '#F9FAF9' : '#FFF9E1',
-            border: isCompleted ? '1px solid #E5E7EB' : '1px solid #FDE68A',
+            backgroundColor: isCompleted ? '#F9FAF9' : '#FFFFFF',
+            border: isCompleted ? '1px solid #E5E7EB' : '1px solid #E5E7EB',
             borderLeft: `3px solid ${accentColor}`,
             borderRadius: 8,
             padding: '4px 10px',

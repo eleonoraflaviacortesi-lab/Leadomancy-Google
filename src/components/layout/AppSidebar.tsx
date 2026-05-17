@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { label: "Calendario", path: "/activities", icon: CalendarDays, group: 2 },
   { label: "Chat", path: "/chat", icon: MessageCircle, group: 3 },
   { label: "Produzione", path: "/inserisci", icon: TrendingUp, group: 3 },
+  { label: "WhatsApp Blast", path: "/blast", icon: MessageCircle, group: 3 },
   { label: "Ufficio", path: "/office", icon: Briefcase, group: 3 },
 ];
 

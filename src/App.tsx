@@ -18,6 +18,7 @@ import { OfficeChatPage } from "@/src/components/chat/OfficeChatPage";
 import { UfficioPage } from "@/src/components/ufficio/UfficioPage";
 import { SettingsPage } from "@/src/components/settings/SettingsPage";
 import ProfilePage from "@/src/pages/ProfilePage";
+import BlastPage from "@/src/pages/BlastPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,6 +56,7 @@ export default function App() {
                   <Route path="/chat" element={<OfficeChatPage />} />
                   <Route path="/inserisci" element={<ReportPage />} />
                   <Route path="/office" element={<UfficioPage />} />
+                  <Route path="/blast" element={<BlastPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
                 </Route>

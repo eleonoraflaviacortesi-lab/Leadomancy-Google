@@ -129,6 +129,7 @@ export function useGoogleCalendar() {
       const unique = Array.from(
         new Map([...results.flat(), ...taskCalendarEvents].map(e => [e.id, e])).values()
       );
+      console.log('[DEBUG TASKS]', unique.filter(e => e.calendarId === '@tasks' || e.eventType === 'task'));
       setEvents(unique);
     } catch (err) {
       setError(err);
